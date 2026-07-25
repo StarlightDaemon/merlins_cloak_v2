@@ -14,6 +14,7 @@ import { siteSurveyPages } from './site-survey';
 import { vpnClientPages } from './vpn-client';
 import { vpnServerPages } from './vpn-server';
 import { vpnDirectorPages } from './vpn-director';
+import { ipsecPages } from './ipsec';
 import { dnsDirectorPages } from './dnsdirector';
 import { firewallPages } from './firewall';
 import { ipv6Pages } from './ipv6';
@@ -59,6 +60,7 @@ export function registerAllPages(): void {
   registerPages(vpnClientPages);
   registerPages(vpnServerPages);
   registerPages(vpnDirectorPages);
+  registerPages(ipsecPages);
   registerPages(firewallPages);
   registerPages(dnsDirectorPages);
   registerPages(logPages);
