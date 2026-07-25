@@ -268,6 +268,25 @@ export function ExtensionSettingsPage(_props: PageProps) {
           <TextInput value={settings.routerAddress} onChange={() => undefined} disabled width={200} />
         </Row>
       </Card>
+      <Card title="About">
+        <p className="mc-card__note">
+          Merlin's Cloak is an independent, third-party client. It is <strong>not affiliated with, endorsed by, or
+          sponsored by ASUSTeK Computer Inc. or the Asuswrt-Merlin project.</strong> Product and feature names shown
+          here — AiProtection, Guest Network Pro, DNS Director, VPN Director and the rest, including the
+          <em> Formerly “…”</em> tooltips in the sidebar — are used descriptively, to identify which router feature a
+          view corresponds to. They belong to their respective owners.
+        </p>
+        <p className="mc-card__note">
+          Live-verified on the RT-BE92U (Wi-Fi 7, ASUSWRT 5.0, Merlin) only. RT-AX88U support is derived from firmware
+          source and has never been tested on hardware. Other Wi-Fi 6/6E/7 routers are untested — feature detection is
+          designed to degrade gracefully there, but that has not been demonstrated. ROG and GT models are out of scope.
+          The Detection &amp; Write Log view records the confidence tier for every individual page.
+        </p>
+        <p className="mc-card__note">
+          Every request goes to the configured router address and nowhere else. No telemetry, no analytics, no external
+          network calls.
+        </p>
+      </Card>
     </div>
   );
 }
