@@ -7,9 +7,26 @@ import { collectCapabilities, type Capabilities } from '../lib/capabilities';
 import { getSettings, onSettingsChanged, updateSettings, type ExtensionSettings } from '../lib/settings';
 import { setReadOnlyMode } from '../lib/write-guard';
 import { NAV_ALIASES, NAV_GROUPS, findPage, getVisiblePages, pageIdForAsp } from '../pages/registry';
+import { priorCategoryText, priorPageText } from '../pages/prior-names';
 import type { PageDef } from '../pages/types';
 import { SettingsPage } from './SettingsPage';
 import { Banner, Button, Loading } from './components';
+
+interface PriorTipState {
+  text: string;
+  x: number;
+  y: number;
+}
+
+/** The floating hover-only "Formerly …" tooltip for renamed nav entries. */
+function PriorTip({ tip }: { tip: PriorTipState | null }) {
+  if (!tip) return null;
+  return (
+    <div className="mc-prior-tip" style={{ left: tip.x, top: tip.y }}>
+      {tip.text}
+    </div>
+  );
+}
 
 function useHashRoute(defaultId: string): [string, (id: string) => void] {
   const parse = () => window.location.hash.replace(/^#\//, '') || defaultId;
@@ -34,6 +51,26 @@ export function App() {
   const initialRoute = useMemo(() => pageIdForAsp(window.location.pathname) ?? 'dashboard', []);
   const [route, navigate] = useHashRoute(initialRoute);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+
+  const [priorTip, setPriorTip] = useState<PriorTipState | null>(null);
+  const showPriorTip = useCallback((el: HTMLElement, text: string) => {
+    const r = el.getBoundingClientRect();
+    setPriorTip({ text, x: r.left + 14, y: r.bottom + 3 });
+  }, []);
+  const hidePriorTip = useCallback(() => setPriorTip(null), []);
+  /** Hover/focus handlers for a nav entry with a prior name; {} otherwise. */
+  const priorTipProps = useCallback(
+    (text: string | undefined) =>
+      text
+        ? {
+            onMouseEnter: (e: { currentTarget: HTMLElement }) => showPriorTip(e.currentTarget, text),
+            onMouseLeave: hidePriorTip,
+            onFocus: (e: { currentTarget: HTMLElement }) => showPriorTip(e.currentTarget, text),
+            onBlur: hidePriorTip,
+          }
+        : {},
+    [showPriorTip, hidePriorTip],
+  );
 
   useEffect(() => {
     void (async () => {
@@ -138,7 +175,11 @@ export function App() {
                   key={p.id}
                   type="button"
                   className={`mc-nav__item${p.id === route ? ' is-active' : ''}`}
-                  onClick={() => navigate(p.id)}
+                  onClick={() => {
+                    hidePriorTip();
+                    navigate(p.id);
+                  }}
+                  {...priorTipProps(priorPageText(p.id))}
                 >
                   {p.navLabel ?? p.title}
                 </button>
@@ -153,6 +194,7 @@ export function App() {
                         ? navigate(entries[0].page.id)
                         : setOpenGroups((g) => ({ ...g, [group.id]: !open }))
                     }
+                    {...priorTipProps(priorCategoryText(group.id))}
                   >
                     {group.label}
                     {entries.length > 1 && <span className="chev">▶</span>}
@@ -194,6 +236,7 @@ export function App() {
           </div>
         </main>
       </div>
+      <PriorTip tip={priorTip} />
     </div>
   );
 }

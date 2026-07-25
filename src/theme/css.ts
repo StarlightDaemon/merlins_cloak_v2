@@ -186,6 +186,21 @@ export function buildThemeCss(): string {
   background: var(--bg-overlay);
   border-left-color: var(--accent-bright);
 }
+.mc-prior-tip {
+  position: fixed;
+  z-index: 2147483001;
+  max-width: 260px;
+  padding: 3px 9px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-menu);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.4;
+  pointer-events: none;
+  white-space: nowrap;
+}
 
 /* ---- cards & sections ---- */
 .mc-page-title { font-size: 19px; font-weight: bold; margin: 0 0 2px; }
