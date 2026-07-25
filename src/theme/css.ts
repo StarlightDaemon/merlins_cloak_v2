@@ -410,6 +410,28 @@ export function buildThemeCss(): string {
   word-break: break-all;
 }
 
+/* ---- rule-list editor ---- */
+.mc-row--stack { flex-direction: column; align-items: stretch; gap: 6px; }
+.mc-row--stack .mc-row__label { flex-basis: auto; }
+.mc-listedit { width: 100%; }
+.mc-listedit .mc-input, .mc-listedit .mc-select { width: 100%; min-width: 0; padding: 4px 7px; font-size: 12px; }
+.mc-listedit td { padding: 3px 4px; }
+.mc-listedit th { padding: 5px 6px; font-size: 11.5px; }
+.mc-listedit__empty { color: var(--text-muted); text-align: center; font-size: 12px; }
+.mc-listedit__del {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 12px; padding: 4px 6px;
+}
+.mc-listedit__del:hover { color: var(--err); }
+.mc-listedit__draft td { background: var(--bg-status); }
+.mc-listedit__bar { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+.mc-listedit__count { color: var(--text-muted); font-size: 11.5px; margin-left: auto; }
+.mc-input--mono { font-family: var(--font-mono); }
+
+/* ---- instance selector (band / VPN client N / …) ---- */
+.mc-instancebar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.mc-instancebar__label { color: var(--text-secondary); font-size: 12.5px; }
+
 /* ---- misc ---- */
 .mc-loading { display: flex; align-items: center; gap: 10px; color: var(--text-secondary); padding: 30px 0; justify-content: center; }
 .mc-spinner {

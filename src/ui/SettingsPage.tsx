@@ -7,6 +7,10 @@
  * the guard intercepts and this renderer shows the exact request that would
  * have been sent. After a real submit, the poll-and-verify result is shown —
  * the DOM is never trusted, the response body is never trusted.
+ *
+ * Instance pages (def.instance): all state is keyed by TEMPLATE keys
+ * (containing '{p}'); the selected instance value is substituted only when
+ * building read requests and write payloads. Switching instances reloads.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Capabilities } from '../lib/capabilities';
@@ -14,8 +18,10 @@ import { nvramCharToAscii, nvramGet, appGet, type WriteSpec } from '../lib/route
 import { guardedWrite, isReadOnlyMode, type GuardedWriteOutcome } from '../lib/write-guard';
 import type { FieldDef, SettingsPageDef } from '../pages/types';
 import { Badge, Banner, Button, Card, Loading, Modal, RadioGroup, Row, Select, TextInput, Toggle } from './components';
+import { ListEditor, validateRuleList } from './ListEditor';
 
 function validateField(f: FieldDef, value: string): string | null {
+  if (f.control === 'list' && f.list) return validateRuleList(value, f.list);
   const v = f.validate;
   if (!v) return null;
   if (v.required && value.trim() === '') return 'Required';
@@ -58,6 +64,8 @@ function FieldControl({
       return <TextInput value={value} onChange={onChange} width={140} invalid={validateField(field, value) !== null} />;
     case 'password':
       return <TextInput value={value} onChange={onChange} type="password" width={260} />;
+    case 'list':
+      return field.list ? <ListEditor spec={field.list} value={value} onChange={onChange} /> : null;
     default:
       return <TextInput value={value} onChange={onChange} width={260} invalid={validateField(field, value) !== null} />;
   }
@@ -71,18 +79,40 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
   const [outcome, setOutcome] = useState<GuardedWriteOutcome | null>(null);
   const [eulaAccepted, setEulaAccepted] = useState<boolean | null>(null);
 
+  const instanceOptions = useMemo(
+    () => (def.instance ? def.instance.options.filter((o) => !o.gate || o.gate(caps)) : []),
+    [def, caps],
+  );
+  const [instance, setInstance] = useState<string | undefined>(instanceOptions[0]?.value);
+
+  /** '{p}' → selected instance value, at the I/O boundary only. */
+  const expand = useCallback(
+    (key: string) => (instance !== undefined ? key.replaceAll('{p}', instance) : key),
+    [instance],
+  );
+
   const load = useCallback(async () => {
     setLoadError(null);
     setBaseline(null);
     try {
-      const plain = def.read.nvram?.length ? await nvramGet(def.read.nvram) : {};
-      const ascii = def.read.nvramAscii?.length ? await nvramCharToAscii(def.read.nvramAscii) : {};
-      const hooks = def.read.hooks?.length ? await appGet(def.read.hooks) : {};
+      const readMapped = async (
+        keys: string[] | undefined,
+        reader: (k: string[]) => Promise<Record<string, string>>,
+      ): Promise<Record<string, string>> => {
+        if (!keys?.length) return {};
+        const expanded = await reader(keys.map(expand));
+        const out: Record<string, string> = {};
+        for (const k of keys) out[k] = expanded[expand(k)] ?? '';
+        return out;
+      };
+      const plain = await readMapped(def.read.nvram, nvramGet);
+      const ascii = await readMapped(def.read.nvramAscii, nvramCharToAscii);
+      const hooks = def.read.hooks?.length ? await appGet(def.read.hooks.map(expand)) : {};
       let merged: Record<string, string> = { ...plain, ...ascii };
       for (const [k, v] of Object.entries(hooks)) {
         if (!(k in merged)) merged[k] = typeof v === 'string' ? v : JSON.stringify(v);
       }
-      if (def.read.derive) merged = { ...merged, ...def.read.derive(merged) };
+      if (def.read.derive) merged = { ...merged, ...def.read.derive(merged, instance) };
       if (def.eulaGate) {
         const eulaVals = await nvramGet(def.eulaGate.nvramKeys);
         setEulaAccepted(Object.values(eulaVals).some((v) => v === '1'));
@@ -92,7 +122,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : String(e));
     }
-  }, [def]);
+  }, [def, expand, instance]);
 
   useEffect(() => {
     void load();
@@ -127,20 +157,24 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
     setBusy(true);
     try {
       const fields = def.write.buildFields ? def.write.buildFields(dirty, values) : { ...dirty };
+      const fullSet = Object.fromEntries(allFields.map((f) => [f.key, values[f.key] ?? '']));
+      const templateFields =
+        def.write.endpoint === 'start_apply'
+          ? // whole-page semantics: current value of EVERY field, changes on top
+            { ...fullSet, ...fields }
+          : fields;
+      const expandRecord = (rec: Record<string, string>) =>
+        Object.fromEntries(Object.entries(rec).map(([k, v]) => [expand(k), v]));
       const spec: WriteSpec = {
         endpoint: def.write.endpoint,
-        fields:
-          def.write.endpoint === 'start_apply'
-            ? // whole-page semantics: current value of EVERY field, changes on top
-              { ...Object.fromEntries(allFields.map((f) => [f.key, values[f.key] ?? ''])), ...fields }
-            : fields,
-        rcService: def.write.rcService,
+        fields: expandRecord(templateFields),
+        rcService: def.write.rcService ? expand(def.write.rcService) : undefined,
         actionWait: def.write.actionWait,
         currentPage: def.aspPage,
         nextPage: def.aspPage,
       };
       const verify = def.write.buildVerify ? def.write.buildVerify(dirty, values) : { ...dirty };
-      const result = await guardedWrite(spec, verify);
+      const result = await guardedWrite(spec, verify ? expandRecord(verify) : null);
       setOutcome(result);
       if (result.applied) {
         await load();
@@ -148,7 +182,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
     } finally {
       setBusy(false);
     }
-  }, [def, baseline, dirty, values, allFields, dirtyCount, load]);
+  }, [def, baseline, dirty, values, allFields, dirtyCount, load, expand]);
 
   if (loadError) {
     return (
@@ -160,7 +194,20 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
       </Banner>
     );
   }
-  if (!baseline) return <Loading />;
+
+  const instanceBar = def.instance && instanceOptions.length > 0 && (
+    <div className="mc-instancebar">
+      <span className="mc-instancebar__label">{def.instance.label}</span>
+      <RadioGroup
+        value={instance ?? ''}
+        onChange={(v) => {
+          if (dirtyCount > 0 && !window.confirm('Discard unsaved changes on this page?')) return;
+          setInstance(v);
+        }}
+        options={instanceOptions.map(({ value, label }) => ({ value, label }))}
+      />
+    </div>
+  );
 
   return (
     <div>
@@ -177,41 +224,59 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
           in effect.
         </Banner>
       )}
-      {def.sections.map((section, i) => {
-        if (section.showIf && !section.showIf(values, caps)) return null;
-        const visible = section.fields.filter((f) => !f.showIf || f.showIf(values, caps));
-        if (visible.length === 0) return null;
-        return (
-          <Card key={i} title={section.title} note={section.note}>
-            {visible.map((f) => (
-              <Row
-                key={f.key}
-                label={f.label}
-                hint={f.hint}
-                error={errors[f.key]}
-                dirty={dirty[f.key] !== undefined}
-              >
-                <FieldControl field={f} value={values[f.key] ?? ''} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
-              </Row>
-            ))}
-          </Card>
-        );
-      })}
+      {instanceBar}
+      {!baseline ? (
+        <Loading />
+      ) : (
+        <>
+          {def.sections.map((section, i) => {
+            if (section.showIf && !section.showIf(values, caps)) return null;
+            const visible = section.fields.filter((f) => !f.showIf || f.showIf(values, caps));
+            if (visible.length === 0) return null;
+            return (
+              <Card key={i} title={section.title} note={section.note}>
+                {visible.map((f) =>
+                  f.control === 'list' ? (
+                    <div key={f.key} className={`mc-row mc-row--stack${dirty[f.key] !== undefined ? ' is-dirty' : ''}`}>
+                      <div className="mc-row__label">
+                        {f.label}
+                        {f.hint && <span className="hint">{f.hint}</span>}
+                      </div>
+                      <FieldControl field={f} value={values[f.key] ?? ''} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
+                      {errors[f.key] && <span className="mc-row__error">{errors[f.key]}</span>}
+                    </div>
+                  ) : (
+                    <Row
+                      key={f.key}
+                      label={f.label}
+                      hint={f.hint}
+                      error={errors[f.key]}
+                      dirty={dirty[f.key] !== undefined}
+                    >
+                      <FieldControl field={f} value={values[f.key] ?? ''} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
+                    </Row>
+                  ),
+                )}
+              </Card>
+            );
+          })}
 
-      {def.write && dirtyCount > 0 && (
-        <div className="mc-applybar">
-          <div className="mc-applybar__summary">
-            <b>{dirtyCount}</b> pending change{dirtyCount === 1 ? '' : 's'}
-            {hasErrors && ' · fix validation errors to apply'}
-            {isReadOnlyMode() && ' · read-only mode: Apply will preview the request without sending'}
-          </div>
-          <Button onClick={() => setValues(baseline)} disabled={busy}>
-            Revert
-          </Button>
-          <Button variant="primary" onClick={() => void apply()} disabled={busy || hasErrors}>
-            {busy ? 'Applying…' : isReadOnlyMode() ? 'Preview Apply' : 'Apply'}
-          </Button>
-        </div>
+          {def.write && dirtyCount > 0 && (
+            <div className="mc-applybar">
+              <div className="mc-applybar__summary">
+                <b>{dirtyCount}</b> pending change{dirtyCount === 1 ? '' : 's'}
+                {hasErrors && ' · fix validation errors to apply'}
+                {isReadOnlyMode() && ' · read-only mode: Apply will preview the request without sending'}
+              </div>
+              <Button onClick={() => setValues(baseline)} disabled={busy}>
+                Revert
+              </Button>
+              <Button variant="primary" onClick={() => void apply()} disabled={busy || hasErrors}>
+                {busy ? 'Applying…' : isReadOnlyMode() ? 'Preview Apply' : 'Apply'}
+              </Button>
+            </div>
+          )}
+        </>
       )}
 
       {outcome && (

@@ -7,8 +7,10 @@ import { registerPages } from '../registry';
 import { tweaksPage } from './tools-tweaks';
 import { DashboardPage } from './dashboard';
 import { DiagnosticsPage, ExtensionSettingsPage } from './extension';
+import { lanPages } from './lan';
 
 export function registerAllPages(): void {
+  registerPages(lanPages);
   registerPages([
     {
       kind: 'custom',

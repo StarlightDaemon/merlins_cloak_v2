@@ -33,6 +33,7 @@ export type WriteExclusionCategory =
   | 'vpn'
   | 'firewall'
   | 'firmware-reboot-reset'
+  | 'excluded-restart' // action_script touches restart_net_and_phy / restart_wireless / restart_wan / restart_dhcpd, or is unclear enough to exclude by policy
   | 'restricted-misc' // http_dut_redir, SSH forwarding, HTTPS cert regen, SMB protocol, UPnP pinholes
   | null;
 
@@ -58,7 +59,34 @@ export type FieldControl =
   | 'radio' // enumerated options as a segmented control
   | 'toggle' // '1'/'0' nvram boolean
   | 'textarea'
-  | 'readonly';
+  | 'readonly'
+  | 'list'; // '<'-delimited nvram rule list, edited as a table (spec in FieldDef.list)
+
+/** One column of a rule-list field (see lib/rulelist.ts for the encoding). */
+export interface ListColumn {
+  id: string;
+  label: string;
+  control?: 'text' | 'select';
+  options?: FieldOption[];
+  validate?: FieldValidation;
+  placeholder?: string;
+  /** Fixed column width in px; unset = flexible. */
+  width?: number;
+  mono?: boolean;
+}
+
+export interface ListSpec {
+  columns: ListColumn[];
+  /** Record separator; default '<'. */
+  recordSep?: string;
+  /** Field separator; default '>'. */
+  fieldSep?: string;
+  /** Non-empty serialization starts with a leading recordSep; default true. */
+  leadingSep?: boolean;
+  /** Native UI's row cap where one is enforced (e.g. 64 for many lists). */
+  maxRows?: number;
+  addLabel?: string;
+}
 
 export interface FieldDef {
   /** nvram key (or composite form-field name for decomposed fields). */
@@ -75,6 +103,8 @@ export interface FieldDef {
   showIf?: (values: Record<string, string>, caps: Capabilities) => boolean;
   /** Read via nvram_char_to_ascii instead of nvram_get (free-text fields). */
   ascii?: boolean;
+  /** Rule-list table spec; required when control === 'list'. */
+  list?: ListSpec;
 }
 
 export interface SectionDef {
@@ -138,9 +168,25 @@ export interface PageDefBase {
   eulaGate?: { nvramKeys: string[]; label: string };
 }
 
+/**
+ * Instance selector for pages that edit one of N parallel nvram families
+ * (wireless bands wl0_/wl1_/wl2_, OpenVPN clients vpn_client1_…5_, WireGuard
+ * wgc1_…wgc5_, …). Every occurrence of the literal token '{p}' in nvram keys,
+ * field keys, and the write rcService is replaced with the selected option's
+ * value. All def logic (showIf, derive, buildFields, buildVerify) operates on
+ * the un-expanded template keys — expansion happens only at the I/O boundary.
+ * Switching instances reloads the page's reads and discards unsaved edits
+ * (matching the native UI's band/instance switch behavior).
+ */
+export interface InstanceSelector {
+  label: string;
+  options: { value: string; label: string; gate?: (caps: Capabilities) => boolean }[];
+}
+
 /** Declarative settings page rendered by SettingsPageRenderer. */
 export interface SettingsPageDef extends PageDefBase {
   kind: 'settings';
+  instance?: InstanceSelector;
   read: {
     nvram?: string[];
     /** Keys to read via nvram_char_to_ascii (merged over nvram reads). */
@@ -149,9 +195,9 @@ export interface SettingsPageDef extends PageDefBase {
     /**
      * Post-read transform: derive additional (virtual) field values from the
      * raw reads — e.g. decomposing a combined space-separated nvram string
-     * into the individually-edited fields.
+     * into the individually-edited fields. Keys are template keys.
      */
-    derive?: (raw: Record<string, string>) => Record<string, string>;
+    derive?: (raw: Record<string, string>, instance?: string) => Record<string, string>;
   };
   sections: SectionDef[];
   write?: WriteDef;
