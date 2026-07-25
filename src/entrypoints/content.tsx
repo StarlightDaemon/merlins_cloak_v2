@@ -78,6 +78,13 @@ export default defineContentScript({
       return;
     }
 
+    // Idempotency guard: the script can be injected more than once into the
+    // same document (live-observed duplicate mounts); never double-mount.
+    if (document.getElementById('mc2-host')) {
+      log.debug('already mounted; skipping duplicate injection');
+      return;
+    }
+
     log.info(`mounting on ${path}`);
     registerAllPages();
 
