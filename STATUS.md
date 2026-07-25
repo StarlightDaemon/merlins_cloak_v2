@@ -4,26 +4,53 @@ Session of 2026-07-24 (resumed once after a mid-session usage-limit
 interruption; no disk work lost). This document is the resumable state of
 record. See git log for the commit trail.
 
-## Session of 2026-07-25 — nav taxonomy implemented, live check blocked
+## Session of 2026-07-25 — nav taxonomy implemented AND live-verified
 
 The navigation taxonomy from docs/NAV_TAXONOMY_PROPOSAL.md is fully
 implemented (7 code/docs commits: proposal committed, section bands removed,
 twelve-category tree with sub-headers, orphan consolidation with page-level
 gates kept exactly as they were, full §3 rename sweep, NAV_ALIASES secondary
 placements with alias-aware deep-link auto-expand, hover-only prior-name
-tooltips, Diagnostics confidence table regrouped). tsc + eslint clean; Chrome
-MV3 and Firefox MV3 builds both pass and are current in .output/.
+tooltips, Diagnostics confidence table regrouped), plus one follow-up fix
+restoring the `traffic-last24` nav label to "Last 24 hours" (the rename sweep
+had dropped it, though §3 lists that page as unchanged). tsc + eslint clean;
+Chrome MV3 and Firefox MV3 builds both pass and are current in .output/.
 
-**Live verification (Task 8) did not run.** The paired Chrome's router tab
-bounced to Main_Login.asp (no authenticated session — the agent does not
-enter credentials), and a console-tracked reload of that page showed no
-`[merlins-cloak]` log line, so the extension appears not to be loaded (or
-disabled) in that browser right now. To resume: log in to 192.168.1.1, load
-or reload the unpacked build from `.output/chrome-mv3` at chrome://extensions,
-then re-run the Task 8 checklist (category names/order, sub-headers, the
-three aliased pages in both homes, prior-name tooltips incl. one
-disambiguation case, gated-page hiding, Diagnostics grouping). Nothing has
-been pushed to origin; all commits are local, held for operator review.
+**Chrome live verification: DONE** (2026-07-25, operator-confirmed
+authenticated session + freshly loaded unpacked build; observational pass
+against the live RT-BE92U, read-only mode on, no writes). Confirmed:
+
+- All 12 categories render under their new names in exact §2 order, Merlin's
+  Cloak last, and the three fixed section bands are gone.
+- All six sub-header categories show correctly populated sub-groups:
+  Wireless 4/3, Local Network 3(+2 aliases)/3, Security 3/4(+1 alias)/5,
+  VPN 1/4/4 (the one-item Overview sub-header renders as a normal
+  sub-header), Traffic & Bandwidth 5/4, Administration 2/2/3.
+- All three aliases appear in both homes and route to the same working page.
+  A **cold load** of `Main_RouteStatus_Content.asp` opened exactly two
+  categories (Local Network + Live Status & Logs) with Routing Table active
+  in both — the alias-aware auto-expand works from a fresh load, not just
+  in-session.
+- Prior-name tooltips are hover-only and correct, including the
+  disambiguation pair: IPv6 Setup → *Formerly "IPv6" under IPv6*, IPv6
+  Status → *Formerly "IPv6" under System Log*; also Wi-Fi Name & Security →
+  *Formerly "General" under Wireless*, and category tooltips (LAN, WAN,
+  Firewall).
+- **Gate-off state observed live**: `nfsd_support` is 0 on this router, so
+  NFS File Sharing is hidden and USB Storage & Sharing renders normally with
+  its remaining three pages.
+- Diagnostics confidence table: 21 group headings in §2 order, 73 page rows,
+  zero duplicated names, no "(no nav category)" fallback group; the three
+  aliased pages each appear once with an "(also in nav under …)" note.
+- Console clean across ~23 navigations: 46 messages, all INFO, no errors.
+
+Firefox live verification remains NOT run (unchanged gap). Nothing has been
+pushed to origin; all commits are local, held for operator review.
+
+Cosmetic notes (no action taken): several new names are wider than the 236px
+nav and ellipsize (proposal §5.5 anticipated this); and the IPv6 Setup
+tooltip reads *under IPv6* because the old category was itself named IPv6 —
+accurate, if slightly redundant.
 
 ## Snapshot
 
