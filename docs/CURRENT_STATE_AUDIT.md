@@ -83,4 +83,22 @@ from STATUS.md's category summary table. One category at a time, in
 | `dashboard` | Network Map | index.asp | Landing page: WAN state/IP/gateway/DNS/proto, LAN IP, firmware identity, uptime, and per-band (2.4/5/6 GHz) radio SSID+on/off. On SDN-managed units (`mtlancfg_support`), resolves the real broadcast SSID from `sdn_rl`'s MAINFH record's `apg{idx}_ssid` instead of the placeholder `wl{N}_ssid`. | nvram: `wan0_state_t`, `wan0_ipaddr`, `wan0_gateway`, `wan0_dns`, `wan0_proto`, `lan_ipaddr`, `wl0/1/2_radio`, `wl0/1/2_ssid` (ascii), conditionally `sdn_rl`/`apg{idx}_ssid`; hook: `uptime()` | none — read-only display | read: live-verified |
 | `clients` | Clients | update_clients.asp | Merges DHCP leases with live wireless-station presence (`get_wclientlist()`) into one table; unnamed-hostname/`*` leases normalized to blank; auto-refreshes every 15s. | DHCP leases (via `fetchDhcpLeases`, dnsmasq lease file); hook: `get_wclientlist()` | none — read-only display | read: live-verified |
 
+### Guest Network Pro (`navGroup: 'sdn'`) — 1 view
+
+| id | title | aspPage | Description | Reads | Write | Confidence |
+|---|---|---|---|---|---|---|
+| `sdn` | Guest Network Pro | SDN.asp | Lists Self-Defined Networks (main/AiMesh-backhaul/legacy-guest) with per-network SSID, enable state, subnet/DHCP pool, and radio-assignment count. Read-only by deliberate design — profile create/edit is a coupled transaction across `sdn_rl`+`subnet_rl`+`vlan_rl`+`apg*_` families, out of scope. Gated on `mtlancfg_support`. | nvram(ascii): `sdn_rl`, `subnet_rl`, per-network `apg{idx}_ssid`, `apg{idx}_dut_list`; nvram: `apg{idx}_enable` | none — read-only by design | read: live-verified |
+
+### AiProtection (`navGroup: 'aiprotection'`) — 1 view
+
+| id | title | aspPage | Description | Reads | Write | Confidence |
+|---|---|---|---|---|---|---|
+| `aiprotection` | AiProtection | AiProtection_HomeProtection.asp | Trend Micro protection toggles: malicious-site blocking, C&C/infected-device blocking, two-way IPS, gated behind a master enable and a TM EULA-acceptance gate (`TM_EULA`). Deliberately excludes the page's client-side "Router Security Assessment"/"Secure All" panel (not a settings surface) and mail-alert/timestamp display fields. Gated on `bwdpi_support`; per-module fields further gated on their own `bwdpi_*_support` flags. | nvram: `wrs_protect_enable`, `wrs_mals_enable`, `wrs_cc_enable`, `wrs_vp_enable` | **implemented but hard-excluded** (`writeExclusion: 'firewall'` — action_script includes `restart_firewall`) via `applyapp`, rcService `restart_wrs;restart_firewall` | read: structural, write: unverified-write |
+
+### Parental Controls (`navGroup: 'parental'`) — 1 view
+
+| id | title | aspPage | Description | Reads | Write | Confidence |
+|---|---|---|---|---|---|---|
+| `parental` | Parental Controls — Time Scheduling | ParentalControl.asp | Per-client access control: full block or weekly time-window schedule. Recomposes 4 parallel `>`-joined, index-aligned nvram lists (enable/MAC/device name/V2 daytime-token schedule) into one virtual editable table (custom `\n`/`\t`-separated view format), decomposed back to the 4 real keys on write. | nvram: `MULTIFILTER_ALL`, `MULTIFILTER_ENABLE`, `MULTIFILTER_MAC`, `MULTIFILTER_MACFILTER_DAYTIME_V2`; nvram(ascii): `MULTIFILTER_DEVICENAME` | **implemented but hard-excluded** (`writeExclusion: 'firewall'` — iptables-backed, `restart_firewall`) via `applyapp` | read: structural, write: unverified-write |
+
 **Committed as part of this entry.**
