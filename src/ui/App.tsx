@@ -108,51 +108,40 @@ export function App() {
       </header>
       <div className="mc-body">
         <nav className="mc-nav">
-          {(['general', 'advanced', 'tools'] as const).map((section) => {
-            const groups = NAV_GROUPS.filter((g) => g.section === section)
-              .filter((g) => !g.gate || g.gate(caps))
-              .map((g) => ({ group: g, pages: visiblePages.filter((p) => p.navGroup === g.id) }))
-              .filter((x) => x.pages.length > 0);
-            if (groups.length === 0) return null;
-            return (
-              <div key={section}>
-                <div className="mc-nav__section-label">
-                  {section === 'general' ? 'General' : section === 'advanced' ? 'Advanced Settings' : 'Extension'}
-                </div>
-                {groups.map(({ group, pages: groupPages }) => {
-                  const open = openGroups[group.id] ?? false;
-                  return (
-                    <div key={group.id} className={`mc-nav__group${open ? ' is-open' : ''}`}>
+          {NAV_GROUPS.filter((g) => !g.gate || g.gate(caps))
+            .map((g) => ({ group: g, pages: visiblePages.filter((p) => p.navGroup === g.id) }))
+            .filter((x) => x.pages.length > 0)
+            .map(({ group, pages: groupPages }) => {
+              const open = openGroups[group.id] ?? false;
+              return (
+                <div key={group.id} className={`mc-nav__group${open ? ' is-open' : ''}`}>
+                  <button
+                    type="button"
+                    className="mc-nav__group-title"
+                    onClick={() =>
+                      groupPages.length === 1
+                        ? navigate(groupPages[0].id)
+                        : setOpenGroups((g) => ({ ...g, [group.id]: !open }))
+                    }
+                  >
+                    {group.label}
+                    {groupPages.length > 1 && <span className="chev">▶</span>}
+                  </button>
+                  {open &&
+                    groupPages.length > 1 &&
+                    groupPages.map((p) => (
                       <button
+                        key={p.id}
                         type="button"
-                        className="mc-nav__group-title"
-                        onClick={() =>
-                          groupPages.length === 1
-                            ? navigate(groupPages[0].id)
-                            : setOpenGroups((g) => ({ ...g, [group.id]: !open }))
-                        }
+                        className={`mc-nav__item${p.id === route ? ' is-active' : ''}`}
+                        onClick={() => navigate(p.id)}
                       >
-                        {group.label}
-                        {groupPages.length > 1 && <span className="chev">▶</span>}
+                        {p.navLabel ?? p.title}
                       </button>
-                      {(open || groupPages.length === 1) &&
-                        groupPages.length > 1 &&
-                        groupPages.map((p) => (
-                          <button
-                            key={p.id}
-                            type="button"
-                            className={`mc-nav__item${p.id === route ? ' is-active' : ''}`}
-                            onClick={() => navigate(p.id)}
-                          >
-                            {p.navLabel ?? p.title}
-                          </button>
-                        ))}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
+                    ))}
+                </div>
+              );
+            })}
         </nav>
         <main className="mc-main">
           <div className="mc-main__inner">

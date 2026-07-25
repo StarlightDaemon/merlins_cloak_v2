@@ -216,7 +216,5 @@ export type PageDef = SettingsPageDef | CustomPageDef;
 export interface NavGroupDef {
   id: string;
   label: string;
-  /** 'general' | 'advanced' section split, mirroring the native UI's split. */
-  section: 'general' | 'advanced' | 'tools';
   gate?: (caps: Capabilities) => boolean;
 }
