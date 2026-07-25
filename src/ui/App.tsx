@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { collectCapabilities, type Capabilities } from '../lib/capabilities';
 import { getSettings, onSettingsChanged, updateSettings, type ExtensionSettings } from '../lib/settings';
 import { setReadOnlyMode } from '../lib/write-guard';
-import { NAV_GROUPS, findPage, getVisiblePages, pageIdForAsp } from '../pages/registry';
+import { NAV_ALIASES, NAV_GROUPS, findPage, getVisiblePages, pageIdForAsp } from '../pages/registry';
 import type { PageDef } from '../pages/types';
 import { SettingsPage } from './SettingsPage';
 import { Banner, Button, Loading } from './components';
@@ -59,9 +59,16 @@ export function App() {
     [visiblePages, route],
   );
 
-  // Auto-open the group containing the active page.
+  // Auto-open the group containing the active page — and, for aliased pages,
+  // every group carrying an alias entry, so a deep link expands the alias
+  // placement too (both nav entries route to the same page id).
   useEffect(() => {
-    if (activePage) setOpenGroups((g) => ({ ...g, [activePage.navGroup]: true }));
+    if (!activePage) return;
+    setOpenGroups((g) => {
+      const next = { ...g, [activePage.navGroup]: true };
+      for (const a of NAV_ALIASES) if (a.pageId === activePage.id) next[a.navGroup] = true;
+      return next;
+    });
   }, [activePage]);
 
   if (capsError) {
@@ -109,16 +116,24 @@ export function App() {
       <div className="mc-body">
         <nav className="mc-nav">
           {NAV_GROUPS.filter((g) => !g.gate || g.gate(caps))
-            .map((g) => ({
-              group: g,
-              pages: visiblePages
+            .map((g) => {
+              // Primary entries plus alias entries (each a second placement of
+              // an already-visible page; a gated-off page has no alias either).
+              const entries: { page: PageDef; sub?: string; order: number }[] = visiblePages
                 .filter((p) => p.navGroup === g.id)
-                .sort((a, b) => (a.navOrder ?? 0) - (b.navOrder ?? 0)),
-            }))
-            .filter((x) => x.pages.length > 0)
-            .map(({ group, pages: groupPages }) => {
+                .map((p) => ({ page: p, sub: p.navSub, order: p.navOrder ?? 0 }));
+              for (const a of NAV_ALIASES) {
+                if (a.navGroup !== g.id) continue;
+                const page = visiblePages.find((p) => p.id === a.pageId);
+                if (page) entries.push({ page, sub: a.navSub, order: a.navOrder });
+              }
+              entries.sort((a, b) => a.order - b.order);
+              return { group: g, entries };
+            })
+            .filter((x) => x.entries.length > 0)
+            .map(({ group, entries }) => {
               const open = openGroups[group.id] ?? false;
-              const item = (p: PageDef) => (
+              const item = ({ page: p }: { page: PageDef }) => (
                 <button
                   key={p.id}
                   type="button"
@@ -134,28 +149,28 @@ export function App() {
                     type="button"
                     className="mc-nav__group-title"
                     onClick={() =>
-                      groupPages.length === 1
-                        ? navigate(groupPages[0].id)
+                      entries.length === 1
+                        ? navigate(entries[0].page.id)
                         : setOpenGroups((g) => ({ ...g, [group.id]: !open }))
                     }
                   >
                     {group.label}
-                    {groupPages.length > 1 && <span className="chev">▶</span>}
+                    {entries.length > 1 && <span className="chev">▶</span>}
                   </button>
                   {open &&
-                    groupPages.length > 1 &&
+                    entries.length > 1 &&
                     (group.subs
                       ? group.subs.map((sub) => {
-                          const subPages = groupPages.filter((p) => p.navSub === sub.id);
-                          if (subPages.length === 0) return null;
+                          const subEntries = entries.filter((e) => e.sub === sub.id);
+                          if (subEntries.length === 0) return null;
                           return (
                             <div key={sub.id} className="mc-nav__sub">
                               <div className="mc-nav__subheader">{sub.label}</div>
-                              {subPages.map(item)}
+                              {subEntries.map(item)}
                             </div>
                           );
                         })
-                      : groupPages.map(item))}
+                      : entries.map(item))}
                 </div>
               );
             })}

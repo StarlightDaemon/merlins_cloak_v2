@@ -4,7 +4,7 @@
  * runtime from live capabilities — never from static assumptions.
  */
 import type { Capabilities } from '../lib/capabilities';
-import type { NavGroupDef, PageDef } from './types';
+import type { NavAliasDef, NavGroupDef, PageDef } from './types';
 
 /**
  * The twelve-category tree from docs/NAV_TAXONOMY_PROPOSAL.md §2. Category
@@ -71,6 +71,17 @@ export const NAV_GROUPS: NavGroupDef[] = [
     ],
   },
   { id: 'extension', label: "Merlin's Cloak" },
+];
+
+/**
+ * The three live-status tables that also appear beside the setting they
+ * observe (proposal §4.7–4.8 tension, resolved by aliasing). Every page in
+ * Live Status & Logs keeps its primary home there; no other page is aliased.
+ */
+export const NAV_ALIASES: NavAliasDef[] = [
+  { pageId: 'log-dhcp', navGroup: 'lan', navSub: 'addressing', navOrder: 12.5 },
+  { pageId: 'log-routes', navGroup: 'lan', navSub: 'addressing', navOrder: 13.5 },
+  { pageId: 'log-portforward', navGroup: 'security', navSub: 'inbound', navOrder: 24.5 },
 ];
 
 const pages: PageDef[] = [];

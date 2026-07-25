@@ -226,6 +226,20 @@ export interface NavSubDef {
   label: string;
 }
 
+/**
+ * A secondary nav placement for an existing page. The page keeps its single
+ * navGroup as its only identity (diagnostics, deep-links, routing); an alias
+ * just renders one extra nav entry elsewhere, merged into the
+ * category-building step in the App.
+ */
+export interface NavAliasDef {
+  pageId: string;
+  navGroup: string;
+  navSub?: string;
+  /** Fractional slot placing the alias directly after its neighbor page. */
+  navOrder: number;
+}
+
 /** Nav group ordering + labels. */
 export interface NavGroupDef {
   id: string;
