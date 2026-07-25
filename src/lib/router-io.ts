@@ -148,6 +148,12 @@ export type WriteEndpoint = 'applyapp' | 'start_apply';
 
 export interface WriteSpec {
   endpoint: WriteEndpoint;
+  /**
+   * Override action_mode; default 'apply'. The only other value used is
+   * ' Refresh ' (with the literal spaces) — apply_cgi's SystemCmd branch,
+   * used by the native UI for command actions like WOL's ether-wake.
+   */
+  actionMode?: string;
   /** nvram-name → value pairs to submit. For start_apply this must be the page's FULL current field set. */
   fields: Record<string, string>;
   /**
@@ -178,7 +184,7 @@ export interface BuiltWriteRequest {
 export function buildWriteRequest(spec: WriteSpec): BuiltWriteRequest {
   const params = new URLSearchParams();
   if (spec.endpoint === 'applyapp') {
-    params.set('action_mode', 'apply');
+    params.set('action_mode', spec.actionMode ?? 'apply');
     if (spec.rcService) params.set('rc_service', spec.rcService);
     for (const [k, v] of Object.entries(spec.fields)) params.set(k, v);
     return {

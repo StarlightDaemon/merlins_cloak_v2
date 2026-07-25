@@ -8,8 +8,15 @@ import { tweaksPage } from './tools-tweaks';
 import { DashboardPage } from './dashboard';
 import { DiagnosticsPage, ExtensionSettingsPage } from './extension';
 import { lanPages } from './lan';
+import { wanPages } from './wan';
+import { wirelessPages } from './wireless';
+import { siteSurveyPages } from './site-survey';
+import { vpnClientPages } from './vpn-client';
+import { vpnServerPages } from './vpn-server';
+import { dnsDirectorPages } from './dnsdirector';
 import { firewallPages } from './firewall';
 import { ipv6Pages } from './ipv6';
+import { wolPages } from './wol';
 import { logPages } from './logs';
 import { nettoolsPages } from './nettools';
 import { trafficPages } from './traffic';
@@ -34,12 +41,19 @@ export function registerAllPages(): void {
   registerPages(sdnPages);
   registerPages(qosStatsPages);
   registerPages(trafficPages);
+  registerPages(wirelessPages);
+  registerPages(siteSurveyPages);
   registerPages(lanPages);
+  registerPages(wanPages);
   registerPages(ipv6Pages);
   registerPages(vpnStatusPages);
+  registerPages(vpnClientPages);
+  registerPages(vpnServerPages);
   registerPages(firewallPages);
+  registerPages(dnsDirectorPages);
   registerPages(logPages);
   registerPages(nettoolsPages);
+  registerPages(wolPages);
   registerPages([
     tweaksPage,
     {
