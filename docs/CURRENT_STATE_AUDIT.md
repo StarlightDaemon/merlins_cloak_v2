@@ -225,4 +225,13 @@ Note: STATUS.md's summary table lists this category as "System, Time/NTP, SSH, T
 | `log-portforward` | Port Forwarding | Main_IPTStatus_Content.asp | Active NAT port-forward rules (iptables-derived) + live UPnP/NAT-PMP lease table. | `fetchVServer`, `fetchUpnpForwards` | none — read-only display | read: structural |
 | `log-connections` | Connections | Main_ConnStatus_Content.asp | Live conntrack table (proto/src+port/dst+port/state) with client-side filter, capped at first 1500 rows displayed. 8s-optional auto-refresh. | `fetchConnections` (conntrack) | none — read-only display | read: live-verified |
 
+### Network Tools (`navGroup: 'nettools'`) — 4 views
+
+| id | title | aspPage | Description | Reads | Write | Confidence |
+|---|---|---|---|---|---|---|
+| `sysinfo` | System Information | Tools_Sysinfo.asp | CPU model/freq/load, memory (total/free/available/buffers/cache/swap, pre-scaled MB from the hook, HTML-entity-stripped), nvram/JFFS usage, conntrack counts, per-band wireless client counts, bootloader/driver versions. 3s-optional auto-refresh. Merlin-only. | `fetchSysinfoFeed`; scalar hooks: `sysinfo("cpu.model")`, `cpu.freq`, `conn.max`, `nvram.total`, `jffs.total`, `cfe_version`, `hwaccel.runner`, `hwaccel.fc`, `driver_version.0-2` | none — read-only display | read: live-verified |
+| `analysis` | Network Analysis | Main_Analysis_Content.asp | Ping/traceroute/nslookup diagnostic runner (IPv4/IPv6 selectable for ping/traceroute) against netool.cgi — a user-triggered action, nothing runs without pressing Run. RT-BE92U model-overlay page. Gated on `netool_support` flag or `rcSupport` netool. | netool.cgi start/poll (`netoolStart`/`netoolPollText`) — action, not a settings read | user-triggered diagnostic action (ping/traceroute/nslookup), no nvram config write | read: live-verified |
+| `netstat` | Netstat | Main_Netstat_Content.asp | Netstat / Netstat-NAT socket table dump via netool.cgi, user-triggered. RT-BE92U model-overlay page. Gated same as Analysis. | netool.cgi start/poll | user-triggered diagnostic action, no nvram config write | read: live-verified |
+| `wol` | Wake on LAN | Main_WOL_Content.asp | Saved WOL target list (name+MAC, plain nvram `wollist` list edit, no restart script) plus a "Wake" action per saved target or an ad-hoc MAC — sends `SystemCmd=ether-wake -i br0 -b <MAC>` via `action_mode=' Refresh '` through the same write-guard as every other mutating request (dry-run-previewed in read-only mode). | nvram(ascii): `wollist` | implemented (list save) + user-triggered wake action, `writeExclusion: null`, both routed through `applyapp`/write-guard with no restart script | read: structural, write: unverified-write |
+
 **Committed as part of this entry.**
