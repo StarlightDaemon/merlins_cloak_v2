@@ -242,3 +242,136 @@ document was submitted by the operator's own click, never by the
 assistant; all four tested values were verified live and confirmed
 reverted to their exact original baseline before the session ended.
 Uncommitted, as instructed.*
+
+---
+
+## 5. Addendum — `applyapp.cgi` delta-write verification, 2026-07-24
+
+A second live session, same day, same operator-executes-every-write
+discipline as §0–§4, this time run entirely through the browser
+console rather than the page's own form UI. Scope: exactly one field,
+`aae_disable_force`, reusing the baseline/test/revert values already
+established in §2.4. The only new variable was which endpoint received
+the write. Motivated by
+[`EXTERNAL_RESEARCH_RECONCILIATION.md`](EXTERNAL_RESEARCH_RECONCILIATION.md)
+§1.1, which flagged `applyapp.cgi` as an external-research claim,
+corroborated only by the read-side `appGet.cgi` traffic already seen in
+[`LIVE_PROBE_RT-BE92U.md`](LIVE_PROBE_RT-BE92U.md) §5, but with the
+write half entirely unverified against this hardware until now.
+
+### 5.1 Baseline (forced-fresh nvram read, before any write)
+
+`aae_disable_force` = `0`, `ct_max` = `300000`,
+`ct_tcp_timeout` = `"0 2400 120 60 120 120 10 60 30 0"`,
+`ct_udp_timeout` = `"30 180"` — identical on every field to the §2
+baseline recorded in the prior session. No drift between sessions.
+
+### 5.2 Command used (apply)
+
+Pasted into the browser console by the operator, against the
+already-authenticated `192.168.1.1` origin:
+
+```javascript
+fetch('/applyapp.cgi', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'action_mode=apply&aae_disable_force=1'}).then(r=>r.text()).then(t=>console.log('APPLYAPP RESPONSE:', t));
+```
+
+Only two body parameters were sent — `action_mode=apply` and
+`aae_disable_force=1` — no other field from the Tweaks page was
+included, unlike the whole-page `start_apply.htm` submission
+characterized in §1.1.
+
+**Response text, verbatim, logged by the fetch's own `.then()`:**
+
+```
+{ "modify": "1" }
+```
+
+This is the first time this project has captured an actual HTTP
+response body for a router write — §1.4 records that the
+`start_apply.htm` hidden-iframe path never surfaced a response to any
+tool used in the prior session. `applyapp.cgi` responds directly on the
+page's own fetch promise chain, with no iframe indirection, so the
+response was visible without any special capture tooling.
+
+### 5.3 Post-apply live verification (forced-fresh nvram read)
+
+| Field | Before | After apply | Changed? |
+|---|---|---|---|
+| `aae_disable_force` | `0` | `1` | **Yes — confirmed applied** |
+| `ct_max` | `300000` | `300000` | No |
+| `ct_tcp_timeout` | `"0 2400 120 60 120 120 10 60 30 0"` | `"0 2400 120 60 120 120 10 60 30 0"` | No |
+| `ct_udp_timeout` | `"30 180"` | `"30 180"` | No |
+
+**Delta-write claim: confirmed.** Exactly the targeted field changed;
+the other three fields — which the §1.1 whole-page form path would have
+round-tripped and potentially clobbered — were untouched, byte-for-byte
+identical to their pre-write values.
+
+### 5.4 Command used (revert)
+
+```javascript
+fetch('/applyapp.cgi', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'action_mode=apply&aae_disable_force=0'}).then(r=>r.text()).then(t=>console.log('APPLYAPP REVERT RESPONSE:', t));
+```
+
+**Response text, verbatim:**
+
+```
+{ "modify": "1" }
+```
+
+Identical response shape/text to the apply call — the response does not
+appear to encode which direction the value moved, only that a
+modification was accepted. Consistent with §5.6's observation below
+that this response is not a reliable indicator of resulting state on
+its own.
+
+### 5.5 Post-revert live verification (forced-fresh nvram read)
+
+`aae_disable_force` = `0`, `ct_max` = `300000`,
+`ct_tcp_timeout` = `"0 2400 120 60 120 120 10 60 30 0"`,
+`ct_udp_timeout` = `"30 180"` — **confirmed reverted, exact match to
+the §5.1 baseline**, all four fields simultaneously re-checked.
+
+### 5.6 Connectivity after revert
+
+Normal (13ms), consistent with the 14–16ms range observed after every
+apply/revert pair in the prior session (§1.6).
+
+### 5.7 Assessment
+
+- **The external-research delta-write claim
+  ([`EXTERNAL_RESEARCH_RECONCILIATION.md`](EXTERNAL_RESEARCH_RECONCILIATION.md)
+  §1.1) is confirmed live against this exact RT-BE92U, for this one
+  field.** `applyapp.cgi` accepted a two-parameter body
+  (`action_mode` + the single target field) and applied only that
+  field, leaving the other three Tweaks-page fields untouched — the
+  clobber hazard inherent to the `start_apply.htm` whole-page path
+  (§1.1) does not apply to this endpoint, at least for this field.
+- **This does not generalize on its own.** One field, one page, one
+  session. §1.1's own caveat stands: coverage of `applyapp.cgi` across
+  other settings categories remains unmapped, and per §4 the hard
+  exclusions (wireless, WAN, DHCP, VPN, firewall, firmware/reboot/reset)
+  were not touched by this endpoint either.
+- **The `{ "modify": "1" }` response is a bare acknowledgment, not a
+  value echo or a status code.** Both the apply and the revert produced
+  the identical string despite moving the field in opposite directions.
+  Per
+  [`EXTERNAL_RESEARCH_RECONCILIATION.md`](EXTERNAL_RESEARCH_RECONCILIATION.md)
+  §5.3's carried-forward conclusion, this keeps live `nvramGet(..., true)`
+  polling as the canonical confirmation method regardless of which write
+  endpoint is used — this session's own data reinforces that point
+  rather than superseding it.
+- The `Referer`/`Host`/`User-Agent` validation question raised in
+  [`EXTERNAL_RESEARCH_RECONCILIATION.md`](EXTERNAL_RESEARCH_RECONCILIATION.md)
+  §2.3 remains open — this session's fetch was same-origin page JS, so
+  it says nothing about whether those headers are enforced elsewhere.
+
+---
+
+*Addendum generated from a second live, staged-approval browser console
+session against the operator's RT-BE92U at `192.168.1.1`, 2026-07-24,
+same day and same operator as the session above. Both writes in this
+addendum were submitted by the operator pasting and running the command
+themselves, never by the assistant; the tested value was verified live
+and confirmed reverted to its exact original baseline before the
+session ended. Uncommitted, as instructed.*
