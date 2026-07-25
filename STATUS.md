@@ -4,6 +4,48 @@ Session of 2026-07-24 (resumed once after a mid-session usage-limit
 interruption; no disk work lost). This document is the resumable state of
 record. See git log for the commit trail.
 
+## Session of 2026-07-25 — licensing, disclosure, versioning, end-user docs
+
+Documentation/legal/metadata pass. No read or write logic was touched;
+the only code change was an "About" card added to the existing Extension
+Settings view, plus a manifest-version normalization in wxt.config.ts.
+
+- **GPL verbatim-content audit — clean** (docs/LICENSE_AUDIT.md). src/ (50
+  files, ~12.5k lines) checked against all four GPL trees still present in
+  RAW/. Four mechanical passes plus manual reading of the I/O and parsing
+  layers. The comment pass matched exactly one GPL line across 1,163
+  candidates, and it was a row of hyphens. Recorded but non-blocking: 14
+  short UI label phrases match the native wording verbatim (§3.4), and the
+  base64 validation regex in vpn-client.ts is byte-identical to the one in
+  Advanced_WireguardClient_Content.asp — a widely-published idiom.
+- **LICENSE — MIT**, with a scope note excluding RAW/ and the ASUS/Merlin
+  names and label wording the client reuses descriptively.
+- **Non-affiliation disclaimer** — README section, plus an About card on
+  Extension Settings (existing surface, no new UI built for it).
+- **Hardware claims corrected** — README rewritten. The old one still said
+  "no router UI functionality has been implemented yet". It now separates
+  live-verified (RT-BE92U only) from structural-only (RT-AX88U, never
+  contacted) from untested, states graceful degradation as design intent
+  rather than a test result, and says ROG/GT is out of scope rather than
+  merely untested. Diagnostics copy needed no correction — it never
+  overstated anything.
+- **Version 0.9.0-beta.1** (was the scaffold's 0.1.0). Not an RC: Firefox
+  live verification and 48 of 49 write paths are known-open, not merely
+  undiscovered. wxt.config.ts now ships the numeric core in manifest
+  `version` and the full string in Chrome's `version_name`.
+- **CHANGELOG.md** — whole project history with commit hashes, from the
+  git log and the committed docs/ reports. No prior releases invented.
+- **docs/GETTING_STARTED.md** — end-user install/config/data doc. §10
+  compatibility matrix generated from the page catalog, not from memory.
+- **Read-only interlock default: verified already correct**, no change
+  needed. Two independent layers both default to on —
+  `DEFAULT_SETTINGS.readOnlyMode = true` (settings.ts:21, merged under any
+  stored partial, and the getSettings() catch path also returns it) and
+  `let readOnly = true` (write-guard.ts:47).
+
+tsc + eslint clean; Chrome MV3 and Firefox MV3 builds both pass and are
+current in .output/. Nothing pushed; all commits local for operator review.
+
 ## Session of 2026-07-25 — nav taxonomy implemented AND live-verified
 
 The navigation taxonomy from docs/NAV_TAXONOMY_PROPOSAL.md is fully
