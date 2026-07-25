@@ -88,7 +88,7 @@ function WolPage(_props: PageProps) {
 
   return (
     <div>
-      <h1 className="mc-page-title">Wake on LAN</h1>
+      <h1 className="mc-page-title">Wake a Device (Wake-on-LAN)</h1>
       <p className="mc-page-subtitle">Main_WOL_Content.asp</p>
       {isReadOnlyMode() && (
         <Banner tone="info">Read-only mode: Wake and Save preview the exact request without sending it.</Banner>
@@ -199,7 +199,7 @@ export const wolPages: PageDef[] = [
     kind: 'custom',
     id: 'wol',
     aspPage: 'Main_WOL_Content.asp',
-    title: 'Wake on LAN',
+    title: 'Wake a Device (Wake-on-LAN)',
     navGroup: 'nettools',
     navOrder: 64,
     confidence: { read: 'structural', write: 'unverified-write' },

@@ -82,7 +82,7 @@ function ClientsPage(_props: PageProps) {
 
   return (
     <div>
-      <h1 className="mc-page-title">Clients</h1>
+      <h1 className="mc-page-title">Connected Devices</h1>
       <p className="mc-page-subtitle">DHCP leases + live wireless stations</p>
       {error && <Banner tone="err">Failed to read client data: {error}</Banner>}
       <div className="mc-feedbar">
@@ -139,10 +139,9 @@ export const clientsPages: PageDef[] = [
     kind: 'custom',
     id: 'clients',
     aspPage: 'update_clients.asp',
-    title: 'Clients',
+    title: 'Connected Devices',
     navGroup: 'status',
     navOrder: 2,
-    navLabel: 'Clients',
     confidence: { read: 'live-verified' },
     component: ClientsPage,
   },

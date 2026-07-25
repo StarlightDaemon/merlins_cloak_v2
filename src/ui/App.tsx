@@ -98,7 +98,7 @@ export function App() {
         </div>
         <div className="mc-header__spacer" />
         {settings.readOnlyMode && (
-          <span className="mc-header__chip is-warn" title="No write is ever sent while read-only mode is on. Toggle it in Merlin's Cloak → Settings.">
+          <span className="mc-header__chip is-warn" title="No write is ever sent while read-only mode is on. Toggle it in Merlin's Cloak → Extension Settings.">
             <span className="dot" /> read-only
           </span>
         )}

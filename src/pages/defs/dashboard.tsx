@@ -106,7 +106,7 @@ export function DashboardPage({ caps }: PageProps) {
 
   return (
     <div>
-      <h1 className="mc-page-title">Network Map</h1>
+      <h1 className="mc-page-title">Router Status</h1>
       <p className="mc-page-subtitle">
         {caps.identity.productId} · {caps.identity.displayVersion}
       </p>

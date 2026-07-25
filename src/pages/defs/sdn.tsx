@@ -87,7 +87,7 @@ function SdnPage(_props: PageProps) {
 
   return (
     <div>
-      <h1 className="mc-page-title">Guest Network Pro</h1>
+      <h1 className="mc-page-title">Separate Networks & Guest Wi-Fi</h1>
       <p className="mc-page-subtitle">SDN.asp · Self-Defined Networks</p>
       <Banner tone="info">
         Read-only overview. Creating or editing SDN profiles writes a coupled transaction across sdn_rl, subnet_rl,
@@ -140,7 +140,7 @@ export const sdnPages: PageDef[] = [
     kind: 'custom',
     id: 'sdn',
     aspPage: 'SDN.asp',
-    title: 'Guest Network Pro',
+    title: 'Separate Networks & Guest Wi-Fi',
     navGroup: 'lan',
     navSub: 'segments',
     navOrder: 14,

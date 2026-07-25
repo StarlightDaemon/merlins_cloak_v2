@@ -142,7 +142,7 @@ function VpnStatusPage({ caps }: PageProps) {
 
   return (
     <div>
-      <h1 className="mc-page-title">VPN Status</h1>
+      <h1 className="mc-page-title">Connection Status</h1>
       <p className="mc-page-subtitle">Advanced_VPNStatus.asp · Merlin</p>
       {error && <Banner tone="err">Failed to read ajax_vpn_status.asp: {error}</Banner>}
       {!data && !error ? (
@@ -182,11 +182,10 @@ export const vpnStatusPages: PageDef[] = [
     kind: 'custom',
     id: 'vpn-status',
     aspPage: 'Advanced_VPNStatus.asp',
-    title: 'VPN Status',
+    title: 'Connection Status',
     navGroup: 'vpn',
     navSub: 'overview',
     navOrder: 33,
-    navLabel: 'Status',
     merlinOnly: true,
     confidence: { read: 'live-verified' },
     component: VpnStatusPage,

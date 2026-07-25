@@ -106,7 +106,7 @@ function RealtimePage(_props: PageProps) {
 
   return (
     <div>
-      <h1 className="mc-page-title">Traffic Monitor — Real-time</h1>
+      <h1 className="mc-page-title">Live Throughput</h1>
       <p className="mc-page-subtitle">Main_TrafficMonitor_realtime.asp</p>
       {error && <Banner tone="err">Failed to read update.cgi: {error}</Banner>}
       {ifnames.length === 0 && !error ? (
@@ -189,7 +189,7 @@ function Last24Page(_props: PageProps) {
 
   return (
     <div>
-      <h1 className="mc-page-title">Traffic Monitor — Last 24 Hours</h1>
+      <h1 className="mc-page-title">Last 24 Hours</h1>
       <p className="mc-page-subtitle">Main_TrafficMonitor_last24.asp</p>
       <div className="mc-feedbar">
         <Button small onClick={() => void load()}>
@@ -280,8 +280,8 @@ function historyPage(
   };
 }
 
-const DailyPage = historyPage('Traffic Monitor — Daily', 'Main_TrafficMonitor_daily.asp', fetchDailyHistory);
-const MonthlyPage = historyPage('Traffic Monitor — Monthly', 'Main_TrafficMonitor_monthly.asp', fetchMonthlyHistory, true);
+const DailyPage = historyPage('Daily Usage', 'Main_TrafficMonitor_daily.asp', fetchDailyHistory);
+const MonthlyPage = historyPage('Monthly Usage', 'Main_TrafficMonitor_monthly.asp', fetchMonthlyHistory, true);
 
 // --- rstats settings (declarative) ------------------------------------------
 
@@ -289,11 +289,10 @@ const trafficSettingsPage: SettingsPageDef = {
   kind: 'settings',
   id: 'traffic-settings',
   aspPage: 'Main_TrafficMonitor_settings.asp',
-  title: 'Traffic Monitoring Settings',
+  title: 'History Recording Settings',
   navGroup: 'traffic',
   navSub: 'monitoring',
   navOrder: 46,
-  navLabel: 'Settings',
   merlinOnly: true,
   gate: trafficHistoryGate,
   confidence: { read: 'live-verified', write: 'unverified-write' },
@@ -372,11 +371,10 @@ export const trafficPages: PageDef[] = [
     kind: 'custom',
     id: 'traffic-realtime',
     aspPage: 'Main_TrafficMonitor_realtime.asp',
-    title: 'Real-time Traffic',
+    title: 'Live Throughput',
     navGroup: 'traffic',
     navSub: 'monitoring',
     navOrder: 42,
-    navLabel: 'Real-time',
     gate: trafficHistoryGate,
     confidence: { read: 'live-verified' },
     component: RealtimePage,
@@ -389,7 +387,6 @@ export const trafficPages: PageDef[] = [
     navGroup: 'traffic',
     navSub: 'monitoring',
     navOrder: 43,
-    navLabel: 'Last 24 hours',
     gate: trafficHistoryGate,
     confidence: { read: 'live-verified' },
     component: Last24Page,
@@ -398,11 +395,10 @@ export const trafficPages: PageDef[] = [
     kind: 'custom',
     id: 'traffic-daily',
     aspPage: 'Main_TrafficMonitor_daily.asp',
-    title: 'Daily Traffic',
+    title: 'Daily Usage',
     navGroup: 'traffic',
     navSub: 'monitoring',
     navOrder: 44,
-    navLabel: 'Daily',
     gate: trafficHistoryGate,
     confidence: { read: 'live-verified' },
     component: DailyPage,
@@ -411,11 +407,10 @@ export const trafficPages: PageDef[] = [
     kind: 'custom',
     id: 'traffic-monthly',
     aspPage: 'Main_TrafficMonitor_monthly.asp',
-    title: 'Monthly Traffic',
+    title: 'Monthly Usage',
     navGroup: 'traffic',
     navSub: 'monitoring',
     navOrder: 45,
-    navLabel: 'Monthly',
     merlinOnly: true,
     gate: trafficHistoryGate,
     confidence: { read: 'live-verified' },

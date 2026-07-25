@@ -58,10 +58,9 @@ export const sambaPage: SettingsPageDef = {
   kind: 'settings',
   id: 'samba',
   aspPage: 'Advanced_AiDisk_samba.asp',
-  title: 'Network Place (Samba)',
+  title: 'Windows File Sharing (SMB)',
   navGroup: 'usb',
   navOrder: 51,
-  navLabel: 'Samba',
   confidence: { read: 'structural', write: 'unverified-write' },
   writeExclusion: null,
   intro:
@@ -172,10 +171,9 @@ export const ftpPage: SettingsPageDef = {
   kind: 'settings',
   id: 'ftp',
   aspPage: 'Advanced_AiDisk_ftp.asp',
-  title: 'FTP Share',
+  title: 'FTP File Sharing',
   navGroup: 'usb',
   navOrder: 52,
-  navLabel: 'FTP',
   confidence: { read: 'structural', write: 'unverified-write' },
   writeExclusion: null,
   intro:
@@ -276,10 +274,9 @@ export const mediaserverPage: SettingsPageDef = {
   kind: 'settings',
   id: 'mediaserver',
   aspPage: 'mediaserver.asp',
-  title: 'Media Server',
+  title: 'Media Streaming (DLNA & iTunes)',
   navGroup: 'usb',
   navOrder: 54,
-  navLabel: 'Media Server',
   confidence: { read: 'structural', write: 'unverified-write' },
   writeExclusion: null,
   read: {
@@ -406,10 +403,9 @@ export const nfsPage: SettingsPageDef = {
   kind: 'settings',
   id: 'nfs',
   aspPage: 'Advanced_AiDisk_NFS.asp',
-  title: 'NFS Exports',
+  title: 'NFS File Sharing',
   navGroup: 'usb',
   navOrder: 53,
-  navLabel: 'NFS Exports',
   merlinOnly: true,
   // Mirrors require/menuTrees/menuTree.js tabs(): `if (!nfsd_support)
   // retArray.push("Advanced_AiDisk_NFS.asp")` hides the tab from nav. The

@@ -105,7 +105,7 @@ function SiteSurveyPage(_props: PageProps) {
 
   return (
     <div>
-      <h1 className="mc-page-title">Site Survey</h1>
+      <h1 className="mc-page-title">Nearby Wi-Fi Scan</h1>
       <p className="mc-page-subtitle">Advanced_Wireless_Survey.asp · Merlin</p>
       <div className="mc-feedbar">
         <Button small variant="primary" onClick={() => void rescan()}>
@@ -169,11 +169,10 @@ export const siteSurveyPages: PageDef[] = [
     kind: 'custom',
     id: 'site-survey',
     aspPage: 'Advanced_Wireless_Survey.asp',
-    title: 'Site Survey',
+    title: 'Nearby Wi-Fi Scan',
     navGroup: 'wireless',
     navSub: 'radio',
     navOrder: 7,
-    navLabel: 'Site Survey',
     merlinOnly: true,
     confidence: { read: 'live-verified', write: 'unverified-write' },
     writeExclusion: null,

@@ -94,7 +94,7 @@ function FeedPage<T>({
 function GeneralLogPage(_props: PageProps) {
   const [filter, setFilter] = useState('');
   return (
-    <FeedPage title="System Log — General Log" aspPage="Main_LogStatus_Content.asp" loader={fetchSyslog} pollMs={5000}>
+    <FeedPage title="System Log" aspPage="Main_LogStatus_Content.asp" loader={fetchSyslog} pollMs={5000}>
       {(log) => {
         const lines = log.split('\n');
         const shown = filter ? lines.filter((l) => l.toLowerCase().includes(filter.toLowerCase())) : lines;
@@ -143,7 +143,7 @@ function GeneralLogPage(_props: PageProps) {
 function WirelessLogPage(_props: PageProps) {
   return (
     <FeedPage
-      title="System Log — Wireless Log"
+      title="Wireless Status Log"
       aspPage="Main_WStatus_Content.asp"
       loader={fetchWirelessStatus}
       pollMs={8000}
@@ -197,7 +197,7 @@ function fmtLease(expires: string): string {
 function DhcpLeasesPage(_props: PageProps) {
   return (
     <FeedPage
-      title="System Log — DHCP Leases"
+      title="Active DHCP Leases"
       aspPage="Main_DHCPStatus_Content.asp"
       loader={fetchDhcpLeases}
       pollMs={10000}
@@ -238,7 +238,7 @@ function DhcpLeasesPage(_props: PageProps) {
 
 function Ipv6StatusPage(_props: PageProps) {
   return (
-    <FeedPage title="System Log — IPv6" aspPage="Main_IPV6Status_Content.asp" loader={fetchIpv6Status}>
+    <FeedPage title="IPv6 Status" aspPage="Main_IPV6Status_Content.asp" loader={fetchIpv6Status}>
       {({ cfg, clients }) => (
         <>
           <Card title="IPv6 configuration">
@@ -315,7 +315,7 @@ function RouteTable({ entries }: { entries: RouteEntry[] }) {
 
 function RoutingTablePage(_props: PageProps) {
   return (
-    <FeedPage title="System Log — Routing Table" aspPage="Main_RouteStatus_Content.asp" loader={fetchRoutes}>
+    <FeedPage title="Routing Table" aspPage="Main_RouteStatus_Content.asp" loader={fetchRoutes}>
       {({ v4, v6 }) => (
         <>
           <Card title={`IPv4 routes (${v4.length})`}>
@@ -338,7 +338,7 @@ function PortForwardsPage(_props: PageProps) {
     return { vserver, upnp };
   }, []);
   return (
-    <FeedPage title="System Log — Port Forwarding" aspPage="Main_IPTStatus_Content.asp" loader={loader}>
+    <FeedPage title="Active Port Forwards" aspPage="Main_IPTStatus_Content.asp" loader={loader}>
       {({ vserver, upnp }: { vserver: VServerEntry[]; upnp: UpnpEntry[] }) => (
         <>
           <Card title={`Active NAT forwards (${vserver.length})`}>
@@ -415,7 +415,7 @@ function ConnectionsPage(_props: PageProps) {
   const [filter, setFilter] = useState('');
   return (
     <FeedPage
-      title="System Log — Connections"
+      title="Active Connections"
       aspPage="Main_ConnStatus_Content.asp"
       loader={fetchConnections}
       pollMs={8000}
@@ -479,7 +479,7 @@ export const logPages: PageDef[] = [
     kind: 'custom',
     id: 'log-general',
     aspPage: 'Main_LogStatus_Content.asp',
-    title: 'General Log',
+    title: 'System Log',
     navGroup: 'log',
     navOrder: 55,
     confidence: { read: 'live-verified' },
@@ -489,7 +489,7 @@ export const logPages: PageDef[] = [
     kind: 'custom',
     id: 'log-wireless',
     aspPage: 'Main_WStatus_Content.asp',
-    title: 'Wireless Log',
+    title: 'Wireless Status Log',
     navGroup: 'log',
     navOrder: 56,
     confidence: { read: 'structural' },
@@ -499,7 +499,7 @@ export const logPages: PageDef[] = [
     kind: 'custom',
     id: 'log-dhcp',
     aspPage: 'Main_DHCPStatus_Content.asp',
-    title: 'DHCP Leases',
+    title: 'Active DHCP Leases',
     navGroup: 'log',
     navOrder: 57,
     confidence: { read: 'live-verified' },
@@ -509,7 +509,7 @@ export const logPages: PageDef[] = [
     kind: 'custom',
     id: 'log-ipv6',
     aspPage: 'Main_IPV6Status_Content.asp',
-    title: 'IPv6',
+    title: 'IPv6 Status',
     navGroup: 'log',
     navOrder: 58,
     confidence: { read: 'structural' },
@@ -530,7 +530,7 @@ export const logPages: PageDef[] = [
     kind: 'custom',
     id: 'log-portforward',
     aspPage: 'Main_IPTStatus_Content.asp',
-    title: 'Port Forwarding',
+    title: 'Active Port Forwards',
     navGroup: 'log',
     navOrder: 60,
     confidence: { read: 'structural' },
@@ -540,7 +540,7 @@ export const logPages: PageDef[] = [
     kind: 'custom',
     id: 'log-connections',
     aspPage: 'Main_ConnStatus_Content.asp',
-    title: 'Connections',
+    title: 'Active Connections',
     navGroup: 'log',
     navOrder: 61,
     confidence: { read: 'live-verified' },

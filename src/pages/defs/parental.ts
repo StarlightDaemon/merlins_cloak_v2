@@ -114,11 +114,10 @@ export const parentalControlPage: SettingsPageDef = {
   kind: 'settings',
   id: 'parental',
   aspPage: 'ParentalControl.asp',
-  title: 'Parental Controls — Time Scheduling',
+  title: 'Per-Device Schedules & Blocking',
   navGroup: 'security',
   navSub: 'content',
   navOrder: 29,
-  navLabel: 'Time Scheduling',
   confidence: { read: 'structural', write: 'unverified-write' },
   writeExclusion: 'firewall',
   intro:

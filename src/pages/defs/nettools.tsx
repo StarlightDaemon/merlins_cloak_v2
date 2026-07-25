@@ -102,7 +102,7 @@ function SysinfoPage(_props: PageProps) {
 
   return (
     <div>
-      <h1 className="mc-page-title">System Information</h1>
+      <h1 className="mc-page-title">Router Resources</h1>
       <p className="mc-page-subtitle">Tools_Sysinfo.asp · Merlin</p>
       <div className="mc-feedbar">
         <label className="mc-feedbar__poll">
@@ -229,7 +229,7 @@ function AnalysisPage(_props: PageProps) {
 
   return (
     <div>
-      <h1 className="mc-page-title">Network Analysis</h1>
+      <h1 className="mc-page-title">Ping, Traceroute & DNS Lookup</h1>
       <p className="mc-page-subtitle">Main_Analysis_Content.asp</p>
       <Card title="Diagnostic">
         <div className="mc-row">
@@ -307,7 +307,7 @@ function NetstatPage(_props: PageProps) {
 
   return (
     <div>
-      <h1 className="mc-page-title">Netstat</h1>
+      <h1 className="mc-page-title">Open Sockets & NAT Table</h1>
       <p className="mc-page-subtitle">Main_Netstat_Content.asp</p>
       <Card title="Socket / NAT table">
         <div className="mc-row">
@@ -338,7 +338,7 @@ export const nettoolsPages: PageDef[] = [
     kind: 'custom',
     id: 'sysinfo',
     aspPage: 'Tools_Sysinfo.asp',
-    title: 'System Information',
+    title: 'Router Resources',
     navGroup: 'status',
     navOrder: 3,
     merlinOnly: true,
@@ -349,7 +349,7 @@ export const nettoolsPages: PageDef[] = [
     kind: 'custom',
     id: 'analysis',
     aspPage: 'Main_Analysis_Content.asp',
-    title: 'Network Analysis',
+    title: 'Ping, Traceroute & DNS Lookup',
     navGroup: 'nettools',
     navOrder: 62,
     confidence: { read: 'live-verified' },
@@ -360,7 +360,7 @@ export const nettoolsPages: PageDef[] = [
     kind: 'custom',
     id: 'netstat',
     aspPage: 'Main_Netstat_Content.asp',
-    title: 'Netstat',
+    title: 'Open Sockets & NAT Table',
     navGroup: 'nettools',
     navOrder: 63,
     confidence: { read: 'live-verified' },

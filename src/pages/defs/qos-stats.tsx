@@ -90,7 +90,7 @@ function QosStatsPage(_props: PageProps) {
 
   return (
     <div>
-      <h1 className="mc-page-title">QoS — Classification</h1>
+      <h1 className="mc-page-title">Live Priority Statistics</h1>
       <p className="mc-page-subtitle">QoS_Stats.asp · Merlin</p>
       {error && <Banner tone="err">Failed to read ajax_gettcdata.asp: {error}</Banner>}
       {!data && !error ? (
@@ -129,11 +129,10 @@ export const qosStatsPages: PageDef[] = [
     kind: 'custom',
     id: 'qos-stats',
     aspPage: 'QoS_Stats.asp',
-    title: 'Classification',
+    title: 'Live Priority Statistics',
     navGroup: 'traffic',
     navSub: 'prioritization',
     navOrder: 50,
-    navLabel: 'Classification',
     merlinOnly: true,
     confidence: { read: 'live-verified' },
     component: QosStatsPage,

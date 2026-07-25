@@ -133,7 +133,7 @@ export function DiagnosticsPage({ caps }: PageProps) {
   );
   return (
     <div>
-      <h1 className="mc-page-title">Diagnostics</h1>
+      <h1 className="mc-page-title">Detection & Write Log</h1>
       <p className="mc-page-subtitle">Detection state, per-page confidence, and the write inspector.</p>
       <Tabs
         tabs={[
