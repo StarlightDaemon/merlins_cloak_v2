@@ -4,6 +4,27 @@ Session of 2026-07-24 (resumed once after a mid-session usage-limit
 interruption; no disk work lost). This document is the resumable state of
 record. See git log for the commit trail.
 
+## Session of 2026-07-25 — nav taxonomy implemented, live check blocked
+
+The navigation taxonomy from docs/NAV_TAXONOMY_PROPOSAL.md is fully
+implemented (7 code/docs commits: proposal committed, section bands removed,
+twelve-category tree with sub-headers, orphan consolidation with page-level
+gates kept exactly as they were, full §3 rename sweep, NAV_ALIASES secondary
+placements with alias-aware deep-link auto-expand, hover-only prior-name
+tooltips, Diagnostics confidence table regrouped). tsc + eslint clean; Chrome
+MV3 and Firefox MV3 builds both pass and are current in .output/.
+
+**Live verification (Task 8) did not run.** The paired Chrome's router tab
+bounced to Main_Login.asp (no authenticated session — the agent does not
+enter credentials), and a console-tracked reload of that page showed no
+`[merlins-cloak]` log line, so the extension appears not to be loaded (or
+disabled) in that browser right now. To resume: log in to 192.168.1.1, load
+or reload the unpacked build from `.output/chrome-mv3` at chrome://extensions,
+then re-run the Task 8 checklist (category names/order, sub-headers, the
+three aliased pages in both homes, prior-name tooltips incl. one
+disambiguation case, gated-page hiding, Diagnostics grouping). Nothing has
+been pushed to origin; all commits are local, held for operator review.
+
 ## Snapshot
 
 - **73 views registered** (50 declarative settings pages, 23 custom React
