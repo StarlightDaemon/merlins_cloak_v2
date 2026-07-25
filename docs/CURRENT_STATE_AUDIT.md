@@ -56,3 +56,31 @@ regressions. The single-source-of-truth risk here is unrelated to Task 1:
 the *live-verification* claims (Chrome done, Firefox not run) are a separate
 question addressed in Task 3 below, and are about operator-observed runtime
 behavior, which a build pass cannot substitute for.
+
+---
+
+## Task 2 — Page-by-page inventory, read from actual source
+
+Read directly from `src/pages/defs/*.ts(x)` and `src/pages/types.ts` — not
+from STATUS.md's category summary table. One category at a time, in
+`NAV_GROUPS` order (`src/pages/registry.ts`), committed after each. Columns:
+
+- **Read** — nvram keys / hooks it reads.
+- **Write** — `settings` pages either have a `write:` block (endpoint +
+  rcService) or are tagged `writeExclusion` (write path exists in code but is
+  a **hard-excluded category** — never live-submitted this project); `custom`
+  pages either have no write path (pure display) or perform a specific
+  user-triggered action (documented per-row).
+- **Confidence** — the page's declared `confidence.read` / `.write` tier:
+  `live-verified` (checked against the operator's RT-BE92U),
+  `structural` (firmware-source-derived, not yet exercised live), or
+  `unverified-write` (write path coded, never submitted).
+
+### Status (`navGroup: 'status'`) — 2 views
+
+| id | title | aspPage | Description | Reads | Write | Confidence |
+|---|---|---|---|---|---|---|
+| `dashboard` | Network Map | index.asp | Landing page: WAN state/IP/gateway/DNS/proto, LAN IP, firmware identity, uptime, and per-band (2.4/5/6 GHz) radio SSID+on/off. On SDN-managed units (`mtlancfg_support`), resolves the real broadcast SSID from `sdn_rl`'s MAINFH record's `apg{idx}_ssid` instead of the placeholder `wl{N}_ssid`. | nvram: `wan0_state_t`, `wan0_ipaddr`, `wan0_gateway`, `wan0_dns`, `wan0_proto`, `lan_ipaddr`, `wl0/1/2_radio`, `wl0/1/2_ssid` (ascii), conditionally `sdn_rl`/`apg{idx}_ssid`; hook: `uptime()` | none — read-only display | read: live-verified |
+| `clients` | Clients | update_clients.asp | Merges DHCP leases with live wireless-station presence (`get_wclientlist()`) into one table; unnamed-hostname/`*` leases normalized to blank; auto-refreshes every 15s. | DHCP leases (via `fetchDhcpLeases`, dnsmasq lease file); hook: `get_wclientlist()` | none — read-only display | read: live-verified |
+
+**Committed as part of this entry.**
