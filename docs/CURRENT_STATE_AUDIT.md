@@ -262,3 +262,51 @@ Note: STATUS.md's summary table lists this category as "System, Time/NTP, SSH, T
 | `ext-settings` | Settings | (extension) | Extension-internal: read-only-mode toggle (the write-protection interlock — when on, "Apply" never sends, only previews the exact request) and a display-only view of the configured router address (actual change happens from the toolbar popup, which alone can request the host-permission grant a custom address needs). | in-memory extension settings | implemented — toggles the extension's own storage-backed setting, **never touches the router** | read: live-verified |
 
 **Committed as part of this entry — all 18 nav categories / 73 views now inventoried.**
+
+---
+
+## Task 3 — Firefox verification status (2026-07-25)
+
+**What actually exists in the repo, checked directly (not inferred):** a
+repo-wide search for "Firefox"/"firefox" across all tracked files turned up
+exactly one relevant statement — STATUS.md's own line 24: *"Firefox live
+verification: NOT run — the operator did not load the Firefox build this
+session; the build itself passes."* No console output, no screenshots, no
+written notes anywhere in `docs/` confirm live data ever rendered in Firefox.
+The only other Firefox-related content in the repo is
+`docs/EXTERNAL_RESEARCH_RECONCILIATION.md`'s Local Network Access research
+(§3.2–3.3) — architecture-risk analysis about Firefox's LNA rollout timeline,
+explicitly **not** an empirical test of this extension, and it says so itself
+("neither empirically tested it, on either browser").
+
+**Conclusion before asking the operator: only a build-passes confirmation
+exists for Firefox — no documented observational pass.** This matches
+STATUS.md's own claim exactly; there is no stale/optimistic claim to correct
+here, but there is also no evidence beyond "it compiles" to build on.
+
+**Operator was asked directly** whether the unpacked Firefox build
+(`.output/firefox-mv3`) is currently loaded in their browser (Firefox's
+temporary unsigned-extension load does not survive a restart, so this can't
+be assumed from a prior session). **Operator's answer**: Firefox is loaded
+live with the extension right now, and "everything looks like it's running
+and working without issue" — but also noted **there is no Claude browser
+extension for Firefox available in this environment**, so the agent has no
+tooling to independently drive Firefox and perform the same step-by-step
+observational check (console read, live-data confirmation) that was done on
+Chrome via the Chrome browser automation tools.
+
+**Recorded result, precisely**: this is an **operator self-report that the
+build is currently loaded and appears to work**, not an agent-observed pass
+with evidence (no console dump, no screenshot, no specific-feature checklist
+comparable to the Chrome pass's list of verified views). It is materially
+stronger than "not run" — the operator has hands-on-keyboard confirmation
+right now that the extension loads and functions in Firefox — but it is not
+equivalent in rigor to the Chrome live-verification pass recorded in
+STATUS.md, which enumerated specific views checked and specific console
+state. **Do not upgrade STATUS.md's "Firefox live verification: NOT run"
+line to "DONE" on the strength of this exchange alone** — if the operator
+wants a Chrome-equivalent record, that requires either a Firefox-capable
+browser-automation tool becoming available to the agent, or the operator
+manually working through a view checklist and reporting specific findings
+(console errors present/absent, which views rendered correctly) the way the
+Chrome pass did.
