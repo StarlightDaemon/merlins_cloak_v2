@@ -1,0 +1,44 @@
+MIT License
+
+Copyright (c) 2026 StarlightDaemon
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Scope note
+
+This license covers the contents of this repository: the browser-extension
+source under src/, its build configuration, and its documentation. It is a
+from-scratch client implementation; see docs/LICENSE_AUDIT.md for the audit
+establishing that no ASUS or Asuswrt-Merlin source was copied into it.
+
+It does not extend to:
+
+  * The reference source trees kept under RAW/. Those are ASUS and
+    Asuswrt-Merlin GPL source, retained locally for analysis, excluded from
+    distribution, and governed by their own licenses.
+
+  * ASUS and Asuswrt-Merlin product and feature names, and the setting labels
+    this client reuses to identify the native controls it maps to. Those are
+    used descriptively and remain the property of their respective owners.
+    See docs/LICENSE_AUDIT.md section 3.4.
+
+This project is not affiliated with, endorsed by, or sponsored by ASUSTeK
+Computer Inc. or the Asuswrt-Merlin project.
