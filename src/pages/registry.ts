@@ -7,10 +7,11 @@ import type { Capabilities } from '../lib/capabilities';
 import type { NavGroupDef, PageDef } from './types';
 
 /**
- * The twelve-category tree from docs/NAV_TAXONOMY_PROPOSAL.md §2. The five
- * single-page orphan categories (sdn, aiprotection, parental, dnsdirector,
- * ipv6) are still standalone here; they dissolve into their new homes in the
- * orphan-consolidation step (Task 4).
+ * The twelve-category tree from docs/NAV_TAXONOMY_PROPOSAL.md §2. Category
+ * visibility is derived from the member pages' own gates (a category renders
+ * only when at least one of its pages is visible); the only group-level gate
+ * kept is USB's, unchanged from the pre-taxonomy nav, whose member pages
+ * carry no equivalent page gate.
  */
 export const NAV_GROUPS: NavGroupDef[] = [
   { id: 'status', label: 'Overview' },
@@ -30,9 +31,7 @@ export const NAV_GROUPS: NavGroupDef[] = [
       { id: 'segments', label: 'Segments & Ports' },
     ],
   },
-  { id: 'sdn', label: 'Guest Network Pro', gate: (c) => hasSdn(c) },
   { id: 'wan', label: 'Internet Connection' },
-  { id: 'ipv6', label: 'IPv6', gate: (c) => c.rcSupport.has('ipv6') },
   {
     id: 'security',
     label: 'Security & Access Control',
@@ -42,9 +41,6 @@ export const NAV_GROUPS: NavGroupDef[] = [
       { id: 'content', label: 'Content & Device Restrictions' },
     ],
   },
-  { id: 'aiprotection', label: 'AiProtection', gate: (c) => truthy(c, 'bwdpi_support') },
-  { id: 'parental', label: 'Parental Controls' },
-  { id: 'dnsdirector', label: 'DNS Director', gate: (c) => truthy(c, 'dnsfilter_support') },
   {
     id: 'vpn',
     label: 'VPN',
@@ -76,17 +72,6 @@ export const NAV_GROUPS: NavGroupDef[] = [
   },
   { id: 'extension', label: "Merlin's Cloak" },
 ];
-
-function truthy(caps: Capabilities, flag: string): boolean {
-  const v = caps.flags[flag];
-  if (v === undefined) return false;
-  if (typeof v === 'string') return v !== '' && v !== '0';
-  return Boolean(v);
-}
-
-function hasSdn(caps: Capabilities): boolean {
-  return truthy(caps, 'mtlancfg_support');
-}
 
 const pages: PageDef[] = [];
 
