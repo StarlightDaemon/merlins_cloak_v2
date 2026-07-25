@@ -171,6 +171,8 @@ export const siteSurveyPages: PageDef[] = [
     aspPage: 'Advanced_Wireless_Survey.asp',
     title: 'Site Survey',
     navGroup: 'wireless',
+    navSub: 'radio',
+    navOrder: 7,
     navLabel: 'Site Survey',
     merlinOnly: true,
     confidence: { read: 'live-verified', write: 'unverified-write' },

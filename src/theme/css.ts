@@ -155,6 +155,15 @@ export function buildThemeCss(): string {
 .mc-nav__group-title:hover { color: var(--text-primary); }
 .mc-nav__group-title .chev { margin-left: auto; font-size: 10px; opacity: 0.7; transition: transform 0.12s; }
 .mc-nav__group.is-open .chev { transform: rotate(90deg); }
+.mc-nav__sub { margin-bottom: 2px; }
+.mc-nav__subheader {
+  padding: 7px 16px 2px 28px;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
 .mc-nav__item {
   display: block;
   width: 100%;

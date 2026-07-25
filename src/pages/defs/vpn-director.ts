@@ -18,6 +18,8 @@ export const vpnDirectorPage: SettingsPageDef = {
   aspPage: 'Advanced_VPNDirector.asp',
   title: 'VPN Director',
   navGroup: 'vpn',
+  navSub: 'outgoing',
+  navOrder: 37,
   navLabel: 'VPN Director',
   merlinOnly: true,
   confidence: { read: 'live-verified', write: 'unverified-write' },

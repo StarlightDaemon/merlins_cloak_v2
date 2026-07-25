@@ -15,8 +15,21 @@ import {
   type HistoryEntry,
   type NetdevCounters,
 } from '../../lib/trafmon';
+import type { Capabilities } from '../../lib/capabilities';
 import type { PageDef, PageProps, SettingsPageDef } from '../types';
 import { Banner, Button, Card, EmptyState, Loading, Select } from '../../ui/components';
+
+/**
+ * The dissolved Traffic Analyzer category's gate, moved onto its pages
+ * unchanged when the category merged into Traffic & Bandwidth (the QoS pages
+ * sharing the merged category are not gated by it). Same truthiness rules the
+ * registry's old per-category gate used.
+ */
+function trafficHistoryGate(c: Capabilities): boolean {
+  const v = c.flags['traffic_analyzer_support'];
+  const truthy = v === undefined ? false : typeof v === 'string' ? v !== '' && v !== '0' : Boolean(v);
+  return truthy || c.identity.branch === 'merlin';
+}
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -278,8 +291,11 @@ const trafficSettingsPage: SettingsPageDef = {
   aspPage: 'Main_TrafficMonitor_settings.asp',
   title: 'Traffic Monitoring Settings',
   navGroup: 'traffic',
+  navSub: 'monitoring',
+  navOrder: 46,
   navLabel: 'Settings',
   merlinOnly: true,
+  gate: trafficHistoryGate,
   confidence: { read: 'live-verified', write: 'unverified-write' },
   writeExclusion: null,
   read: {
@@ -358,7 +374,10 @@ export const trafficPages: PageDef[] = [
     aspPage: 'Main_TrafficMonitor_realtime.asp',
     title: 'Real-time Traffic',
     navGroup: 'traffic',
+    navSub: 'monitoring',
+    navOrder: 42,
     navLabel: 'Real-time',
+    gate: trafficHistoryGate,
     confidence: { read: 'live-verified' },
     component: RealtimePage,
   },
@@ -368,7 +387,10 @@ export const trafficPages: PageDef[] = [
     aspPage: 'Main_TrafficMonitor_last24.asp',
     title: 'Last 24 Hours',
     navGroup: 'traffic',
+    navSub: 'monitoring',
+    navOrder: 43,
     navLabel: 'Last 24 hours',
+    gate: trafficHistoryGate,
     confidence: { read: 'live-verified' },
     component: Last24Page,
   },
@@ -378,7 +400,10 @@ export const trafficPages: PageDef[] = [
     aspPage: 'Main_TrafficMonitor_daily.asp',
     title: 'Daily Traffic',
     navGroup: 'traffic',
+    navSub: 'monitoring',
+    navOrder: 44,
     navLabel: 'Daily',
+    gate: trafficHistoryGate,
     confidence: { read: 'live-verified' },
     component: DailyPage,
   },
@@ -388,8 +413,11 @@ export const trafficPages: PageDef[] = [
     aspPage: 'Main_TrafficMonitor_monthly.asp',
     title: 'Monthly Traffic',
     navGroup: 'traffic',
+    navSub: 'monitoring',
+    navOrder: 45,
     navLabel: 'Monthly',
     merlinOnly: true,
+    gate: trafficHistoryGate,
     confidence: { read: 'live-verified' },
     component: MonthlyPage,
   },

@@ -46,6 +46,8 @@ export const tweaksPage: SettingsPageDef = {
   aspPage: 'Tools_OtherSettings.asp',
   title: 'Tweaks',
   navGroup: 'admin',
+  navSub: 'system',
+  navOrder: 68,
   navLabel: 'Tweaks',
   merlinOnly: true,
   confidence: { read: 'live-verified', write: 'live-verified' },

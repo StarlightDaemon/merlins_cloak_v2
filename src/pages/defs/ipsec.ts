@@ -190,6 +190,8 @@ export const ipsecServerPage: SettingsPageDef = {
   aspPage: 'Advanced_VPN_IPSec.asp',
   title: 'IPSec VPN Server',
   navGroup: 'vpn',
+  navSub: 'incoming',
+  navOrder: 41,
   navLabel: 'IPSec VPN Server',
   gate: (c) => hasFlag(c, 'ipsec_srv_support'),
   confidence: { read: 'structural', write: 'unverified-write' },

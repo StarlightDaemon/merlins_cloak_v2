@@ -184,6 +184,8 @@ export const vpnStatusPages: PageDef[] = [
     aspPage: 'Advanced_VPNStatus.asp',
     title: 'VPN Status',
     navGroup: 'vpn',
+    navSub: 'overview',
+    navOrder: 33,
     navLabel: 'Status',
     merlinOnly: true,
     confidence: { read: 'live-verified' },

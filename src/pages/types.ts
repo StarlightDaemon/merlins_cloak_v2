@@ -149,6 +149,14 @@ export interface PageDefBase {
   title: string;
   /** Nav placement. */
   navGroup: string;
+  /** Sub-header id within the nav group (see NavGroupDef.subs). Absent = flat group. */
+  navSub?: string;
+  /**
+   * Position within the category/sub-header, following the proposal's global
+   * numbering (docs/NAV_TAXONOMY_PROPOSAL.md §2) so order is checkable
+   * against the document directly.
+   */
+  navOrder?: number;
   navLabel?: string;
   /** Gate: render only when capabilities allow. Absent = always. */
   gate?: (caps: Capabilities) => boolean;
@@ -212,9 +220,17 @@ export interface CustomPageDef extends PageDefBase {
 
 export type PageDef = SettingsPageDef | CustomPageDef;
 
+/** One sub-header inside a nav group; pages reference it via navSub. */
+export interface NavSubDef {
+  id: string;
+  label: string;
+}
+
 /** Nav group ordering + labels. */
 export interface NavGroupDef {
   id: string;
   label: string;
+  /** Ordered two-level sub-headers; absent = flat category. */
+  subs?: NavSubDef[];
   gate?: (caps: Capabilities) => boolean;
 }

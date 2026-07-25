@@ -201,6 +201,7 @@ export const wolPages: PageDef[] = [
     aspPage: 'Main_WOL_Content.asp',
     title: 'Wake on LAN',
     navGroup: 'nettools',
+    navOrder: 64,
     confidence: { read: 'structural', write: 'unverified-write' },
     writeExclusion: null,
     component: WolPage,

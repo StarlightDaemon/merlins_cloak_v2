@@ -109,10 +109,25 @@ export function App() {
       <div className="mc-body">
         <nav className="mc-nav">
           {NAV_GROUPS.filter((g) => !g.gate || g.gate(caps))
-            .map((g) => ({ group: g, pages: visiblePages.filter((p) => p.navGroup === g.id) }))
+            .map((g) => ({
+              group: g,
+              pages: visiblePages
+                .filter((p) => p.navGroup === g.id)
+                .sort((a, b) => (a.navOrder ?? 0) - (b.navOrder ?? 0)),
+            }))
             .filter((x) => x.pages.length > 0)
             .map(({ group, pages: groupPages }) => {
               const open = openGroups[group.id] ?? false;
+              const item = (p: PageDef) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`mc-nav__item${p.id === route ? ' is-active' : ''}`}
+                  onClick={() => navigate(p.id)}
+                >
+                  {p.navLabel ?? p.title}
+                </button>
+              );
               return (
                 <div key={group.id} className={`mc-nav__group${open ? ' is-open' : ''}`}>
                   <button
@@ -129,16 +144,18 @@ export function App() {
                   </button>
                   {open &&
                     groupPages.length > 1 &&
-                    groupPages.map((p) => (
-                      <button
-                        key={p.id}
-                        type="button"
-                        className={`mc-nav__item${p.id === route ? ' is-active' : ''}`}
-                        onClick={() => navigate(p.id)}
-                      >
-                        {p.navLabel ?? p.title}
-                      </button>
-                    ))}
+                    (group.subs
+                      ? group.subs.map((sub) => {
+                          const subPages = groupPages.filter((p) => p.navSub === sub.id);
+                          if (subPages.length === 0) return null;
+                          return (
+                            <div key={sub.id} className="mc-nav__sub">
+                              <div className="mc-nav__subheader">{sub.label}</div>
+                              {subPages.map(item)}
+                            </div>
+                          );
+                        })
+                      : groupPages.map(item))}
                 </div>
               );
             })}

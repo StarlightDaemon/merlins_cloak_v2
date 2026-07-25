@@ -141,6 +141,7 @@ export const clientsPages: PageDef[] = [
     aspPage: 'update_clients.asp',
     title: 'Clients',
     navGroup: 'status',
+    navOrder: 2,
     navLabel: 'Clients',
     confidence: { read: 'live-verified' },
     component: ClientsPage,
