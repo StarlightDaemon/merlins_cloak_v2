@@ -387,6 +387,7 @@ export const trafficPages: PageDef[] = [
     navGroup: 'traffic',
     navSub: 'monitoring',
     navOrder: 43,
+    navLabel: 'Last 24 hours',
     gate: trafficHistoryGate,
     confidence: { read: 'live-verified' },
     component: Last24Page,
