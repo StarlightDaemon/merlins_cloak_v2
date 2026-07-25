@@ -342,6 +342,14 @@ export function buildThemeCss(): string {
 .mc-table td { padding: 6px 10px; border-bottom: 1px solid ${t.shadowColor.replace('0.5', '0.18')}; vertical-align: top; }
 .mc-table tr:hover td { background: var(--bg-overlay); }
 .mc-table--mono td { font-family: var(--font-mono); font-size: 11.5px; }
+.mc-table__group td,
+.mc-table tr.mc-table__group:hover td {
+  background: var(--bg-status);
+  color: var(--text-secondary);
+  font-weight: bold;
+  font-size: 11.5px;
+  letter-spacing: 0.3px;
+}
 .mc-table .num { text-align: right; font-family: var(--font-mono); }
 
 /* ---- badges / status ---- */

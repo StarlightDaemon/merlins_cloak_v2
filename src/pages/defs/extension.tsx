@@ -6,7 +6,7 @@
  */
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import { getWriteLog, onWriteLogChanged } from '../../lib/write-guard';
-import { getAllPages } from '../registry';
+import { NAV_ALIASES, NAV_GROUPS, getAllPages } from '../registry';
 import type { Confidence, PageDef, PageProps } from '../types';
 import { Badge, Card, Row, Tabs, TextInput, Toggle } from '../../ui/components';
 import { useAppSettings } from '../../ui/App';
@@ -24,15 +24,39 @@ function ConfidenceBadge({ c }: { c: Confidence }) {
 
 function PageConfidenceTable() {
   const pages = getAllPages();
+  // Group by the nav taxonomy: category (and sub-header) in NAV_GROUPS order,
+  // pages in navOrder. Aliased pages appear once, under their primary
+  // category — the alias is a nav-placement convenience, not a second page
+  // identity — with a note naming the extra placement.
   const grouped = useMemo(() => {
-    const byGroup = new Map<string, PageDef[]>();
-    for (const p of pages) {
-      const arr = byGroup.get(p.navGroup) ?? [];
-      arr.push(p);
-      byGroup.set(p.navGroup, arr);
+    const out: { label: string; defs: PageDef[] }[] = [];
+    for (const g of NAV_GROUPS) {
+      const members = pages
+        .filter((p) => p.navGroup === g.id)
+        .sort((a, b) => (a.navOrder ?? 0) - (b.navOrder ?? 0));
+      if (members.length === 0) continue;
+      if (g.subs) {
+        for (const sub of g.subs) {
+          const subMembers = members.filter((p) => p.navSub === sub.id);
+          if (subMembers.length > 0) out.push({ label: `${g.label} › ${sub.label}`, defs: subMembers });
+        }
+        const unassigned = members.filter((p) => !g.subs?.some((s) => s.id === p.navSub));
+        if (unassigned.length > 0) out.push({ label: g.label, defs: unassigned });
+      } else {
+        out.push({ label: g.label, defs: members });
+      }
     }
-    return byGroup;
+    const known = new Set(NAV_GROUPS.map((g) => g.id));
+    const unplaced = pages.filter((p) => !known.has(p.navGroup));
+    if (unplaced.length > 0) out.push({ label: '(no nav category)', defs: unplaced });
+    return out;
   }, [pages]);
+  const aliasNote = (p: PageDef): string | undefined => {
+    const groups = NAV_ALIASES.filter((a) => a.pageId === p.id).map(
+      (a) => NAV_GROUPS.find((g) => g.id === a.navGroup)?.label ?? a.navGroup,
+    );
+    return groups.length > 0 ? `also in nav under ${groups.join(', ')}` : undefined;
+  };
   return (
     <table className="mc-table">
       <thead>
@@ -44,15 +68,24 @@ function PageConfidenceTable() {
         </tr>
       </thead>
       <tbody>
-        {[...grouped.entries()].flatMap(([group, defs]) =>
-          defs.map((p) => (
+        {grouped.flatMap(({ label, defs }) => [
+          <tr key={`group:${label}`} className="mc-table__group">
+            <td colSpan={4}>{label}</td>
+          </tr>,
+          ...defs.map((p) => (
             <tr key={p.id}>
               <td>
-                {group} / {p.title}
+                {p.title}
                 {p.merlinOnly && (
                   <>
                     {' '}
                     <Badge tone="info">Merlin</Badge>
+                  </>
+                )}
+                {aliasNote(p) && (
+                  <>
+                    {' '}
+                    <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>({aliasNote(p)})</span>
                   </>
                 )}
               </td>
@@ -79,7 +112,7 @@ function PageConfidenceTable() {
               </td>
             </tr>
           )),
-        )}
+        ])}
       </tbody>
     </table>
   );
