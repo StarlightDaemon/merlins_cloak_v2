@@ -20,6 +20,7 @@ export const NAV_GROUPS: NavGroupDef[] = [
   { id: 'ipv6', label: 'IPv6', section: 'advanced', gate: (c) => c.rcSupport.has('ipv6') },
   { id: 'vpn', label: 'VPN', section: 'advanced' },
   { id: 'firewall', label: 'Firewall', section: 'advanced' },
+  { id: 'dnsdirector', label: 'DNS Director', section: 'advanced', gate: (c) => truthy(c, 'dnsfilter_support') },
   { id: 'admin', label: 'Administration', section: 'advanced' },
   { id: 'log', label: 'System Log', section: 'advanced' },
   { id: 'nettools', label: 'Network Tools', section: 'advanced' },

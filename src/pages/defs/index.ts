@@ -8,9 +8,17 @@ import { tweaksPage } from './tools-tweaks';
 import { DashboardPage } from './dashboard';
 import { DiagnosticsPage, ExtensionSettingsPage } from './extension';
 import { lanPages } from './lan';
+import { firewallPages } from './firewall';
+import { ipv6Pages } from './ipv6';
+import { logPages } from './logs';
+import { nettoolsPages } from './nettools';
+import { trafficPages } from './traffic';
+import { qosStatsPages } from './qos-stats';
+import { vpnStatusPages } from './vpn-status';
+import { sdnPages } from './sdn';
+import { clientsPages } from './clients';
 
 export function registerAllPages(): void {
-  registerPages(lanPages);
   registerPages([
     {
       kind: 'custom',
@@ -21,6 +29,18 @@ export function registerAllPages(): void {
       confidence: { read: 'live-verified' },
       component: DashboardPage,
     },
+  ]);
+  registerPages(clientsPages);
+  registerPages(sdnPages);
+  registerPages(qosStatsPages);
+  registerPages(trafficPages);
+  registerPages(lanPages);
+  registerPages(ipv6Pages);
+  registerPages(vpnStatusPages);
+  registerPages(firewallPages);
+  registerPages(logPages);
+  registerPages(nettoolsPages);
+  registerPages([
     tweaksPage,
     {
       kind: 'custom',

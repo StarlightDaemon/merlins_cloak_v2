@@ -428,6 +428,35 @@ export function buildThemeCss(): string {
 .mc-listedit__count { color: var(--text-muted); font-size: 11.5px; margin-left: auto; }
 .mc-input--mono { font-family: var(--font-mono); }
 
+/* ---- log / feed views ---- */
+.mc-logview {
+  background: var(--bg-dark);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  max-height: 60vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 11.5px;
+  margin: 0;
+}
+.mc-feedbar { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.mc-feedbar__poll { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 12px; }
+
+/* ---- traffic charts ---- */
+.mc-ratechart {
+  width: 100%;
+  height: 150px;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+}
+.mc-legend { margin-left: auto; font-size: 11px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 6px; font-weight: normal; }
+.mc-legend__swatch { width: 14px; height: 3px; display: inline-block; border-radius: 2px; }
+.mc-legend__swatch.is-rx { background: var(--badge-24); }
+.mc-legend__swatch.is-tx { background: var(--badge-5); }
+
 /* ---- instance selector (band / VPN client N / …) ---- */
 .mc-instancebar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .mc-instancebar__label { color: var(--text-secondary); font-size: 12.5px; }
