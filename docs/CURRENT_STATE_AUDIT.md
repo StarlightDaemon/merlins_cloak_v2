@@ -5,14 +5,34 @@ states what was actually re-checked and how, not what was previously asserted.
 
 ## HEADLINE — read this before running the next-session taxonomy proposal
 
-**PENDING — see final update at the end of this section once Tasks 2–4 complete.**
-Preliminary check (below, Task 1) re-derived the view/category counts directly
-from `src/pages/defs/*` source rather than trusting STATUS.md's summary table,
-and they matched exactly: **73 views (50 settings + 23 custom), 67 distinct
-native .asp pages, 14 Merlin-only views, 18 nav categories**. No discrepancy
-found yet that would change the taxonomy proposal's premise. This line will be
-updated (or left as final) after the full per-view inventory and the Firefox
-check are done.
+**The 73-views/18-categories premise HOLDS.** Task 2 below completed the full
+per-view inventory, reading every one of the 27 files under
+`src/pages/defs/*` directly (not STATUS.md's summary table) — every category,
+every view, every nav group. The counts re-derived independently from source
+(`grep`-verified: 73 `id:` entries = 50 `kind: 'settings'` + 23 `kind:
+'custom'`; 68 unique `aspPage` strings of which one is the non-native
+`(extension)` marker → 67 real distinct native pages; 14 `merlinOnly: true`;
+18 `NAV_GROUPS` entries in `registry.ts`) match STATUS.md's claims exactly,
+and the category-by-category source read below confirms no view is
+miscategorized, silently missing, or double-counted relative to the taxonomy
+proposal's assumption.
+
+**One thing worth flagging to the operator, not a count discrepancy**: several
+individual pages carry documented internal uncertainty or gaps that a
+taxonomy/consolidation pass should know about before treating "write path
+implemented" as uniform across categories — e.g. `wireguard-server`'s direct
+`wgs1_*` writes have an unconfirmed `validate_instance()` path, `ipsec-server`
+never regenerates `ipsec_profile_2` on save (a real functional gap versus the
+native page), and `vpn-fusion` has **no write block at all** (deliberately
+read-only, unlike the hard-excluded-but-implemented pages around it) — these
+are noted per-view in Task 2 below and don't change the 73/18 headline count,
+but a taxonomy pass that assumes uniform write-readiness within a category
+should read the per-view notes rather than the category name alone.
+
+**Firefox verification status (Task 3) is unresolved** — see that section.
+This is the one open item STATUS.md already flagged as a gap and this session
+did not close it (per the task's own instruction not to attempt loading it
+without operator confirmation the build is currently loaded).
 
 ---
 
@@ -234,4 +254,11 @@ Note: STATUS.md's summary table lists this category as "System, Time/NTP, SSH, T
 | `netstat` | Netstat | Main_Netstat_Content.asp | Netstat / Netstat-NAT socket table dump via netool.cgi, user-triggered. RT-BE92U model-overlay page. Gated same as Analysis. | netool.cgi start/poll | user-triggered diagnostic action, no nvram config write | read: live-verified |
 | `wol` | Wake on LAN | Main_WOL_Content.asp | Saved WOL target list (name+MAC, plain nvram `wollist` list edit, no restart script) plus a "Wake" action per saved target or an ad-hoc MAC — sends `SystemCmd=ether-wake -i br0 -b <MAC>` via `action_mode=' Refresh '` through the same write-guard as every other mutating request (dry-run-previewed in read-only mode). | nvram(ascii): `wollist` | implemented (list save) + user-triggered wake action, `writeExclusion: null`, both routed through `applyapp`/write-guard with no restart script | read: structural, write: unverified-write |
 
-**Committed as part of this entry.**
+### Merlin's Cloak / Extension (`navGroup: 'extension'`) — 2 views
+
+| id | title | aspPage | Description | Reads | Write | Confidence |
+|---|---|---|---|---|---|---|
+| `diagnostics` | Diagnostics | (extension) | Extension-internal, not a native page: detected router identity (product/firmware/generation/branch/LAN IP/flag source), full live `*_support` capability-flag table, a per-page confidence table (every registered view's read/write confidence tier + hard-exclusion tag, grouped by nav category — this is the in-app source STATUS.md's own summary table was built from), and a write inspector logging every constructed request this session (including read-only-mode dry-runs) with nvram-reread verification status. | `getAllPages()` (in-memory registry) + live capability object + in-memory write log | none — read-only display | read: live-verified |
+| `ext-settings` | Settings | (extension) | Extension-internal: read-only-mode toggle (the write-protection interlock — when on, "Apply" never sends, only previews the exact request) and a display-only view of the configured router address (actual change happens from the toolbar popup, which alone can request the host-permission grant a custom address needs). | in-memory extension settings | implemented — toggles the extension's own storage-backed setting, **never touches the router** | read: live-verified |
+
+**Committed as part of this entry — all 18 nav categories / 73 views now inventoried.**
