@@ -59,7 +59,12 @@ function ClientsPage(_props: PageProps) {
       for (const [mac, band] of wireless) {
         if (!seen.has(mac)) out.push({ mac, hostname: '', ip: '', band });
       }
-      out.sort((a, b) => (a.hostname || '￿').localeCompare(b.hostname || '￿'));
+      // Named clients first (alphabetical), unnamed last. No sentinel char —
+      // Chromium's content-script loader rejects Unicode noncharacters.
+      out.sort((a, b) => {
+        if (!a.hostname !== !b.hostname) return a.hostname ? -1 : 1;
+        return a.hostname.localeCompare(b.hostname) || a.mac.localeCompare(b.mac);
+      });
       setRows(out);
       setError(null);
     } catch (e) {
