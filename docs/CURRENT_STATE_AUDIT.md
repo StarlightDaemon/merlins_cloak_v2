@@ -29,10 +29,14 @@ are noted per-view in Task 2 below and don't change the 73/18 headline count,
 but a taxonomy pass that assumes uniform write-readiness within a category
 should read the per-view notes rather than the category name alone.
 
-**Firefox verification status (Task 3) is unresolved** — see that section.
-This is the one open item STATUS.md already flagged as a gap and this session
-did not close it (per the task's own instruction not to attempt loading it
-without operator confirmation the build is currently loaded).
+**Firefox verification status (Task 3) is upgraded but still not closed** —
+the operator confirmed the Firefox build is currently loaded and self-reports
+it working without issue, which is stronger than STATUS.md's prior "not run."
+But no agent-observed evidence (console dump, per-view checklist) was
+produced — there is no Firefox-capable browser-automation tool available in
+this environment — so this remains short of the Chrome pass's rigor. See
+Task 3 below for the full distinction. **Do not treat this as equivalent to
+"Firefox live verification: DONE."**
 
 ---
 
@@ -310,3 +314,30 @@ browser-automation tool becoming available to the agent, or the operator
 manually working through a view checklist and reporting specific findings
 (console errors present/absent, which views rendered correctly) the way the
 Chrome pass did.
+
+---
+
+## Task 4 — Reconciliation against the pending taxonomy proposal (summary)
+
+Already stated at the top of this document (HEADLINE section), per the
+instruction that this finding needs to reach the operator above everything
+else. Restated here briefly for completeness now that all tasks are done:
+
+1. **View/category counts: no change needed.** 73 views (50 settings + 23
+   custom) across 18 nav categories, 67 distinct native .asp pages, 14
+   Merlin-only views — all re-derived independently from source in Task 2 and
+   all match STATUS.md exactly. The taxonomy proposal's premise is sound.
+2. **Per-view write-readiness is not uniform within a category** — flagged in
+   the headline, not a count issue, but worth the taxonomy pass reading
+   individual view notes (e.g. `vpn-fusion` has no write path at all;
+   `ipsec-server` has a documented functional gap; `wireguard-server` has an
+   unconfirmed write-path assumption) rather than assuming every view in a
+   category is equivalently "implemented."
+3. **Firefox verification is now operator-self-reported-working but still not
+   agent-verified** — an upgrade from "not run," but not equivalent to the
+   Chrome pass. If the taxonomy/next session assumes both browsers are
+   equally verified, that assumption should be corrected to "Chrome: agent-
+   verified with evidence; Firefox: operator reports it works, no agent-
+   observed evidence exists."
+4. **Git/build state is clean and current** — nothing uncommitted, both
+   builds pass fresh, no discrepancy between committed state and STATUS.md.
