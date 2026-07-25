@@ -4,7 +4,7 @@
   "description": "WXT + React rebuild of Merlin's Cloak, a client-side re-theme of the AsusWRT-Merlin router web UI.",
   "private": true,
   "license": "MIT",
-  "version": "0.1.0",
+  "version": "0.9.0-beta.1",
   "type": "module",
   "scripts": {
     "dev": "wxt",

@@ -14,6 +14,13 @@ export const STATIC_ROUTER_ORIGINS = [
   'https://www.asusrouter.com/*',
 ];
 
+// package.json carries a semver pre-release version (e.g. 0.9.0-beta.1), which
+// neither Chrome nor Firefox accepts in manifest `version` — that field must be
+// 1-4 dot-separated integers. Ship the numeric core there and surface the full
+// string in Chrome's `version_name`, which exists for exactly this.
+const VERSION_CORE = packageJson.version.replace(/[-+].*$/, '');
+const VERSION_IS_PRERELEASE = VERSION_CORE !== packageJson.version;
+
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   srcDir: 'src',
@@ -22,7 +29,10 @@ export default defineConfig({
   manifest: (env) => ({
     name: "Merlin's Cloak v2",
     description: packageJson.description,
-    version: packageJson.version,
+    version: VERSION_CORE,
+    ...(VERSION_IS_PRERELEASE && env.browser !== 'firefox'
+      ? { version_name: packageJson.version }
+      : {}),
     permissions: ['storage', 'scripting'],
     host_permissions: STATIC_ROUTER_ORIGINS,
     // Allows a user-configured router address (any private origin) to be
