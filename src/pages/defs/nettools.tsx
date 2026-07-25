@@ -24,12 +24,17 @@ interface SysinfoScalars {
   driverVersions: string[];
 }
 
-function fmtKb(v: string): string {
+/** sysinfo memory.* values arrive pre-scaled in MB (live-observed, e.g. "993.76"). */
+function fmtMb(v: string): string {
   const n = Number(v);
   if (Number.isNaN(n)) return v || '—';
-  if (n > 1024 * 1024) return `${(n / 1024 / 1024).toFixed(2)} GB`;
-  if (n > 1024) return `${(n / 1024).toFixed(1)} MB`;
-  return `${n} KB`;
+  if (n >= 1024) return `${(n / 1024).toFixed(2)} GB`;
+  return `${n} MB`;
+}
+
+/** Scalar hook output may carry HTML entities (live-observed: cpu.model has &nbsp;). */
+function stripEntities(v: string): string {
+  return v.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
 }
 
 function SysinfoPage(_props: PageProps) {
@@ -65,7 +70,7 @@ function SysinfoPage(_props: PageProps) {
           'sysinfo("driver_version.2")',
         ]);
         setScalars({
-          cpuModel: s['sysinfo-cpu.model'] ?? '',
+          cpuModel: stripEntities(s['sysinfo-cpu.model'] ?? ''),
           cpuFreq: s['sysinfo-cpu.freq'] ?? '',
           connMax: s['sysinfo-conn.max'] ?? '',
           nvramTotal: s['sysinfo-nvram.total'] ?? '',
@@ -126,15 +131,15 @@ function SysinfoPage(_props: PageProps) {
           <dl className="mc-kv">
             <dt>Total / free / available</dt>
             <dd>
-              {fmtKb(mem[0])} / {fmtKb(mem[1])} / {fmtKb(mem[9] ?? '')}
+              {fmtMb(mem[0])} / {fmtMb(mem[1])} / {fmtMb(mem[9] ?? '')}
             </dd>
             <dt>Buffers / cache</dt>
             <dd>
-              {fmtKb(mem[2])} / {fmtKb(mem[3])}
+              {fmtMb(mem[2])} / {fmtMb(mem[3])}
             </dd>
             <dt>Swap</dt>
             <dd>
-              {fmtKb(mem[4])} / {fmtKb(mem[5])}
+              {fmtMb(mem[4])} / {fmtMb(mem[5])}
             </dd>
             <dt>nvram usage</dt>
             <dd>

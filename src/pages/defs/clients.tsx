@@ -53,7 +53,9 @@ function ClientsPage(_props: PageProps) {
       for (const l of leases as DhcpLease[]) {
         const mac = l.mac.toUpperCase();
         seen.add(mac);
-        out.push({ mac, hostname: l.hostname, ip: l.ip, band: wireless.get(mac) });
+        // dnsmasq lease records use '*' for clients that sent no hostname.
+        const hostname = l.hostname === '*' ? '' : l.hostname;
+        out.push({ mac, hostname, ip: l.ip, band: wireless.get(mac) });
       }
       // Wireless stations without a DHCP lease (static IPs, IPv6-only).
       for (const [mac, band] of wireless) {

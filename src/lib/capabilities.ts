@@ -16,6 +16,7 @@
  * Two names that appear in older static reports — `gu_support` and
  * `asus_support` — are NOT real live globals and must never be referenced.
  */
+import { browser } from 'wxt/browser';
 import { fetchRouterText, nvramGet } from './router-io';
 import { log } from './log';
 
@@ -64,9 +65,31 @@ export function flagValue(caps: Capabilities, name: string): FlagValue | undefin
 const COLLECTOR_TIMEOUT_MS = 4000;
 
 /**
- * Inject a MAIN-world collector that reports every window global ending in
- * `_support`. Values are simplified to number|boolean|string ('{}' for object
- * flags, matching how the live probe recorded them).
+ * Preferred collector: ask the background to run scripting.executeScript
+ * with world:'MAIN' (reliable under MV3; the inline-injection fallback below
+ * was live-observed being silently dropped on this firmware's pages). The
+ * background executes in THIS page only and makes no router request.
+ */
+async function collectViaBackground(): Promise<Record<string, FlagValue> | null> {
+  try {
+    const res = (await browser.runtime.sendMessage({ type: 'mc2-collect-flags' })) as
+      | { flags?: Record<string, FlagValue> | null; error?: string }
+      | undefined;
+    if (res?.error) {
+      log.warn('background flag collector error', res.error);
+      return null;
+    }
+    return res?.flags ?? null;
+  } catch (e) {
+    log.warn('background flag collector unavailable', e instanceof Error ? e.message : String(e));
+    return null;
+  }
+}
+
+/**
+ * Fallback collector: inject a MAIN-world <script> that reports every window
+ * global ending in `_support`. Values are simplified to number|boolean|string
+ * ('{}' for object flags, matching how the live probe recorded them).
  */
 function collectMainWorldFlags(): Promise<Record<string, FlagValue> | null> {
   return new Promise((resolve) => {
@@ -143,11 +166,13 @@ async function detectBranch(): Promise<'merlin' | 'stock' | 'unknown'> {
 }
 
 export async function collectCapabilities(): Promise<Capabilities> {
-  const [idVals, branch, mainWorldFlags] = await Promise.all([
+  const [idVals, branch, bgFlags] = await Promise.all([
     nvramGet(['productid', 'firmver', 'buildno', 'extendno', 'rc_support', 'lan_ipaddr', 'odmpid']),
     detectBranch(),
-    collectMainWorldFlags(),
+    collectViaBackground(),
   ]);
+  const mainWorldFlags =
+    bgFlags && Object.keys(bgFlags).length > 0 ? bgFlags : await collectMainWorldFlags();
 
   const rcSupport = new Set(
     (idVals.rc_support || '')

@@ -43,7 +43,29 @@ export function DashboardPage({ caps }: PageProps) {
           'wl1_radio',
           'wl2_radio',
         ]);
-        const ssids = await nvramCharToAscii(['wl0_ssid', 'wl1_ssid', 'wl2_ssid']);
+        let ssids = await nvramCharToAscii(['wl0_ssid', 'wl1_ssid', 'wl2_ssid']);
+        // ASUSWRT 5.0 / SDN units (mtlancfg): the broadcast SSID lives in the
+        // main network's apg{idx}_ssid; wl0_ssid holds a derived placeholder
+        // (live-observed: a 32-hex string). sdn_rl: idx>name>enable>vlan>subnet>apg>…
+        if (hasFlag(caps, 'mtlancfg_support')) {
+          try {
+            const sdn = await nvramCharToAscii(['sdn_rl']);
+            const main = (sdn.sdn_rl ?? '')
+              .split('<')
+              .filter(Boolean)
+              .map((r) => r.split('>'))
+              .find((r) => r[1] === 'MAINFH');
+            if (main?.[5]) {
+              const apg = await nvramCharToAscii([`apg${main[5]}_ssid`]);
+              const mainSsid = apg[`apg${main[5]}_ssid`];
+              if (mainSsid) {
+                ssids = { wl0_ssid: mainSsid, wl1_ssid: mainSsid, wl2_ssid: mainSsid };
+              }
+            }
+          } catch {
+            // keep wl*_ssid values if the SDN read fails
+          }
+        }
         // uptime is an ej hook, not an nvram variable. Emits
         // "<rfc date>(N days … since boot)" — keep the human part.
         let uptimeStr = '';

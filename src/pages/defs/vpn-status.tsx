@@ -36,11 +36,17 @@ function statusBadge(status: string): { label: string; tone: 'ok' | 'warn' | 'er
     case '-1':
       return { label: 'Error', tone: 'err' };
     case '0':
+    case 'None': // live-observed: sysinfo vpnstatus emits the literal "None" for stopped
     case '':
       return { label: 'Stopped', tone: 'info' };
     default:
       return { label: `state ${status}`, tone: 'info' };
   }
+}
+
+/** sysinfo pid hooks emit "" / "0" / literal "None" when the daemon is down. */
+function pidRunning(pid: string | undefined): boolean {
+  return !!pid && pid !== '0' && pid !== 'None';
 }
 
 async function fetchVpnStatus(): Promise<VpnStatusData> {
@@ -79,12 +85,12 @@ async function fetchVpnStatus(): Promise<VpnStatusData> {
     openvpnServers,
     openvpnClients,
     wireguardClients,
-    pptpdRunning: (vars.pptpdpid ?? '') !== '' && vars.pptpdpid !== '0',
+    pptpdRunning: pidRunning(vars.pptpdpid),
   };
 }
 
 function InstanceTable({ rows, kind }: { rows: VpnInstanceStatus[]; kind: string }) {
-  const active = rows.filter((r) => r.status !== '' && r.status !== '0');
+  const active = rows.filter((r) => r.status !== '' && r.status !== '0' && r.status !== 'None');
   if (active.length === 0) return <EmptyState>No active {kind} instances</EmptyState>;
   return (
     <table className="mc-table">

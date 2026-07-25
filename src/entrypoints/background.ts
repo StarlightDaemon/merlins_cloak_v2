@@ -44,7 +44,52 @@ async function syncDynamicRegistration(routerAddress: string): Promise<void> {
   console.info(`[merlins-cloak] content script registered for ${host}`);
 }
 
+/**
+ * MAIN-world *_support flag collector, run on request from the content
+ * script. MV3 isolates content scripts, and injecting an inline <script>
+ * into the page is silently dropped on this firmware's pages (live-observed:
+ * the collector timed out and capability detection fell back to rc_support
+ * parsing). scripting.executeScript with world:'MAIN' is the reliable path.
+ * This executes IN THE PAGE — the background still never issues any router
+ * network request.
+ */
+function collectSupportFlags(): Record<string, number | boolean | string> {
+  const flags: Record<string, number | boolean | string> = {};
+  const names = Object.getOwnPropertyNames(window);
+  for (const k of names) {
+    if (k.length > 8 && k.endsWith('_support')) {
+      try {
+        const v = (window as unknown as Record<string, unknown>)[k];
+        const t = typeof v;
+        if (t === 'number' || t === 'boolean' || t === 'string') flags[k] = v as number | boolean | string;
+        else if (v && t === 'object') flags[k] = '{}';
+      } catch {
+        // skip unreadable global
+      }
+    }
+  }
+  return flags;
+}
+
 export default defineBackground(() => {
   void getSettings().then((s) => syncDynamicRegistration(s.routerAddress));
   onSettingsChanged((s) => void syncDynamicRegistration(s.routerAddress));
+
+  browser.runtime.onMessage.addListener((msg: unknown, sender, sendResponse) => {
+    if (!msg || (msg as { type?: string }).type !== 'mc2-collect-flags') return undefined;
+    const tabId = sender.tab?.id;
+    if (tabId === undefined) {
+      sendResponse({ error: 'no tab' });
+      return undefined;
+    }
+    browser.scripting
+      .executeScript({
+        target: { tabId },
+        world: 'MAIN',
+        func: collectSupportFlags,
+      })
+      .then((results) => sendResponse({ flags: results[0]?.result ?? null }))
+      .catch((e: unknown) => sendResponse({ error: e instanceof Error ? e.message : String(e) }));
+    return true; // async sendResponse
+  });
 });
