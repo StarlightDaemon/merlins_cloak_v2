@@ -19,6 +19,7 @@ import { firewallPages } from './firewall';
 import { ipv6Pages } from './ipv6';
 import { wolPages } from './wol';
 import { usbPages } from './usb';
+import { adminPages } from './admin';
 import { parentalPages } from './parental';
 import { aiprotectionPages } from './aiprotection';
 import { logPages } from './logs';
@@ -64,6 +65,7 @@ export function registerAllPages(): void {
   registerPages(nettoolsPages);
   registerPages(wolPages);
   registerPages(usbPages);
+  registerPages(adminPages);
   registerPages([
     tweaksPage,
     {
