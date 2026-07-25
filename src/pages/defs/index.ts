@@ -13,14 +13,19 @@ import { wirelessPages } from './wireless';
 import { siteSurveyPages } from './site-survey';
 import { vpnClientPages } from './vpn-client';
 import { vpnServerPages } from './vpn-server';
+import { vpnDirectorPages } from './vpn-director';
 import { dnsDirectorPages } from './dnsdirector';
 import { firewallPages } from './firewall';
 import { ipv6Pages } from './ipv6';
 import { wolPages } from './wol';
+import { usbPages } from './usb';
+import { parentalPages } from './parental';
+import { aiprotectionPages } from './aiprotection';
 import { logPages } from './logs';
 import { nettoolsPages } from './nettools';
 import { trafficPages } from './traffic';
 import { qosStatsPages } from './qos-stats';
+import { qosPages } from './qos';
 import { vpnStatusPages } from './vpn-status';
 import { sdnPages } from './sdn';
 import { clientsPages } from './clients';
@@ -39,6 +44,9 @@ export function registerAllPages(): void {
   ]);
   registerPages(clientsPages);
   registerPages(sdnPages);
+  registerPages(aiprotectionPages);
+  registerPages(parentalPages);
+  registerPages(qosPages);
   registerPages(qosStatsPages);
   registerPages(trafficPages);
   registerPages(wirelessPages);
@@ -49,11 +57,13 @@ export function registerAllPages(): void {
   registerPages(vpnStatusPages);
   registerPages(vpnClientPages);
   registerPages(vpnServerPages);
+  registerPages(vpnDirectorPages);
   registerPages(firewallPages);
   registerPages(dnsDirectorPages);
   registerPages(logPages);
   registerPages(nettoolsPages);
   registerPages(wolPages);
+  registerPages(usbPages);
   registerPages([
     tweaksPage,
     {

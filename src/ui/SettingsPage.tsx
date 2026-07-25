@@ -115,7 +115,9 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
       if (def.read.derive) merged = { ...merged, ...def.read.derive(merged, instance) };
       if (def.eulaGate) {
         const eulaVals = await nvramGet(def.eulaGate.nvramKeys);
-        setEulaAccepted(Object.values(eulaVals).some((v) => v === '1'));
+        // TM_EULA is versioned: 1 = accepted, 2 = accepted newer text. Any
+        // non-zero value counts as accepted.
+        setEulaAccepted(Object.values(eulaVals).some((v) => v !== '' && v !== '0'));
       }
       setBaseline(merged);
       setValues(merged);
@@ -220,8 +222,8 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
       {def.eulaGate && eulaAccepted === false && (
         <Banner tone="warn">
           {def.eulaGate.label} requires EULA acceptance before changes take effect. The router will silently ignore
-          writes to this feature until the EULA has been accepted in the native UI. Settings below are shown read-only
-          in effect.
+          writes to this feature until the EULA has been accepted in the native UI, so Apply is disabled here — the
+          settings below are effectively read-only until then.
         </Banner>
       )}
       {instanceBar}
@@ -261,7 +263,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
             );
           })}
 
-          {def.write && dirtyCount > 0 && (
+          {def.write && dirtyCount > 0 && !(def.eulaGate && eulaAccepted === false) && (
             <div className="mc-applybar">
               <div className="mc-applybar__summary">
                 <b>{dirtyCount}</b> pending change{dirtyCount === 1 ? '' : 's'}

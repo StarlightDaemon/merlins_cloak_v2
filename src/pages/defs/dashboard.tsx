@@ -3,7 +3,7 @@
  * read endpoints the native page polls.
  */
 import { useEffect, useState } from 'react';
-import { nvramCharToAscii, nvramGet } from '../../lib/router-io';
+import { appGet, nvramCharToAscii, nvramGet } from '../../lib/router-io';
 import { hasFlag } from '../../lib/capabilities';
 import type { PageProps } from '../types';
 import { Badge, Banner, Card, Loading } from '../../ui/components';
@@ -42,9 +42,18 @@ export function DashboardPage({ caps }: PageProps) {
           'wl0_radio',
           'wl1_radio',
           'wl2_radio',
-          'uptime',
         ]);
         const ssids = await nvramCharToAscii(['wl0_ssid', 'wl1_ssid', 'wl2_ssid']);
+        // uptime is an ej hook, not an nvram variable. Emits
+        // "<rfc date>(N days … since boot)" — keep the human part.
+        let uptimeStr = '';
+        try {
+          const up = await appGet(['uptime()']);
+          const m = String(up.uptime ?? '').match(/\(([^)]*) since boot\)/);
+          uptimeStr = m ? m[1] : '';
+        } catch {
+          // cosmetic
+        }
         const radios: DashData['radios'] = [
           { band: '2.4 GHz', ssid: ssids.wl0_ssid, enabled: plain.wl0_radio === '1', tone: '24' as const },
           { band: '5 GHz', ssid: ssids.wl1_ssid, enabled: plain.wl1_radio === '1', tone: '5' as const },
@@ -60,7 +69,7 @@ export function DashboardPage({ caps }: PageProps) {
           wanProto: plain.wan0_proto,
           lanIp: plain.lan_ipaddr,
           radios,
-          uptimeStr: plain.uptime,
+          uptimeStr,
         });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -100,6 +109,8 @@ export function DashboardPage({ caps }: PageProps) {
             <dd>{caps.identity.displayVersion}</dd>
             <dt>Branch</dt>
             <dd>{caps.identity.branch === 'merlin' ? 'Asuswrt-Merlin' : caps.identity.branch}</dd>
+            <dt>Uptime</dt>
+            <dd>{data.uptimeStr || '—'}</dd>
           </dl>
         </Card>
       </div>
