@@ -12,12 +12,39 @@ record. See git log for the commit trail.
   rescan actions) — **none live-submitted this session**, all routed through
   the write-guard with the read-only interlock shipping ON.
 - Lint clean; **Chrome (MV3) and Firefox builds both pass**.
-- **Live verification NOT yet performed** — the operator had not loaded the
-  built extension into the paired browser during this session ("build first,
-  verify later"). Every page's read path is therefore either
-  'live-verified' (the native page was exercised during the earlier probe
-  sessions and our replacement reads the same endpoints) or 'structural'.
-  The Diagnostics → Page confidence view is the authoritative per-page table.
+- **Chrome live verification: DONE** (operator loaded the unpacked build;
+  observational pass against the live RT-BE92U). Verified working with live
+  data and no console errors: mount/DOM-takeover, identity detection
+  (RT-BE92U · 3006.102.7_2 · Merlin · ASUSWRT 5.0), read-only interlock,
+  Dashboard, Clients, SDN overview, DHCP settings renderer + rule-list
+  editor, General Log (8.7k lines), Realtime traffic (6 interfaces),
+  Sysinfo, VPN Status, Tweaks (values match the write-characterization
+  baseline exactly), Diagnostics. Capability collection now reports 227
+  *_support flags via the MAIN-world scripting-API collector (green chip).
+- **Firefox live verification: NOT run** — the operator did not load the
+  Firefox build this session; the build itself passes. Single remaining
+  verification gap.
+
+### Findings from the live pass (all fixed in-session)
+1. Chromium's extension loader rejects Unicode noncharacters in content
+   scripts even when byte-valid UTF-8 (U+FFFF sort sentinel → load failure).
+2. MV3 inline MAIN-world <script> injection is silently dropped on this
+   firmware's pages → flag collection fell back to rc_support (90 flags,
+   hiding band6g). Replaced with background scripting.executeScript
+   world:'MAIN' (no router traffic from the background).
+3. **wl0_ssid holds a 32-hex placeholder on SDN-managed ASUSWRT 5.0** — the
+   real broadcast SSID lives in the MAINFH sdn_rl record's apg{idx}_ssid.
+   Dashboard now reads it; wireless-general still edits wl-family keys
+   (correct for writes per validate_instance, but display/edit semantics on
+   SDN units need a supervised write session before any wireless write is
+   ever cleared).
+4. sysinfo hooks return literal "None" for stopped VPN/pid states, memory
+   values pre-scaled in MB, and HTML entities in cpu.model.
+5. dnsmasq leases use '*' for unknown hostnames.
+6. The content script can be injected twice into one document
+   (double-mount observed) — idempotency guard added.
+7. Direct address-bar navigation to appGet.cgi bounces to the login page
+   (referer-checked); the extension's same-origin XHR reads are unaffected.
 
 ## What exists (by category)
 
