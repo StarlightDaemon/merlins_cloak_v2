@@ -23,8 +23,9 @@ Full detail: [README.md](../../README.md), [STATUS.md](../../STATUS.md),
 
 ## Confirmed Current State
 
-- RAIDEN Instance installed at Edict v2.0.0 (this install). Fleet form: full
-  (writ + local overlay + state + instance metadata).
+- RAIDEN Instance installed (Edict version tracked in
+  `.raiden/instance/metadata.json`). Fleet form: full (writ + local overlay +
+  state + instance metadata).
 - Supersedes the ledger-form Instance **merlins_cloak** (the original
   userscript repo), deprecated 2026-07-25 in favor of this rewrite. See
   Raiden-ops `registry/instances.md` Retired/Identity-Resolved section.
