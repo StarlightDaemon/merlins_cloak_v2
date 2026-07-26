@@ -24,3 +24,8 @@ npm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# RAIDEN — public-instance audit exclusions
+audit-reports/
+.raiden/state/AUDIT_LOG.md
+.raiden/state/last-audit.md
