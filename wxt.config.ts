@@ -35,8 +35,13 @@ export default defineConfig({
       : {}),
     permissions: ['storage', 'scripting'],
     host_permissions: STATIC_ROUTER_ORIGINS,
-    // Allows a user-configured router address (any private origin) to be
-    // granted at runtime without a broad install-time grant.
+    // Declared broad because the permissions API only grants patterns that are
+    // a subset of something already declared, and the router address is
+    // user-configured — so this cannot be narrowed here without breaking custom
+    // addresses. Nothing this broad is ever requested: the popup's saveAddress
+    // (entrypoints/popup/App.tsx, isPrivateRouterHost) is where the restriction
+    // actually lives, and it only requests RFC1918, loopback/localhost and
+    // .local hosts. Grants are still per-origin and user-approved at runtime.
     optional_host_permissions: ['http://*/*', 'https://*/*'],
     ...(env.browser === 'firefox'
       ? {
