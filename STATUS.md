@@ -31,8 +31,10 @@ Settings view, plus a manifest-version normalization in wxt.config.ts.
   overstated anything.
 - **Version 0.9.0-beta.1** (was the scaffold's 0.1.0). Not an RC: Firefox
   live verification and 48 of 49 write paths are known-open, not merely
-  undiscovered. wxt.config.ts now ships the numeric core in manifest
-  `version` and the full string in Chrome's `version_name`.
+  undiscovered. wxt.config.ts ships the numeric core in Chrome's manifest
+  `version` plus the full string in Chrome's `version_name`; Firefox's
+  version format accepts the semver pre-release directly, so its manifest
+  `version` carries the full `0.9.0-beta.1` (Firefox has no `version_name`).
 - **CHANGELOG.md** — whole project history with commit hashes, from the
   git log and the committed docs/ reports. No prior releases invented.
 - **docs/GETTING_STARTED.md** — end-user install/config/data doc. §10
@@ -44,7 +46,13 @@ Settings view, plus a manifest-version normalization in wxt.config.ts.
   `let readOnly = true` (write-guard.ts:47).
 
 tsc + eslint clean; Chrome MV3 and Firefox MV3 builds both pass and are
-current in .output/. Nothing pushed; all commits local for operator review.
+current in .output/. Push/visibility status (verified 2026-07-25): the
+repository exists on GitHub at StarlightDaemon/merlins_cloak_v2 and is
+**public**. origin/main is at 58a006e — the initial WXT/React scaffold plus
+the five research docs under docs/, 7 commits total — and is an ancestor of
+local main. All 46 commits of the extension implementation (08e0982 through
+fc5bb83) are local-only and unpushed, held for operator review; local main
+is 46 ahead of and 0 behind origin/main.
 
 ## Session of 2026-07-25 — nav taxonomy implemented AND live-verified
 
@@ -86,8 +94,12 @@ against the live RT-BE92U, read-only mode on, no writes). Confirmed:
   aliased pages each appear once with an "(also in nav under …)" note.
 - Console clean across ~23 navigations: 46 messages, all INFO, no errors.
 
-Firefox live verification remains NOT run (unchanged gap). Nothing has been
-pushed to origin; all commits are local, held for operator review.
+Firefox live verification remains NOT run (unchanged gap). Push/visibility
+status (verified 2026-07-25): the GitHub repository
+StarlightDaemon/merlins_cloak_v2 is **public**, and origin/main holds the
+7-commit scaffold-plus-research-docs base (58a006e). The 46 commits of the
+extension implementation itself, including this session's nav-taxonomy work,
+have NOT been pushed and are local only, held for operator review.
 
 Cosmetic notes (no action taken): several new names are wider than the 236px
 nav and ellipsize (proposal §5.5 anticipated this); and the IPv6 Setup
@@ -180,7 +192,7 @@ accurate, if slightly redundant.
 ## Known open items / deferred (deliberate)
 
 1. **Live verification pass (both browsers)** — blocked on operator loading
-   the unpacked builds (.output/chrome-mv3, .output/firefox-mv2 or -mv3).
+   the unpacked builds (.output/chrome-mv3, .output/firefox-mv3).
 2. Wireless band-token question: Advanced_Wireless_Content.asp's own JS posts
    band-role-token field names (2g1_*) via httpApi.nvramSet; our defs post
    canonical wl{N}_* keys, which validate_instance accepts. Confirm live

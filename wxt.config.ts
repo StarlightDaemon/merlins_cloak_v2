@@ -14,10 +14,12 @@ export const STATIC_ROUTER_ORIGINS = [
   'https://www.asusrouter.com/*',
 ];
 
-// package.json carries a semver pre-release version (e.g. 0.9.0-beta.1), which
-// neither Chrome nor Firefox accepts in manifest `version` — that field must be
-// 1-4 dot-separated integers. Ship the numeric core there and surface the full
-// string in Chrome's `version_name`, which exists for exactly this.
+// package.json carries a semver pre-release version (e.g. 0.9.0-beta.1).
+// Chrome's manifest `version` must be 1-4 dot-separated integers, so the
+// numeric core ships there and the full string is surfaced via `version_name`,
+// which exists for exactly this. Firefox's version format is more permissive
+// and accepts the semver pre-release string directly — it has no
+// `version_name` field, so this is the only way to show the beta marker there.
 const VERSION_CORE = packageJson.version.replace(/[-+].*$/, '');
 const VERSION_IS_PRERELEASE = VERSION_CORE !== packageJson.version;
 
@@ -29,7 +31,10 @@ export default defineConfig({
   manifest: (env) => ({
     name: "Merlin's Cloak v2",
     description: packageJson.description,
-    version: VERSION_CORE,
+    version:
+      VERSION_IS_PRERELEASE && env.browser === 'firefox'
+        ? packageJson.version
+        : VERSION_CORE,
     ...(VERSION_IS_PRERELEASE && env.browser !== 'firefox'
       ? { version_name: packageJson.version }
       : {}),
