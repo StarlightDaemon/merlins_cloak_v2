@@ -116,7 +116,20 @@ export interface WriteDef {
   endpoint: WriteEndpoint;
   /** Service restart directive (rc_service / action_script value). */
   rcService?: string;
+  /**
+   * The native page's own client-side wait for this operation, in seconds.
+   * Sent as `action_wait` on start_apply, and on BOTH endpoints it governs how
+   * long the verifier settles before its first forced-fresh confirmation read
+   * (lib/write-policy.ts confirmWindow). Omit where the operation is effectively
+   * immediate — the verifier then reads straight away.
+   */
   actionWait?: number;
+  /**
+   * Per-path override for the confirmation ceiling, in ms. Normally omit: the
+   * ceiling is derived from `actionWait` and the page's `writeExclusion` tag.
+   * Confirmation timing only — it changes nothing about the submitted request.
+   */
+  confirmTimeoutMs?: number;
   /**
    * Override payload construction. Receives changed fields and all current
    * values; returns the exact field map to submit. Used for joined+decomposed

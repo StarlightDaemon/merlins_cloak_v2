@@ -171,8 +171,28 @@ export interface WriteSpec {
    * parameter — confirmed from httpd/web.c apply_cgi()).
    */
   rcService?: string;
-  /** start_apply context; ignored for applyapp. */
+  /**
+   * The native page's own client-side wait for this operation, in SECONDS.
+   *
+   * Two distinct uses, and only the first is a wire parameter:
+   *  - on start_apply.htm it is sent as the `action_wait` form field, which is
+   *    what the native form path does;
+   *  - on BOTH endpoints it is the wait-before-first-confirmation-read. The
+   *    router does not receive it on applyapp.cgi (that endpoint has no such
+   *    field), but the value is still the best per-path estimate of how long
+   *    the operation takes, so the verifier settles for that long before its
+   *    first forced-fresh re-read rather than polling a router that is still
+   *    restarting. See lib/write-policy.ts confirmWindow().
+   */
   actionWait?: number;
+  /**
+   * Per-path override for the confirmation ceiling, in ms. Normally unset —
+   * confirmWindow() derives a ceiling from `actionWait` and the exclusion
+   * category. Set this only where a path's real settle time is known to differ
+   * from both. Purely a confirmation-timing control: it does not affect what is
+   * submitted or whether the write is permitted.
+   */
+  confirmTimeoutMs?: number;
   currentPage?: string;
   nextPage?: string;
 }
@@ -246,46 +266,117 @@ export async function submitBuiltWrite(req: BuiltWriteRequest): Promise<SubmitRe
   return { ok: res.ok, status: res.status, responseText: text };
 }
 
+export interface VerifyOptions {
+  /**
+   * ms to wait after the write before issuing the FIRST forced-fresh read.
+   * Derived from the path's `actionWait`; see write-policy.ts confirmWindow().
+   */
+  settleMs?: number;
+  /** Total ms budget, measured from entry and INCLUDING settleMs. */
+  timeoutMs?: number;
+  intervalMs?: number;
+}
+
 export interface VerifyResult {
   verified: boolean;
   /** Key → {expected, actual} for every checked key after the final poll. */
   detail: Record<string, { expected: string; actual: string; match: boolean }>;
+  /** Read attempts issued, whether or not they returned an answer. */
   attempts: number;
+  /**
+   * Attempts that actually returned a readable answer. `reads === 0` means the
+   * router never answered inside the window, so the result is UNKNOWN — not a
+   * failed write. `detail` is empty in that case.
+   */
+  reads: number;
+  /** Total ms from entry, settle included. */
   elapsedMs: number;
+  /** The settle delay actually applied before the first read. */
+  settleMs: number;
+  /** The ceiling this run was given, for reporting alongside the verdict. */
+  timeoutMs: number;
+  /** Last read failure seen. Reporting only; never a verdict on its own. */
+  lastError?: string;
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 /**
- * The canonical write confirmation: poll forced-fresh nvram reads until every
- * expected key matches (or timeout). Neither endpoint's response body, nor the
- * DOM, is ever trusted — this is the only reliable method on this hardware.
+ * The canonical write confirmation: wait out the path's expected settle time,
+ * then poll forced-fresh nvram reads until every expected key matches or the
+ * budget is exhausted. Neither endpoint's response body, nor the DOM, is ever
+ * trusted — a matching forced-fresh read is the only thing that sets
+ * `verified`, and this is the only reliable method on this hardware.
+ *
+ * Reads that fail mid-window are expected on any restart-bearing path (the
+ * router is unreachable while the service or the box comes back) and are
+ * tolerated: they consume budget and are recorded, but they do not end the
+ * loop and they never produce a verdict. A lost session is the exception —
+ * further polling cannot succeed, so it stops and says so.
  */
 export async function verifyNvram(
   expected: Record<string, string>,
-  opts: { timeoutMs?: number; intervalMs?: number } = {},
+  opts: VerifyOptions = {},
 ): Promise<VerifyResult> {
-  const timeoutMs = opts.timeoutMs ?? 10000;
-  const intervalMs = opts.intervalMs ?? 800;
+  const timeoutMs = Math.max(0, opts.timeoutMs ?? 10000);
+  const intervalMs = Math.max(50, opts.intervalMs ?? 800);
+  const settleMs = Math.max(0, Math.min(opts.settleMs ?? 0, timeoutMs));
   const keys = Object.keys(expected);
   const started = Date.now();
   let attempts = 0;
+  let reads = 0;
+  let lastError: string | undefined;
   let detail: VerifyResult['detail'] = {};
+  const result = (verified: boolean): VerifyResult => ({
+    verified,
+    detail,
+    attempts,
+    reads,
+    elapsedMs: Date.now() - started,
+    settleMs,
+    timeoutMs,
+    lastError,
+  });
+
+  if (settleMs > 0) {
+    log.info(`verifyNvram: settling ${settleMs}ms (action_wait) before the first confirmation read`);
+    await sleep(settleMs);
+  }
+
   for (;;) {
     attempts++;
-    const actual = await nvramGet(keys);
-    detail = {};
-    let allMatch = true;
-    for (const k of keys) {
-      const match = actual[k] === expected[k];
-      detail[k] = { expected: expected[k], actual: actual[k], match };
-      if (!match) allMatch = false;
+    try {
+      const actual = await nvramGet(keys);
+      reads++;
+      lastError = undefined;
+      detail = {};
+      let allMatch = true;
+      for (const k of keys) {
+        const match = actual[k] === expected[k];
+        detail[k] = { expected: expected[k], actual: actual[k], match };
+        if (!match) allMatch = false;
+      }
+      if (allMatch) return result(true);
+    } catch (e) {
+      if (e instanceof RouterAuthError) {
+        lastError = e.message;
+        log.warn('verifyNvram: router session lost, cannot confirm this write', e.message);
+        return result(false);
+      }
+      lastError = e instanceof Error ? e.message : String(e);
+      log.info('verifyNvram: read failed inside the confirmation window, still polling', lastError);
     }
-    if (allMatch) {
-      return { verified: true, detail, attempts, elapsedMs: Date.now() - started };
+    // Stop only once the budget is genuinely spent, and never sleep past it, so
+    // the last read lands ON the ceiling rather than one interval short of it.
+    const remaining = timeoutMs - (Date.now() - started);
+    if (remaining <= 0) {
+      log.warn(
+        `verifyNvram: ${timeoutMs}ms window closed with no matching nvram read (${reads} of ${attempts} reads answered)`,
+        detail,
+        lastError ?? '',
+      );
+      return result(false);
     }
-    if (Date.now() - started + intervalMs > timeoutMs) {
-      log.warn('verifyNvram: timed out waiting for nvram to reflect write', detail);
-      return { verified: false, detail, attempts, elapsedMs: Date.now() - started };
-    }
-    await new Promise((r) => setTimeout(r, intervalMs));
+    await sleep(Math.min(intervalMs, remaining));
   }
 }

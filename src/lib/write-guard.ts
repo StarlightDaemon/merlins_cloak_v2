@@ -13,7 +13,9 @@
  *    results) surfaced in the diagnostics view.
  *  - Run the mandatory poll-and-verify after every real submit: neither write
  *    endpoint's response confirms anything; only a forced-fresh nvram re-read
- *    does.
+ *    does. The confirmation window is resolved per path from the write's own
+ *    actionWait and exclusion category (write-policy.ts confirmWindow), because
+ *    a conntrack restart lands in milliseconds and a reboot does not.
  */
 import {
   buildWriteRequest,
@@ -24,7 +26,7 @@ import {
   type VerifyResult,
   type WriteSpec,
 } from './router-io';
-import { hardExclusionReason, isHardExcludedWriteCategory } from './write-policy';
+import { confirmWindow, hardExclusionReason, isHardExcludedWriteCategory } from './write-policy';
 import { log } from './log';
 
 export interface WriteLogEntry {
@@ -126,7 +128,15 @@ export async function guardedWrite(
     entry.result = await submitBuiltWrite(request);
     entry.submitted = true;
     if (verifyKeys && Object.keys(verifyKeys).length > 0) {
-      entry.verify = await verifyNvram(verifyKeys);
+      // The confirmation window is per-path, not global: it comes from this
+      // write's own actionWait and exclusion category (write-policy.ts). This
+      // is timing only — it does not change what was just submitted, and only
+      // a matching forced-fresh nvram read can still set `verified`.
+      const budget = confirmWindow(spec.writeExclusion, spec.actionWait, spec.confirmTimeoutMs);
+      log.info(
+        `verifying by forced-fresh nvram re-read: settle ${budget.settleMs}ms, ceiling ${budget.timeoutMs}ms, poll ${budget.intervalMs}ms`,
+      );
+      entry.verify = await verifyNvram(verifyKeys, budget);
     }
     pushEntry(entry);
     const applied = entry.verify ? entry.verify.verified : entry.result.ok;

@@ -179,6 +179,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
         fields: expandRecord(templateFields),
         rcService: def.write.rcService ? expand(def.write.rcService) : undefined,
         actionWait: def.write.actionWait,
+        confirmTimeoutMs: def.write.confirmTimeoutMs,
         currentPage: def.aspPage,
         nextPage: def.aspPage,
       };
@@ -329,12 +330,33 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
           )}
           {outcome.entry.verify && (
             <div>
-              <p>Live nvram verification ({outcome.entry.verify.attempts} read{outcome.entry.verify.attempts === 1 ? '' : 's'}, {outcome.entry.verify.elapsedMs}ms):</p>
-              <pre>
-                {Object.entries(outcome.entry.verify.detail)
-                  .map(([k, d]) => `${d.match ? '✓' : '✗'} ${k} = ${JSON.stringify(d.actual)}${d.match ? '' : ` (expected ${JSON.stringify(d.expected)})`}`)
-                  .join('\n')}
-              </pre>
+              <p>
+                Live nvram verification ({outcome.entry.verify.attempts} read
+                {outcome.entry.verify.attempts === 1 ? '' : 's'}, {outcome.entry.verify.elapsedMs}ms of a{' '}
+                {outcome.entry.verify.timeoutMs}ms window
+                {outcome.entry.verify.settleMs > 0
+                  ? `, after a ${outcome.entry.verify.settleMs}ms wait for this page's own action_wait`
+                  : ''}
+                ):
+              </p>
+              {outcome.entry.verify.reads === 0 ? (
+                <Banner tone="warn">
+                  The router never answered a read inside the confirmation window, so whether this write landed is{' '}
+                  <strong>unknown</strong> — not failed. Re-read this page once the router is reachable again.
+                  {outcome.entry.verify.lastError ? ` Last read error: ${outcome.entry.verify.lastError}` : ''}
+                </Banner>
+              ) : (
+                <pre>
+                  {Object.entries(outcome.entry.verify.detail)
+                    .map(([k, d]) => `${d.match ? '✓' : '✗'} ${k} = ${JSON.stringify(d.actual)}${d.match ? '' : ` (expected ${JSON.stringify(d.expected)})`}`)
+                    .join('\n')}
+                </pre>
+              )}
+              {outcome.entry.verify.reads > 0 && outcome.entry.verify.lastError && (
+                <p>
+                  <em>Some reads in the window failed (last: {outcome.entry.verify.lastError}).</em>
+                </p>
+              )}
             </div>
           )}
           {outcome.entry.error && <Banner tone="err">{outcome.entry.error}</Banner>}
