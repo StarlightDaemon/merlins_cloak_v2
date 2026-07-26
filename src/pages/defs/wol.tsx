@@ -49,6 +49,7 @@ function WolPage(_props: PageProps) {
         const result = await guardedWrite(
           {
             endpoint: 'applyapp',
+            writeExclusion: null, // matches this def's writeExclusion
             actionMode: ' Refresh ',
             fields: { SystemCmd: `ether-wake -i br0 -b ${mac}` },
             currentPage: 'Main_WOL_Content.asp',
@@ -69,7 +70,12 @@ function WolPage(_props: PageProps) {
       try {
         const serialized = serializeRuleList(next, WOL_SPEC);
         const result = await guardedWrite(
-          { endpoint: 'applyapp', fields: { wollist: serialized }, currentPage: 'Main_WOL_Content.asp' },
+          {
+            endpoint: 'applyapp',
+            writeExclusion: null, // matches this def's writeExclusion
+            fields: { wollist: serialized },
+            currentPage: 'Main_WOL_Content.asp',
+          },
           { wollist: serialized },
         );
         setOutcome(result);

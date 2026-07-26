@@ -7,6 +7,7 @@
 import type { ComponentType } from 'react';
 import type { Capabilities } from '../lib/capabilities';
 import type { WriteEndpoint } from '../lib/router-io';
+import type { WriteExclusionCategory } from '../lib/write-policy';
 
 /**
  * Diagnostics confidence tiers, per the project's verification history:
@@ -22,20 +23,12 @@ import type { WriteEndpoint } from '../lib/router-io';
 export type Confidence = 'live-verified' | 'structural' | 'unverified-write';
 
 /**
- * Hard-excluded live-write categories from the operator's scoping. Pages
- * tagged with one of these have fully implemented write paths that this build
- * session never live-submits; the UI surfaces that state in diagnostics.
+ * Hard-excluded live-write categories. The vocabulary and the enforcement
+ * predicate live together in lib/write-policy.ts — this tag is not merely
+ * diagnostic: the five hard-excluded categories are refused at the write
+ * chokepoint (lib/write-guard.ts) regardless of read-only mode.
  */
-export type WriteExclusionCategory =
-  | 'wireless'
-  | 'wan'
-  | 'dhcp'
-  | 'vpn'
-  | 'firewall'
-  | 'firmware-reboot-reset'
-  | 'excluded-restart' // action_script touches restart_net_and_phy / restart_wireless / restart_wan / restart_dhcpd, or is unclear enough to exclude by policy
-  | 'restricted-misc' // http_dut_redir, SSH forwarding, HTTPS cert regen, SMB protocol, UPnP pinholes
-  | null;
+export type { WriteExclusionCategory };
 
 export interface FieldOption {
   value: string;

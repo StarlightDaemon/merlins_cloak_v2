@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Capabilities } from '../lib/capabilities';
 import { nvramCharToAscii, nvramGet, appGet, type WriteSpec } from '../lib/router-io';
 import { guardedWrite, isReadOnlyMode, type GuardedWriteOutcome } from '../lib/write-guard';
+import { hardExclusionReason, isHardExcludedWriteCategory } from '../lib/write-policy';
 import type { FieldDef, SettingsPageDef } from '../pages/types';
 import { Badge, Banner, Button, Card, Loading, Modal, RadioGroup, Row, Select, TextInput, Toggle } from './components';
 import { ListEditor, validateRuleList } from './ListEditor';
@@ -153,6 +154,8 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
 
   const dirtyCount = Object.keys(dirty).length;
   const hasErrors = Object.keys(errors).length > 0;
+  /** Non-null only for the categories the write guard refuses outright. */
+  const hardExcluded = isHardExcludedWriteCategory(def.writeExclusion) ? def.writeExclusion : null;
 
   const apply = useCallback(async () => {
     if (!def.write || !baseline || dirtyCount === 0) return;
@@ -169,6 +172,10 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
         Object.fromEntries(Object.entries(rec).map(([k, v]) => [expand(k), v]));
       const spec: WriteSpec = {
         endpoint: def.write.endpoint,
+        // Threaded through so the guard can enforce it. The UI below also
+        // refuses to offer Apply, but the guard is the enforcement point —
+        // this is not a UI-only control.
+        writeExclusion: def.writeExclusion ?? null,
         fields: expandRecord(templateFields),
         rcService: def.write.rcService ? expand(def.write.rcService) : undefined,
         actionWait: def.write.actionWait,
@@ -219,6 +226,12 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
         {def.merlinOnly ? ' · Merlin' : ''}
       </p>
       {def.intro && <Banner tone="info">{def.intro}</Banner>}
+      {def.write && hardExcluded && (
+        <Banner tone="err">
+          {hardExclusionReason(hardExcluded)} You can read and inspect these settings, but Apply is unavailable on
+          this page.
+        </Banner>
+      )}
       {def.eulaGate && eulaAccepted === false && (
         <Banner tone="warn">
           {def.eulaGate.label} requires EULA acceptance before changes take effect. The router will silently ignore
@@ -263,7 +276,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
             );
           })}
 
-          {def.write && dirtyCount > 0 && !(def.eulaGate && eulaAccepted === false) && (
+          {def.write && dirtyCount > 0 && !hardExcluded && !(def.eulaGate && eulaAccepted === false) && (
             <div className="mc-applybar">
               <div className="mc-applybar__summary">
                 <b>{dirtyCount}</b> pending change{dirtyCount === 1 ? '' : 's'}
@@ -283,7 +296,13 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
 
       {outcome && (
         <Modal
-          title={outcome.dryRun ? 'Write preview (read-only mode — nothing was sent)' : 'Apply result'}
+          title={
+            outcome.blocked
+              ? 'Write refused (hard-excluded category — nothing was sent)'
+              : outcome.dryRun
+                ? 'Write preview (read-only mode — nothing was sent)'
+                : 'Apply result'
+          }
           onClose={() => setOutcome(null)}
           footer={
             <Button variant="primary" onClick={() => setOutcome(null)}>
@@ -292,13 +311,14 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
           }
         >
           <p>
-            <Badge tone={outcome.dryRun ? 'info' : outcome.applied ? 'ok' : 'err'}>
-              {outcome.dryRun ? 'DRY RUN' : outcome.applied ? 'VERIFIED APPLIED' : 'NOT CONFIRMED'}
+            <Badge tone={outcome.blocked ? 'err' : outcome.dryRun ? 'info' : outcome.applied ? 'ok' : 'err'}>
+              {outcome.blocked ? 'BLOCKED' : outcome.dryRun ? 'DRY RUN' : outcome.applied ? 'VERIFIED APPLIED' : 'NOT CONFIRMED'}
             </Badge>{' '}
             <code>
               POST {outcome.entry.request.url}
             </code>
           </p>
+          {outcome.blockedReason && <Banner tone="err">{outcome.blockedReason}</Banner>}
           <pre>{outcome.entry.request.body}</pre>
           {outcome.entry.result && (
             <p>

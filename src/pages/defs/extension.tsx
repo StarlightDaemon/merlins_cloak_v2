@@ -6,6 +6,7 @@
  */
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import { getWriteLog, onWriteLogChanged } from '../../lib/write-guard';
+import { DISABLE_READONLY_CONFIRM } from '../../lib/write-policy';
 import { NAV_ALIASES, NAV_GROUPS, getAllPages } from '../registry';
 import type { Confidence, PageDef, PageProps } from '../types';
 import { Badge, Card, Row, Tabs, TextInput, Toggle } from '../../ui/components';
@@ -259,7 +260,15 @@ export function ExtensionSettingsPage(_props: PageProps) {
           label="Read-only mode"
           hint="While on, Apply never sends anything: it shows the exact request that would have been sent."
         >
-          <Toggle on={settings.readOnlyMode} onChange={(v) => void update({ readOnlyMode: v })} />
+          <Toggle
+            on={settings.readOnlyMode}
+            onChange={(v) => {
+              // Same two-step gate as the popup's toggle (F9): turning the
+              // interlock OFF must be confirmed; turning it back ON is safe.
+              if (!v && !window.confirm(DISABLE_READONLY_CONFIRM)) return;
+              void update({ readOnlyMode: v });
+            }}
+          />
           {settings.readOnlyMode ? <Badge tone="warn">writes blocked</Badge> : <Badge tone="ok">writes enabled</Badge>}
         </Row>
       </Card>

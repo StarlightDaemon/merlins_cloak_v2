@@ -89,6 +89,9 @@ function SiteSurveyPage(_props: PageProps) {
     const result = await guardedWrite(
       {
         endpoint: 'applyapp',
+        // Matches this def's writeExclusion below: a scan trigger, not a
+        // wireless configuration write.
+        writeExclusion: null,
         fields: { flag: 'sitesurvey' },
         rcService: 'restart_wlcscan',
         currentPage: 'Advanced_Wireless_Survey.asp',

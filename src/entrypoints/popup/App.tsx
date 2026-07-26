@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { browser } from 'wxt/browser';
 import { getSettings, updateSettings, type ExtensionSettings } from '../../lib/settings';
+import { DISABLE_READONLY_CONFIRM } from '../../lib/write-policy';
 import './App.css';
 
 function App() {
@@ -36,9 +37,22 @@ function App() {
     setStatus(`Saved. The extension will activate on ${host}.`);
   };
 
+  /**
+   * Disabling read-only mode arms every non-excluded write path at once, so it
+   * requires an explicit confirmation. Re-enabling it is strictly safer and
+   * needs none. (The five hard-excluded categories stay blocked either way —
+   * see lib/write-policy.ts — but everything else becomes live.)
+   */
   const toggleReadOnly = async () => {
+    const disabling = settings.readOnlyMode;
+    if (disabling && !window.confirm(DISABLE_READONLY_CONFIRM)) return;
     const next = await updateSettings({ readOnlyMode: !settings.readOnlyMode });
     setSettings(next);
+    setStatus(
+      next.readOnlyMode
+        ? 'Read-only mode is ON — Apply previews requests without sending them.'
+        : 'Read-only mode is OFF — Apply will send real changes to your router.',
+    );
   };
 
   return (
@@ -64,6 +78,11 @@ function App() {
           Read-only mode <small>(Apply previews requests instead of sending them)</small>
         </span>
       </label>
+      {!settings.readOnlyMode && (
+        <p className="warn">
+          Read-only mode is <b>off</b> — Apply sends real changes to your router.
+        </p>
+      )}
       <button
         className="open"
         onClick={() => void browser.tabs.create({ url: `http://${settings.routerAddress}/` })}

@@ -22,6 +22,7 @@
  * re-read (verifyNvram below). Neither response body is ever authoritative.
  */
 import { log } from './log';
+import type { WriteExclusionCategory } from './write-policy';
 
 export class RouterAuthError extends Error {
   constructor() {
@@ -148,6 +149,14 @@ export type WriteEndpoint = 'applyapp' | 'start_apply';
 
 export interface WriteSpec {
   endpoint: WriteEndpoint;
+  /**
+   * The originating page def's `writeExclusion` category, threaded through so
+   * the write chokepoint can enforce it (lib/write-policy.ts). REQUIRED, and
+   * deliberately not optional: making it mandatory means a newly added write
+   * call site cannot silently omit the category and slip past the hard-
+   * exclusion check in guardedWrite(). Pass `null` for uncategorized writes.
+   */
+  writeExclusion: WriteExclusionCategory;
   /**
    * Override action_mode; default 'apply'. The only other value used is
    * ' Refresh ' (with the literal spaces) — apply_cgi's SystemCmd branch,
