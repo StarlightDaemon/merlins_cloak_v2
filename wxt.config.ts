@@ -69,4 +69,11 @@ export default defineConfig({
       minify: env.mode !== 'development',
     },
   }),
+  zip: {
+    // RAW/ is a local, gitignored dump of stock/Merlin firmware GPL source
+    // used as reference material during development (multiple GB). WXT's
+    // Firefox sources ZIP doesn't consult .gitignore, so without this it
+    // gets swept into the AMO source-review bundle.
+    excludeSources: ['RAW/**'],
+  },
 });
