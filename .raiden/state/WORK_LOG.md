@@ -2,6 +2,30 @@
 
 ## Entries
 
+### 2026-07-27 — Migrated theme layer to a real Fujin dependency
+
+- **Did:** Replaced the hand-copied `src/theme/fujin-tokens.ts` snapshot
+  with a real `@fujin/ui` install (`github:StarlightDaemon/Fujin#v0.1.0`)
+  and rewrote `src/theme/css.ts` to source `scalarVars`/`resolveDark('blue')`
+  /`palette` from the package. `content.tsx` unchanged. Applied the `blue`
+  accent preset, adopted Fujin's `0px` radius rule everywhere except the
+  spinner (functional circle, not a themeable choice), repurposed Fujin's
+  raw palette hues for the four connection-type badges, stayed dark-only.
+  Full rationale and the design-call detail in `DECISIONS.md` D-005.
+- **Result:** `tsc --noEmit`, `eslint`, and both `wxt build` (Chrome) and
+  `wxt build -b firefox --mv3` clean. Visually verified against the real
+  resolved token values via a throwaway shadow-root harness (not committed)
+  covering cards, buttons, tabs, badges, banners, toggle, and the apply bar
+  — blue accent, sharp corners, and badge colors all read correctly; the
+  active/inactive tab distinction (a background-tier collision in the
+  mechanical rename) was caught and fixed before this check. Registered in
+  `Fujin/CONSUMERS.md` and `Raiden-ops/registry/EDGES.md`.
+- **Loops:** none opened — this closes the "naming reference, not a real
+  dependency" gap the 2026-07-26 fleet audit flagged for this repo.
+- **Next:** live-hardware visual verification against the real router
+  remains outstanding (the shadow-root harness is a stand-in, not a
+  substitute — same gap as the pre-existing write-path verification work).
+
 ### 2026-07-26 — RAIDEN doctor cleanup: required state set completed, routing overlay seeded
 
 - **Did:** Filled the required state file set that was absent after the Edict

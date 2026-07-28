@@ -54,3 +54,53 @@
 - Implementation note: the Raiden-ops registry row for this instance was
   already updated as part of that deprecation and is out of scope for this
   install pass.
+
+## D-005
+
+- Date: 2026-07-27
+- Status: Active
+- Decision: replaced the hand-copied Fujin token snapshot
+  (`src/theme/fujin-tokens.ts`, frozen at whatever the v1 userscript's
+  "FUJIN TOKEN MAP" looked like) with a real `@fujin/ui` dependency
+  (`npm install github:StarlightDaemon/Fujin#v0.1.0`, per Fujin's own
+  `docs/INTEGRATION_GUIDE.md`). `src/theme/css.ts` now sources
+  `scalarVars`/`resolveDark`/`palette` from the package at content-script
+  load time instead of interpolating hardcoded hex values; `content.tsx`
+  is unchanged (the existing `<style>`-in-shadow-root pattern already
+  matched the guide's recommended isolation approach for an untrusted host
+  page). Per Raiden-ops `state/DECISIONS.md` OPS-D-007, which scoped
+  merlins_cloak_v2 as one of the repos that should carry real Fujin
+  theming.
+- Four scoped design calls, all made with the operator:
+  - **Accent:** Fujin's `blue` preset, not the `violet` default — closest
+    match to this extension's existing blue identity.
+  - **Radius:** Fujin's `0px`-everywhere rule adopted faithfully, including
+    the toggle switch and status dot (matches Fujin's own precedent of
+    forcing Mantine's `Switch` to 0 too). The one deliberate exception is
+    `.mc-spinner`'s `border-radius: 50%`, kept as a literal — a functional
+    requirement of a rotating-ring loading indicator, not a themeable
+    roundedness choice.
+  - **Connection badges** (wired/2.4GHz/5GHz/6GHz): Fujin has no semantic
+    role for a 4-way categorical badge, so these pull from Fujin's raw
+    palette ramps (`palette.blue/green/orange/grape[5]`) instead of
+    one-off hex values.
+  - **Mode:** dark-only. `ExtensionSettings` has no theme field and nothing
+    asked for a light/dark toggle; `resolveLight` is unused.
+- Rationale: the fleet-wide consumption audit
+  (`Raiden-ops/reports/FUJIN_CONSUMPTION_AUDIT_2026-07-26.md`) flagged this
+  repo as exactly the kind of naming-only reference that silently drifts —
+  a snapshot frozen at whatever Fujin looked like when copied, with no path
+  for a later Fujin token change to reach it. A real dependency closes that
+  gap: a Fujin token rename or removal now surfaces as a build/typecheck
+  failure here, not silent drift.
+- Consequence: five background-tier collisions in the mechanical old-var
+  → new-var rename (Fujin has 4-5 dark surface tiers where the old palette
+  had 8 distinct roles) were resolved by hand rather than left to collapse
+  arbitrarily — most visibly, `.mc-tabs button` (inactive) and
+  `.mc-tabs button.is-active` were deliberately kept on different tiers
+  (`--fujin-bg-surface` vs `--fujin-bg-elevated`) so the active/inactive
+  tab state stays visually distinguishable. Several colors shifted hue or
+  brightness by design (primary text is now `#c9c9c9`, not pure white;
+  the link/hint colors moved onto Fujin's `interactive`/`status` roles).
+  Registered in `Fujin/CONSUMERS.md` and `Raiden-ops/registry/EDGES.md`
+  (`merlins_cloak_v2 → Fujin`, type `build-dep`) in the same pass.
