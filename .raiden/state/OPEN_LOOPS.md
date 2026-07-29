@@ -363,6 +363,47 @@ and untracked. It exists only on the machine where the audit-verification
 pass was run. The findings below are reproduced in full here specifically
 so they persist in tracked history independent of that local-only file.
 
+Report reliability caveat: this audit-verification report's own
+methodology section states that only one of its two source third-party
+audit reports exists as a file on disk in this repository,
+merlins_cloak_v2_SECURITY_AUDIT_2026-07-29.md. The second, described only
+as a general-purpose report, has no filename or path given anywhere and
+was checked only against a paraphrase from a task brief, not read
+directly. Any finding here framed as resolving a disagreement between the
+two source reports should be read with that in mind: one side of that
+comparison rests on secondhand paraphrase, not a directly verified
+document.
+
+### Content Security Policy — confirmed Info, no action needed
+No content_security_policy key exists anywhere in wxt.config.ts's manifest
+factory. The MV3 platform default, script-src self and object-src self, is
+therefore in effect. Given this codebase's actual permission and code
+surface, no eval or new Function usage, no inline extension-page scripts,
+React's default escaping for UI content, the platform default is adequate.
+No action needed.
+
+### .gitignore recommendation — refuted, already stale when written
+The source report recommended adding .audits/ to .gitignore. This
+repository's .gitignore already contained that entry three days before the
+report was written, added in a prior commit. This recommendation was
+already stale at the moment it was made. No action needed; noted only as a
+provenance observation about this source report's own thoroughness.
+
+### Full-history secret scan — partial, open, actionable
+This session's own new commits have been independently, fully diff-read
+for secrets by two separate pre-push commit reviews and confirmed clean;
+this item does not concern those. Separately, and distinctly: the broader
+question of whether this repository's full pre-existing git history has
+ever been properly secret-scanned remains only partially answered. No
+dedicated secret-scanning tool, such as gitleaks or trufflehog, was
+available in the environment where this was checked. A fallback bounded
+manual search across nine high-signal patterns found zero credential
+matches; all non-zero hits were confirmed false positives, prose inside
+audit-report or tooling documents discussing which patterns to search for.
+This is not equivalent to a full-history entropy scan. Installing a
+dedicated scanner and running a proper full-history scan remains open and
+actionable.
+
 ### `brace-expansion` / minimatch High-severity chain (9 findings)
 - **Status:** Confirmed open, High severity, not yet fixed. Not subject to
   the VPN/firewall write-path hard-exclusion policy — fully implementable

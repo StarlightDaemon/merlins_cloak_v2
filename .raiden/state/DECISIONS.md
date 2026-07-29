@@ -522,3 +522,38 @@
   to preserve the reasoning behind the severity downgrade so it isn't
   re-litigated from scratch by a future pass re-reading the same two
   reports.
+
+## D-016
+
+- Date: 2026-07-29
+- Status: Closed (completeness verification complete)
+- Decision: Cross-checked the full 2026-07-29 audit-verification report
+  against this repository's tracked history, to confirm completeness before
+  treating the audit-verification-pass consolidation commit as final. Of
+  eleven distinct sections in the source report, eight were already
+  captured with reasonable fidelity across D-008 through D-015 and the
+  corresponding OPEN_LOOPS.md entries. Three were missing and have been
+  added: a Content Security Policy finding, confirmed Info, no action
+  needed; a .gitignore recommendation, refuted as already stale when the
+  report was written; and a full-history secret scan, confirmed only
+  partial, not a full entropy scan, remaining open and actionable, separate
+  from and not undermining the two independent clean secret-diff reviews
+  already performed on this session's own commits. Also recorded a
+  methodology caveat from the source report itself: only one of its two
+  source third-party audit reports exists as a file in this repository, the
+  second was checked only against a paraphrase, not read directly. This
+  closes the completeness question for this specific report's findings. It
+  does not represent a full-history secret scan having been completed; that
+  remains tracked as its own open item in OPEN_LOOPS.md.
+- Rationale: The audit-verification pass's own consolidation into
+  `OPEN_LOOPS.md` entries and corresponding decision records is now
+  complete, with all distinct findings cross-checked against tracked
+  history. Three findings that did not appear in earlier decisions have
+  been added to maintain a complete record. The caveat about report
+  methodology (one source report unverified) is documented in
+  OPEN_LOOPS.md's new reliability-caveat paragraph and here as part of the
+  closure, so that any future reference to disagreements between the two
+  source reports carries this context forward. The full-history secret scan
+  remains open and is now its own explicit item in OPEN_LOOPS.md, distinct
+  from the two independent clean reviews already performed on this
+  session's own new commits.
