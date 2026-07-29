@@ -22,12 +22,14 @@
  *    requires a companion wgs_unit field in the SAME post. Since this router
  *    only ever has one WireGuard server instance (wgs1_, the unit selector
  *    is hardcoded to a single option "1" in the native page), fields here
- *    are modeled directly against the literal wgs1_ keys with no instance
- *    selector. Whether a plain nvram_set-style direct write to wgs1_* keys
- *    (bypassing the wgs_unit indirection) is honored by validate_apply was
- *    not confirmed from the available source — flagged here as an
- *    additional layer of uncertainty on top of the standard unverified-write
- *    tier.
+ *    are read directly against the literal wgs1_ keys with no instance
+ *    selector, matching native's read behavior. Confirmed (D-007/D-008 in
+ *    DECISIONS.md) that a plain nvram_set-style direct write to wgs1_* keys
+ *    is NOT honored by validate_apply — the table-driven write path never
+ *    reads an unmatched posted key at all, so such writes silently never
+ *    reached nvram. Fixed: the write path now posts the unindexed wgs_*
+ *    fields plus a leading wgs_unit=1, matching native's actual posting
+ *    pattern (wireguardServerPage.write.buildFields below).
  */
 import type { SettingsPageDef } from '../types';
 import { hasFlag } from '../../lib/capabilities';
@@ -569,6 +571,22 @@ export const wireguardServerPage: SettingsPageDef = {
     endpoint: 'applyapp',
     rcService: 'restart_wgs;restart_dnsmasq',
     actionWait: 1,
+    // validate_apply's redirect for wgs_ prefixed fields (web.c ~4746-4755)
+    // requires unit to already be positive, which happens when wgs_unit is
+    // present anywhere in this posted body. Order in the request does not
+    // matter: validate_apply walks the static router_defaults table, not
+    // the posted fields, and get_cgi_json is a name-keyed lookup, not
+    // positional. wgs_unit already precedes the other wgs_ entries in that
+    // table (shared/defaults.c), so no client-side ordering is required.
+    // See D-007, D-008, and D-015 in DECISIONS.md. Posting the already-
+    // indexed wgs1_xxx keys directly, as this project did before this fix,
+    // is never inspected by validate_apply at all, since it only reads
+    // keys from that static table, never from the posted body's own names.
+    buildFields: (changed) => {
+      const fields: Record<string, string> = { wgs_unit: '1' };
+      for (const [k, v] of Object.entries(changed)) fields[k.replace(/^wgs1_/, 'wgs_')] = v;
+      return fields;
+    },
   },
 };
 
