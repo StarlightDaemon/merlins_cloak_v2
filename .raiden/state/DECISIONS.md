@@ -389,3 +389,40 @@
   of using external research as an independent confirmation mechanism. For
   D-009 and D-010, the only reliable next steps are locating the missing GPL
   source outside this repository or live testing against actual hardware.
+
+## D-015
+
+- Date: 2026-07-29
+- Status: Closed (source-level resolution complete; two items remain open
+  for live testing only — see `OPEN_LOOPS.md`)
+- Decision: Definitively resolved the wgs_unit and wgs_ redirect mechanism in
+  validate_apply, reconciling a contradiction between the original D-007 and
+  D-008 characterization and a separately surfaced, unverified claim about
+  posted field order. An independent, from scratch re-read of web.c and
+  cgi.c in full confirms D-008's table driven loop finding was exactly
+  right, re-derived independently rather than assumed. The unit assignment
+  around web.c line 4379 through 4406 and the wgs_ redirect around web.c
+  line 4746 through 4755 are two arms of the same else-if chain inside the
+  single loop over the static router_defaults table, around web.c line 4316
+  through 5060, not over the posted request body. get_cgi_json around cgi.c
+  line 94 through 115, and the underlying get_cgi and hsearch_r path, are
+  both name-keyed lookups against the fully parsed posted body, confirmed
+  directly from source. Posted field order is irrelevant. What actually
+  determines correctness: wgs_unit must be present anywhere in the posted
+  body, and wgs_unit's position in the static router_defaults table, around
+  shared defaults.c line 5416, must precede the other wgs_ entries at line
+  5417 through 5425, which it already does, independent of anything the
+  client does. The originally committed inline code comment describing this
+  as a POST ordering requirement was factually wrong about the mechanism,
+  though the resulting client behavior was harmless, since wgs_unit is
+  unconditionally included in every save regardless of position. The comment
+  has been corrected in this same history cleanup to describe the real
+  requirement. This independently reconfirms D-007 and D-008: the pre-fix
+  approach of posting already-indexed wgs1_ keys directly could never have
+  worked, since validate_apply never reads a posted key that is not a name
+  from the static table. Verdict on the shipped fix: correct, confirmed via
+  full independent source verification. Two things remain genuinely
+  unresolved and require live testing, not further source research: whether
+  the actual deployed firmware matches this exact RAW/merlin tree with
+  RTCONFIG_WIREGUARD defined, and whether restart_wgs actually applies the
+  redirected values to the running WireGuard interface.

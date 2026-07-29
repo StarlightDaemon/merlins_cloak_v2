@@ -123,6 +123,16 @@ closed above.
   `.audits/merlins_cloak_v2_AUDIT_VERIFICATION_2026-07-29.md` §2. Decision
   record: `DECISIONS.md` D-008's verification addendum.
 
+- **Update following D-015:** the shipped write-path fix is now confirmed
+  correct at the source and control-flow level via full independent
+  verification, superseding the earlier commit review's High severity
+  finding about the inline comment, which has been corrected. This item
+  remains open only pending live verification of two things that cannot be
+  resolved from source: whether the deployed firmware matches the source
+  tree this verification was performed against, and whether restart_wgs
+  actually applies the redirected values to the running interface. This is
+  now a Track D live-testing item, not further code or research work.
+
 ### `ipsec_profile_2` regeneration
 - **Status:** Confirmed open, **High** severity, conditional risk (severity
   confirmed by external audit cross-check, 2026-07-29 — see below; the
