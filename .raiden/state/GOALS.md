@@ -12,7 +12,9 @@
 - **Why:** Write correctness against real hardware is the primary blocker to
   moving past beta; read paths are already broadly exercised, but writes
   carry real router-configuration risk.
-- **Related loops:** none tracked (see `OPEN_LOOPS.md`).
+- **Related loops:** `OPEN_LOOPS.md` "Write-path correctness gaps" —
+  source-research can narrow four specific open questions ahead of the live
+  pass, but the live pass itself still needs the operator.
 - **Updates:** none yet.
 
 ### Firefox live verification
@@ -27,20 +29,39 @@
 - **Related loops:** none tracked.
 - **Updates:** none yet.
 
-### Operator review and push of local history
+### Chrome Web Store submission readiness
 
-- **Set:** 2026-07-25
-- **Goal:** Get operator sign-off to push the local-only commits to
-  `origin/main`, which currently holds only the 7-commit scaffold-plus-
-  research-docs base.
-- **Why:** The full extension implementation exists only in local history;
-  the public GitHub repo does not yet reflect the current state of the
-  project.
-- **Related loops:** none tracked.
-- **Updates:** none yet.
+- **Set:** 2026-07-28
+- **Goal:** Reach a submittable Chrome Web Store listing for
+  `merlins-cloak-v2`.
+- **Why:** The extension is functional and pushed, but a public store
+  listing needs more than working code — hosted privacy policy, listing
+  copy, permissions justification, a data-disclosure declaration, and real
+  UI screenshots, plus the operator's own developer-account registration.
+- **Related loops:** `OPEN_LOOPS.md` "Chrome Web Store readiness" (store
+  listing screenshots — the one remaining solo-completable piece).
+- **Updates:** 2026-07-28 — privacy policy drafted and live via GitHub
+  Pages (`docs/privacy-policy.md`,
+  https://starlightdaemon.github.io/merlins_cloak_v2/privacy-policy.html);
+  store listing title/descriptions, permissions justification, and
+  data-disclosure answers drafted (`docs/CHROME_STORE_LISTING.md`),
+  permissions justification grounded in the actual runtime code (no
+  permission trimmed further — the manifest's broad-looking
+  `optional_host_permissions` is a Chrome match-pattern platform limit, not
+  unminimized scope; see `App.tsx`'s `isPrivateRouterHost`). Operator
+  mid-registration: non-trader, publisher name `StarlightDaemon`, contact
+  email routed via a new `starlightdaemon.dev` Proton custom-domain address
+  (handled in a separate session, not this repo). Screenshots remain open.
 
 ---
 
 ## Achieved / Retired Goals
 
-None yet.
+### Operator review and push of local history — Achieved 2026-07-28
+
+- **Set:** 2026-07-25.
+- **Outcome:** All local history is on `origin/main`. Pushed across three
+  operator-authorized pushes this session (`bac6965`, then `99b7a92` /
+  `1c2705f` / `2d29065`); local `main` and `origin/main` are now identical.
+  `origin/main` is no longer the 7-commit scaffold base described when this
+  goal was set.

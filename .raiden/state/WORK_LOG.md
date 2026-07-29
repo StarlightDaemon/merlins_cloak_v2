@@ -2,6 +2,40 @@
 
 ## Entries
 
+### 2026-07-28 — Pushed remaining backlog, closed Dependabot alerts, Chrome Web Store prep, open-loops consolidation
+
+- **Did:** Reviewed and pushed the Fujin theme-migration commit (`bac6965`)
+  plus the full 57-commit local backlog to `origin/main`, verifying
+  independently (tsc/eslint/both builds, node_modules install check, diff
+  scan for credential-like strings) rather than trusting the prior
+  session's report. Reviewed and closed 3 of GitHub's 6 flagged Dependabot
+  alerts via `package.json` overrides (uuid, tmp — bumped past a second,
+  newer advisory 0.2.6 alone didn't clear — and esbuild); the other 3 were
+  already fixed by a prior override commit. Left one non-flagged, auto-
+  dismissed `brace-expansion` instance alone after confirming forcing it
+  breaks eslint (minimatch@3.1.5 is hard-wired to the pre-5.x API).
+  Exported both browser packages (`wxt zip` / `zip:firefox`); caught and
+  fixed the Firefox sources-ZIP bundling the local, gitignored `RAW/`
+  firmware dumps (2.51GB → 428KB) via `zip.excludeSources` in
+  `wxt.config.ts`. Drafted Chrome Web Store readiness materials: hosted
+  privacy policy (`docs/privacy-policy.md`, live via GitHub Pages on
+  `main`/`docs`) and store listing copy, permissions justification, and
+  data-disclosure answers (`docs/CHROME_STORE_LISTING.md`), the latter
+  grounded in a read of the actual runtime permission-request code rather
+  than assumption. Consolidated all remaining open work into
+  `OPEN_LOOPS.md` and retired the now-stale "operator review and push"
+  goal in `GOALS.md`.
+- **Result:** `origin/main` fully matches local `main`. `npm audit`: 0
+  vulnerabilities. tsc/eslint/both builds clean throughout. Privacy policy
+  confirmed live and rendering correctly (fetched directly, not assumed).
+- **Loops:** opened the full current set in `OPEN_LOOPS.md` — Chrome Web
+  Store screenshots (solo-completable), four write-path correctness
+  questions answerable via `RAW/` source research, and twelve deferred
+  features.
+- **Next:** operator finishing their own Chrome Web Store developer-account
+  registration (trader status, publisher name, and contact email already
+  decided); a separate agent session picking up `OPEN_LOOPS.md`.
+
 ### 2026-07-27 — Migrated theme layer to a real Fujin dependency
 
 - **Did:** Replaced the hand-copied `src/theme/fujin-tokens.ts` snapshot
