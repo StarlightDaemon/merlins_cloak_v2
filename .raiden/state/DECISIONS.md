@@ -426,3 +426,99 @@
   the actual deployed firmware matches this exact RAW/merlin tree with
   RTCONFIG_WIREGUARD defined, and whether restart_wgs actually applies the
   redirected values to the running WireGuard interface.
+
+## D-013
+
+- Date: 2026-07-29
+- Status: Closed (no further action needed to confirm the finding; fix
+  itself is a separate, unscheduled follow-up — see `OPEN_LOOPS.md` cross-
+  reference below if one is added)
+- Decision: Verified two third-party audit reports' shared claim
+  (`.audits/merlins_cloak_v2_AUDIT_VERIFICATION_2026-07-29.md`) that the 9
+  High-severity `npm audit` findings in this repository all trace to a
+  single root cause — `brace-expansion` (GHSA-mh99-v99m-4gvg) — cascading
+  through `minimatch` into `eslint`, `eslint-plugin-react`, and `wxt` (via
+  `web-ext-run`/`multimatch`). Re-ran `npm audit --json` fresh rather than
+  trusting either report's numbers: confirmed exactly 9 High findings, 0 of
+  any other severity, and confirmed the dependency chain matches the
+  reports' description exactly. Separately checked this against the
+  2026-07-27 fleet-wide vulnerability remediation pass (commits `7853eea`:
+  shell-quote, adm-zip; `99b7a92`: uuid, tmp, esbuild): **zero overlap** —
+  none of those five already-pinned packages appear in the current 9
+  findings. This is not a regression or something newly discovered by
+  either audit: commit `99b7a92`'s own message already identified this
+  exact `brace-expansion` instance at the time and explicitly deferred it
+  ("Fixing it needs a minimatch major bump across eslint,
+  eslint-plugin-react, and wxt's web-ext-run — left for a separate pass"),
+  and recorded `npm audit` as reporting 0 vulnerabilities immediately after
+  that commit — consistent with these 9 being a known, intentionally-
+  deferred gap that reappeared only because it was never itself fixed, not
+  because anything regressed.
+- Rationale: all 9 findings are dev-only (`npm audit`'s own dependency
+  metadata: `"prod": 5` — react/react-dom and peers — against a 669-package
+  dev graph carrying all 9); nothing vulnerable ships in the built
+  extension artifact. Every one of the 9 findings' suggested fix carries
+  `isSemVerMajor: true` — there is no available non-major (`npm audit fix`)
+  resolution. Notably, npm's own suggested `eslint-plugin-react` target
+  (7.22.0) is *below* the current constraint (`^7.37.5`), meaning the
+  mechanical `--force` resolution path is not trustworthy here and any fix
+  needs a manually-verified upgrade path across `eslint` (9→10),
+  `eslint-plugin-react`, and `wxt` (0.20→0.21), each re-verified against
+  `tsc --noEmit`, `eslint`, and both Chrome/Firefox builds. This fix is
+  fully implementable and testable without any router or live-hardware
+  involvement — it is not subject to the VPN/firewall write-path
+  hard-exclusion policy that gates D-007 through D-010's fixes.
+
+## D-014
+
+- Date: 2026-07-29
+- Status: Closed
+- Decision: Resolved a disagreement between two third-party audit reports
+  over `src/entrypoints/background.ts`'s `onMessage` listener (`mc2-collect-
+  flags`, around line 78) — one rated it High ("unvalidated execution sink":
+  executes a function in `sender.tab.id` without validating sender origin
+  or ID), the other Info (read-only capability detection, no privileged
+  effect). Resolved as **Info**, independently, not by picking either
+  report's number:
+  - Read the executed function, `collectSupportFlags`
+    (`background.ts:56-72`), in full: it enumerates the calling tab's own
+    `window` global property names, filters to a `_support`-suffixed
+    subset (the router firmware's own capability-flag convention, already
+    read elsewhere in this codebase via `nvram_get` and gated on via
+    `lib/capabilities.ts`'s `hasFlag()`), and returns only primitive
+    values or a `'{}'` stub for object-shaped ones. No navigation, no
+    `fetch`/`XMLHttpRequest`, no DOM mutation, no storage write, no nvram
+    or router interaction of any kind.
+  - Confirmed reachability rather than assuming it: `wxt.config.ts`
+    declares no `externally_connectable`, so by the WebExtensions platform
+    contract `onMessage` (unlike `onMessageExternal`) only fires for
+    messages from this extension's own contexts — not arbitrary web-page
+    JS, not other extensions. Grepped every call site of
+    `mc2-collect-flags`: the only sender is `src/lib/capabilities.ts`,
+    itself only running inside this extension's own content script, which
+    itself only mounts on pages passing `content.tsx`'s host/path/page-
+    shape guards.
+  - Conclusion: the "unvalidated execution sink" framing is an accurate
+    description of the code pattern (no `sender.id`/`sender.origin` check
+    exists) but there is no reachable attacker who benefits from the
+    missing check — the platform already restricts who can call this
+    handler at all, and the function itself has no privileged effect to
+    abuse even if it could be invoked with an attacker-chosen `tabId`
+    (which it cannot be — `sender.tab.id` is platform-supplied). The High
+    framing appears to pattern-match "unvalidated message → executeScript"
+    without confirming what the executed function does or whether the
+    handler is actually reachable by an untrusted party.
+  - The one real residual risk this path carries is entirely downstream of
+    the host-permissions finding (broad `optional_host_permissions`): if
+    the content script is ever induced to mount somewhere it shouldn't,
+    that page's `window` globals could be fingerprinted via this path.
+    That risk is already captured by the host-permissions item; it is not
+    a separate High-severity issue in the message handler itself.
+- Rationale: optional defense-in-depth only — a `sender.id !==
+  browser.runtime.id` check would be consistent with security best
+  practice and is Trivial effort, Localized blast radius, but is not
+  functionally required given the current permission surface and would not
+  change behavior today. No action item opened; this decision record exists
+  to preserve the reasoning behind the severity downgrade so it isn't
+  re-litigated from scratch by a future pass re-reading the same two
+  reports.

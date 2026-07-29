@@ -355,6 +355,77 @@ question without a materially different method.
   logic); the underlying nvram keys are `ipsec_client_list_1` /
   `ipsec_client_list_2`.
 
+## Audit-verification pass findings (2026-07-29)
+
+Note: the source report cited throughout this section,
+`.audits/merlins_cloak_v2_AUDIT_VERIFICATION_2026-07-29.md`, is gitignored
+and untracked. It exists only on the machine where the audit-verification
+pass was run. The findings below are reproduced in full here specifically
+so they persist in tracked history independent of that local-only file.
+
+### `brace-expansion` / minimatch High-severity chain (9 findings)
+- **Status:** Confirmed open, High severity, not yet fixed. Not subject to
+  the VPN/firewall write-path hard-exclusion policy — fully implementable
+  and testable (build + lint + typecheck) without any router or live-
+  hardware involvement, unlike the write-path items above.
+- **Finding:** `npm audit` reports 9 High-severity findings, all tracing to
+  a single root cause — `brace-expansion` (GHSA-mh99-v99m-4gvg) — cascading
+  through `minimatch` into `eslint`, `eslint-plugin-react`, and `wxt` (via
+  `web-ext-run`/`multimatch`). Confirmed via a fresh `npm audit --json` run
+  during the 2026-07-29 audit-verification pass, cross-checked against two
+  independent third-party audit reports that made the same root-cause
+  claim. Zero overlap with the 2026-07-27 fleet-wide remediation
+  (`7853eea`: shell-quote, adm-zip; `99b7a92`: uuid, tmp, esbuild) — this
+  is a distinct, previously-known-and-deliberately-deferred gap, not a
+  regression (`99b7a92`'s own commit message already identified this exact
+  instance and explicitly deferred it). All 9 are dev-only; nothing
+  vulnerable ships in the built extension artifact.
+- **Fix:** requires coordinated major-version bumps — `eslint` (9→10),
+  `eslint-plugin-react` (npm's own suggested target, 7.22.0, is a
+  *downgrade* from the current `^7.37.5` constraint and should not be
+  trusted mechanically — needs a manually-verified compatible version),
+  and `wxt` (0.20→0.21) — each re-verified against `tsc --noEmit`,
+  `eslint`, and both `build`/`build:firefox` afterward.
+- **Where:** `package.json` devDependencies (`eslint`, `eslint-plugin-
+  react`, `wxt`); full analysis and fix plan in
+  `.audits/merlins_cloak_v2_AUDIT_VERIFICATION_2026-07-29.md` §6. Decision
+  record: `DECISIONS.md` D-013.
+
+### Host permissions — store-listing justification text, not a code fix
+- **Status:** Confirmed finding, but **already substantially addressed** —
+  logged here as a cross-reference so it does not get picked up later as a
+  dangling code-fix task.
+- **What:** `wxt.config.ts:50`'s `optional_host_permissions:
+  ['http://*/*', 'https://*/*']` is functionally an all-URLs declaration.
+  One of the two third-party audit reports verified during the 2026-07-29
+  audit-verification pass flagged this as High
+  (`.audits/merlins_cloak_v2_AUDIT_VERIFICATION_2026-07-29.md` §7).
+- **Why this is not a code task:** confirmed independently that the
+  *actual* runtime restriction is already correct — `App.tsx`'s
+  `isPrivateRouterHost()` limits every actual permission request to RFC1918
+  / loopback / `.local` hosts before `browser.permissions.request()` is
+  ever called — and separately confirmed that narrowing the *declared*
+  `optional_host_permissions` pattern itself is **not feasible**: WebExtension
+  match-pattern syntax cannot wildcard individual IP-literal octets, so
+  "RFC1918 only" cannot be expressed as a manifest pattern at all. This
+  matches what `GOALS.md`'s "Chrome Web Store submission readiness" goal
+  already recorded on 2026-07-28: permissions justification text
+  grounded in the actual runtime code, explicitly citing this as "a
+  Chrome match-pattern platform limit, not unminimized scope." The
+  verification pass independently re-confirmed that framing is technically
+  accurate rather than merely asserted.
+- **What actually remains:** confirm this justification is present and
+  clear in the drafted `docs/CHROME_STORE_LISTING.md` before Chrome Web
+  Store submission (`GOALS.md` tracks the submission goal itself). No
+  Firefox AMO signing/listing goal is currently tracked in `GOALS.md` (only
+  "Firefox live verification," which is about loading the build against
+  hardware, not store submission) — when one is created, this same
+  justification-not-code framing should carry over to it rather than being
+  re-derived.
+- **Where:** `wxt.config.ts:50`; `src/entrypoints/popup/App.tsx`
+  (`isPrivateRouterHost`); `docs/CHROME_STORE_LISTING.md`; tracked goal in
+  `GOALS.md` ("Chrome Web Store submission readiness").
+
 ## Missing features (deferred scope)
 
 Each of these is a genuinely new feature — nothing currently reads or
