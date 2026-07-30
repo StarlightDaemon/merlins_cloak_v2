@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merlin's Cloak v2</title>
+    <meta name="description" content="Modernized, client-side re-theme of the Asuswrt-Merlin router UI. Talks only to your router — no accounts, no cloud, no tracking.">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="hero">
+        <div class="container">
+            <h1>Merlin's Cloak <span class="accent-text">v2</span></h1>
+            <p class="subtitle">A modernized, client-side re-theme of the Asuswrt-Merlin router UI.</p>
+            <p class="hook">Same router, same settings, different front end. Talks only to your router — no accounts, no cloud, no tracking.</p>
+
+            <div class="action-group">
+                <a href="#installation" class="btn btn-primary">How to Install</a>
+                <span class="btn-version">Pre-release (<span class="mono">0.9.0-beta.1</span>)</span>
+                <a href="https://github.com/StarlightDaemon/merlins_cloak_v2" target="_blank" class="btn btn-secondary">View Source on GitHub</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="features" class="grid-section">
+            <div class="card">
+                <div class="card-title-row">
+                    <h3>Read-Only by Default</h3>
+                    <span class="chip chip-success"><span class="chip-dot"></span>Read-only by default</span>
+                </div>
+                <div class="card-body">
+                    <p>Explore safely. The extension ships with a read-only interlock switched on. You can browse every value the router exposes, but nothing can be written back until you deliberately turn the interlock off.</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title-row">
+                    <h3><span class="swatch swatch-success"></span>Your Data Stays Local</h3>
+                </div>
+                <div class="card-body">
+                    <p>Every request is a same-origin request to your router. There is no analytics, no telemetry, no crash reporting, and no server operated by the developer. It rides your browser's existing authenticated session.</p>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title-row">
+                    <h3><span class="swatch swatch-info"></span>Extensive Coverage</h3>
+                </div>
+                <div class="card-body">
+                    <p><span class="mono">73</span> views across every major settings and status category — Wireless, LAN, WAN, Firewall, VPN, QoS, USB apps, Parental Controls, AiProtection, DNS Director, and more.</p>
+                </div>
+            </div>
+        </section>
+
+        <section id="status" class="content-section">
+            <div class="card">
+                <div class="card-title-row">
+                    <h2>Project Status &amp; Compatibility</h2>
+                </div>
+                <div class="card-body">
+                    <div class="status-grid">
+                        <div class="status-item">
+                            <h4>Current Maturity</h4>
+                            <p>This is a <strong>beta release</strong>. Read paths are broadly exercised. Write paths are implemented but almost entirely unverified against live hardware (except for one view). The read-only interlock defaults on for your safety.</p>
+                            <p class="chip-line"><span class="chip chip-success"><span class="chip-dot"></span>Read-only by default</span></p>
+                        </div>
+                        <div class="status-item">
+                            <h4>Hardware Support</h4>
+                            <p><span class="badge badge-success">Live-verified</span> Asuswrt-Merlin <span class="mono">RT-BE92U</span>.<br>
+                            <span class="badge badge-info">Structurally sourced</span> <span class="mono">RT-AX88U</span>, from a firmware source diff (untested on live hardware).<br>
+                            <span class="badge badge-warning">Untested, compatibility unknown</span> other Wi-Fi 6, 6E, or 7 ASUS routers — no structural analysis has been performed on them.<br>
+                            <span class="badge badge-warning">Out of scope</span> ROG or GT models. The extension is also built specifically against Asuswrt-Merlin, so stock ASUSWRT firmware isn't a target either.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="installation" class="content-section">
+            <div class="card">
+                <div class="card-title-row">
+                    <h2>Installation Guidance</h2>
+                </div>
+                <div class="card-body">
+                    <p>Merlin's Cloak v2 targets Chrome and Firefox. It is currently in a developer preview state and is <strong>not yet published</strong> on the Chrome Web Store or Firefox Add-ons.</p>
+                    <div class="install-steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Build from Source</h4>
+                                <p>You will need Node.js. Clone the repository and run <code>npm install</code> followed by <code>npm run build</code> (for Chrome) or <code>npm run build:firefox</code>.</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Load in Chrome</h4>
+                                <p>Open <code>chrome://extensions</code>, turn on <strong>Developer mode</strong>, click <strong>Load unpacked</strong>, and select the generated <code>.output/chrome-mv3</code> folder.</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Load in Firefox (Temporary)</h4>
+                                <p>Open <code>about:debugging#/runtime/this-firefox</code>, click <strong>Load Temporary Add-on…</strong>, and select the <code>manifest.json</code> file inside <code>.output/firefox-mv3/</code>. Note: Firefox installs do not survive a browser restart.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="legal-disclaimer">
+                <h4>Legal &amp; Trademarks</h4>
+                <p><strong>This project is not affiliated with, endorsed by, or sponsored by ASUSTeK Computer Inc. or the Asuswrt-Merlin project.</strong> It is an independent, third-party client, developed and maintained separately from both.</p>
+                <p>Product and feature names that appear in this extension and its documentation — including ASUSWRT, Asuswrt-Merlin, AiProtection, Guest Network Pro, AiMesh, AiCloud, Adaptive QoS, DNS Director, VPN Director, Trend Micro, and the *Formerly "…"* tooltips that map renamed views back to the names the router's own UI used — are used <strong>descriptively, to identify which router feature a given view corresponds to</strong>. They are the property of their respective owners. Their use here is not a claim of affiliation, endorsement, or sponsorship, and does not imply that either ASUS or Asuswrt-Merlin has reviewed, approved, or supports this software.</p>
+                <p>Released under the MIT License.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
