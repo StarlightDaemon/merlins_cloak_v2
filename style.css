@@ -423,6 +423,14 @@ code {
     color: var(--text-secondary);
 }
 
+.legal-disclaimer a {
+    color: var(--interactive);
+}
+
+.legal-disclaimer a:hover {
+    color: var(--interactive-hover);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     h1 { font-size: 24px; }

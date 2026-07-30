@@ -1,0 +1,142 @@
+<!--
+This file is a manually maintained copy. Source of truth is docs/privacy-policy.md on the main branch. Any edit to the policy content must be applied to both files.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merlin's Cloak v2 — Privacy Policy</title>
+    <meta name="description" content="Privacy policy for Merlin's Cloak v2, a client-side re-theme of the Asuswrt-Merlin router UI.">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header class="hero">
+        <div class="container">
+            <p><a href="index.html">← Back to Merlin's Cloak v2</a></p>
+            <h1>Privacy Policy</h1>
+            <p class="subtitle">Merlin's Cloak v2</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section class="content-section">
+            <div class="card">
+                <div class="card-body">
+                    <p><strong>Effective:</strong> 2026-07-28</p>
+
+                    <p>Merlin's Cloak v2 is a browser extension that replaces the web interface of
+                    an Asuswrt-Merlin router with a client-side re-theme. This policy describes,
+                    in full, what the extension does and does not do with data. There is no
+                    separate, longer version of this policy — this is the whole thing.</p>
+
+                    <h2>The short version</h2>
+
+                    <p>The extension talks only to the router address you configure. It has no
+                    server of its own, contacts no third party, and does not know you exist.</p>
+
+                    <h2>What the extension can see</h2>
+
+                    <ul>
+                        <li><strong>Router status and configuration values</strong> (nvram entries, log lines,
+                        client lists, traffic counters, and similar) — read from your router using
+                        the browser session you are already authenticated with, exactly as the
+                        router's native web UI would read them.</li>
+                        <li><strong>Settings you choose to submit</strong> — when you use a settings page and click
+                        Apply, the extension constructs the same kind of request the router's own
+                        native page would send, and sends it directly to your router. This can
+                        include fields the router itself defines as sensitive, such as a Wi-Fi
+                        passphrase or a VPN pre-shared key — the extension is a UI for entering
+                        values the native firmware page would otherwise collect the same way. That
+                        value passes through the extension's memory only in the course of
+                        submitting the form you filled in; it is not logged, stored, or sent
+                        anywhere else.</li>
+                    </ul>
+
+                    <h2>What the extension stores</h2>
+
+                    <p>Two settings, in the browser's local extension storage (<code>chrome.storage</code>),
+                    and nothing else:</p>
+
+                    <ul>
+                        <li>the router address you've configured, and</li>
+                        <li>whether read-only mode is on (it defaults to on).</li>
+                    </ul>
+
+                    <p>Nothing else persists. There is no history, no cache of values you've
+                    viewed, no record of past writes beyond what the browser's own Diagnostics
+                    panel shows for the current session (and that panel's log is in-memory and
+                    disappears on close).</p>
+
+                    <h2>What the extension never does</h2>
+
+                    <ul>
+                        <li>No analytics, telemetry, crash reporting, or usage tracking of any kind.</li>
+                        <li>No calls to any host other than the router address you configured. There
+                        is no update-check server, no remote config, no third-party API of any
+                        kind — same-origin requests to your router are the only network traffic
+                        the extension generates.</li>
+                        <li>No collection of your router credentials. The extension relies on the
+                        authenticated session your browser already has with the router; it never
+                        sees, stores, or transmits your login password.</li>
+                        <li>No sale, sharing, or transfer of any data to anyone, for any purpose.</li>
+                    </ul>
+
+                    <h2>Permissions, and why each one exists</h2>
+
+                    <ul>
+                        <li><strong><code>storage</code></strong> — holds the two settings listed above.</li>
+                        <li><strong><code>scripting</code></strong> — used only against the router origin you've configured,
+                        for two purposes: registering the extension's interface on a custom
+                        (non-default) router address after you've explicitly granted it, and
+                        reading firmware capability flags that Manifest V3's isolated-world
+                        content scripts cannot otherwise see.</li>
+                        <li><strong>Host permissions</strong> — the extension is pre-registered for the router's
+                        common default addresses (<code>192.168.1.1</code> and the two Asuswrt-Merlin DNS
+                        names) so it works immediately without a setup step. For any other
+                        address, it requests permission for that one specific origin only, at the
+                        moment you save it, and only if it's a private-network address (RFC1918,
+                        loopback, or a <code>.local</code> name) — it is not able to request, and will not
+                        request, permission for any public internet host.</li>
+                    </ul>
+
+                    <h2>Children's privacy</h2>
+
+                    <p>The extension is a router-administration tool and is not directed at, or
+                    knowingly used by, children.</p>
+
+                    <h2>Changes to this policy</h2>
+
+                    <p>If this policy ever changes, the updated version will be published at this
+                    same URL with a new effective date, and noted in the project's
+                    <a href="https://github.com/StarlightDaemon/merlins_cloak_v2/blob/main/CHANGELOG.md">CHANGELOG</a>.</p>
+
+                    <h2>Contact</h2>
+
+                    <p>Questions about this policy or the extension's data handling can be filed as
+                    an issue at
+                    <a href="https://github.com/StarlightDaemon/merlins_cloak_v2/issues">github.com/StarlightDaemon/merlins_cloak_v2/issues</a>.</p>
+
+                    <h2>Not affiliated with ASUS</h2>
+
+                    <p>Merlin's Cloak v2 is an independent, unofficial project. It is not produced,
+                    endorsed, or supported by ASUSTeK Computer Inc. or the Asuswrt-Merlin
+                    project.</p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="legal-disclaimer">
+                <h4>Legal &amp; Trademarks</h4>
+                <p><strong>This project is not affiliated with, endorsed by, or sponsored by ASUSTeK Computer Inc. or the Asuswrt-Merlin project.</strong> It is an independent, third-party client, developed and maintained separately from both.</p>
+                <p>Product and feature names that appear in this extension and its documentation — including ASUSWRT, Asuswrt-Merlin, AiProtection, Guest Network Pro, AiMesh, AiCloud, Adaptive QoS, DNS Director, VPN Director, Trend Micro, and the *Formerly "…"* tooltips that map renamed views back to the names the router's own UI used — are used <strong>descriptively, to identify which router feature a given view corresponds to</strong>. They are the property of their respective owners. Their use here is not a claim of affiliation, endorsement, or sponsorship, and does not imply that either ASUS or Asuswrt-Merlin has reviewed, approved, or supports this software.</p>
+                <p>Released under the MIT License.</p>
+                <p><a href="privacy-policy.html">Privacy Policy</a></p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
