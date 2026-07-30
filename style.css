@@ -223,6 +223,8 @@ h1 {
     font-size: 10.5px;
     font-weight: 700;
     line-height: 1.2;
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .chip-dot {
@@ -275,6 +277,7 @@ h1 {
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: var(--card-gap);
     margin-bottom: var(--card-gap);
+    align-items: stretch;
 }
 
 /* Cards: bordered, elevated background, drop shadow, bordered title row */
@@ -285,10 +288,6 @@ h1 {
     box-shadow: var(--shadow);
 }
 
-.card + .card {
-    margin-top: var(--card-gap);
-}
-
 .card-title-row {
     display: flex;
     align-items: center;
@@ -296,6 +295,7 @@ h1 {
     gap: var(--space-sm);
     padding: var(--space-sm) var(--space-md);
     border-bottom: 1px solid var(--border-subtle);
+    min-height: 56px;
 }
 
 .card-body {
