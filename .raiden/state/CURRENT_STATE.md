@@ -22,6 +22,33 @@ Full detail: [README.md](../../README.md), [STATUS.md](../../STATUS.md),
 
 ---
 
+## This Session (2026-07-29)
+
+- The WireGuard server write path was found critically broken: saves
+  posted directly-indexed `wgs1` prefixed nvram keys that the firmware's
+  write path never recognized, so saves silently did nothing on the
+  router while appearing to succeed client-side. This was researched,
+  fixed, and independently re-verified from scratch after an initial
+  mischaracterization of the underlying mechanism was caught and
+  corrected. Full record: `DECISIONS.md` D-006 through D-015.
+- Three related open loops were also researched this session: wireless
+  band-token naming, `ipsec_profile_2` regeneration, and `rcService`
+  restart versus stop branching. One closed as no risk; two remain open,
+  pending either operator deployment facts or live testing.
+- Local commit history was reviewed three times before push, including
+  one independent second-opinion pass, and pushed clean.
+- A public GitHub Pages site now exists for this project, live at
+  https://starlightdaemon.github.io/merlins_cloak_v2/, served from a
+  separate `gh-pages` branch that is not merged with and does not share
+  history with `main`. The site is themed using this project's actual
+  Fujin design tokens, not a generic template. A privacy policy page
+  exists at that site as a manually maintained duplicate of
+  `docs/privacy-policy.md` on `main`; the two are not automatically
+  synced and must be updated by hand together if the policy ever
+  changes.
+
+---
+
 ## Confirmed Current State
 
 - RAIDEN Instance installed (Edict version tracked in

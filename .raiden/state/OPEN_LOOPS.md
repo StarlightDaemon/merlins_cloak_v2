@@ -23,6 +23,33 @@ roughly by how self-contained the work is, not by priority.
   priority than the required screenshot); actual dashboard submission
   (operator-only — needs their Chrome Web Store account).
 
+### GitHub Pages site (gh-pages branch)
+- **Status:** live, not further tracked as an open loop, informational.
+- **What:** a public landing page exists at
+  https://starlightdaemon.github.io/merlins_cloak_v2/, served from a
+  `gh-pages` branch that shares no commit history with `main`. It
+  contains `index.html` and `style.css` at its root, plus
+  `privacy-policy.html`, a manually maintained duplicate of
+  `docs/privacy-policy.md` on `main` with no automated sync between the
+  two.
+- **Why this is logged here:** `main`'s state files previously had no
+  record this branch or live site existed at all. Any future session
+  should be aware a second branch exists before assuming `main` is the
+  only relevant branch in this repository.
+
+### Popup UI does not use Fujin tokens, unlike the content-script panel
+- **Status:** open, not yet scheduled.
+- **What:** this project's content-script panel is genuinely themed via
+  Fujin's design tokens, imported and resolved live. The popup UI,
+  `src/entrypoints/popup/style.css` and `App.css`, is separately
+  hand-rolled with its own hardcoded colors and does not follow Fujin's
+  sharp-corner rule, using a 4px border-radius instead of 0px. This means
+  the extension currently has two different, inconsistent visual
+  identities across its two surfaces.
+- **Where:** `src/entrypoints/popup/style.css`,
+  `src/entrypoints/popup/App.css`, compare against `src/theme/css.ts` for
+  the genuine Fujin-derived pattern.
+
 ## Write-path correctness gaps (source-research-completable)
 
 Four items STATUS.md flags as "confirm before trusting this write path."

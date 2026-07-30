@@ -557,3 +557,38 @@
   remains open and is now its own explicit item in OPEN_LOOPS.md, distinct
   from the two independent clean reviews already performed on this
   session's own new commits.
+
+## D-017
+
+- Date: 2026-07-29
+- Status: Closed (fact recorded; no fleet-wide correction made)
+- Decision: Confirmed genuine Fujin design token consumption in this
+  project during unrelated work on a GitHub Pages landing page. This
+  project's content-script panel imports and resolves real values from
+  the `@fujin/ui` package, live, in `src/theme/css.ts`. This contradicts
+  a fleet-wide recorded finding that zero real Fujin dependents exist
+  across approximately twenty-one repos; this project is a genuine,
+  verified exception. Separately, this project's own popup UI does not
+  consume Fujin at all and is independently styled, logged as its own
+  open loop.
+- Rationale: Whether the fleet-wide Fujin consumption record itself needs
+  correcting is a cross-repository question outside this project's own
+  scope, noted here only as a fact discovered during this session, not
+  acted upon.
+
+## D-018
+
+- Date: 2026-07-29
+- Status: Closed (factual note, not a decision)
+- Decision: During this session, two separate Claude Code sessions
+  operated against this repository's shared working tree concurrently at
+  least twice, without either session being aware of the other. Each
+  time, one session observed unexplained branch or file state changes
+  mid-task, caused by the other session's activity, and correctly paused
+  rather than acting on unexplained state. No data was lost in either
+  case, but each incident required a manual status check and explanation
+  before work could safely continue.
+- Rationale: Logged so future sessions are aware this has happened
+  before: avoid running more than one active Claude Code session against
+  this repository's working tree at the same time, particularly during
+  any git branch operation.
