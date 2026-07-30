@@ -1,5 +1,7 @@
 # Merlin's Cloak v2
 
+[**Live project page →**](https://starlightdaemon.github.io/merlins_cloak_v2/)
+
 A Manifest V3 browser extension that replaces the Asuswrt-Merlin router web UI
 with a client-side React interface, built with WXT and targeting Chrome and
 Firefox. It is a rebuild of the original
