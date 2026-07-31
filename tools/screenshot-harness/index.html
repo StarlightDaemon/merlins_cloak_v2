@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Merlin's Cloak — Screenshot Harness</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 40px;
+        background: #16212a;
+        color: #d7e0e6;
+        font: 14px/1.5 system-ui, sans-serif;
+      }
+      h1 { font-size: 18px; }
+      code { background: #0e171d; padding: 1px 6px; border-radius: 3px; }
+      ul { padding-left: 20px; }
+      li { margin-bottom: 8px; }
+      a { color: #6fb7ff; }
+      .note { color: #97a6ad; font-size: 12.5px; max-width: 640px; }
+    </style>
+  </head>
+  <body>
+    <h1>Merlin's Cloak — screenshot harness</h1>
+    <p class="note">
+      Every view below renders with FICTIONAL fixture data (see
+      <code>mocks/fixtures.ts</code>) — no real router is contacted or required.
+      Resize the browser viewport to <b>1280×800</b> before capturing Chrome
+      Web Store screenshots. See <code>README.md</code> in this directory for
+      details.
+    </p>
+    <ul>
+      <li><a href="./popup.html">Popup</a> — the toolbar popup (router address + read-only toggle).</li>
+      <li><a href="./content.html#/dashboard">Content UI — Dashboard</a> — <code>#/dashboard</code>, the Network Map replacement.</li>
+      <li><a href="./content.html#/clients">Content UI — Connected Devices</a> — <code>#/clients</code>, DHCP leases + live wireless stations.</li>
+      <li><a href="./content.html#/dhcp">Content UI — DHCP settings</a> — <code>#/dhcp</code>, a representative declarative settings page.</li>
+    </ul>
+    <p class="note">
+      The content UI is one hash-routed app (<code>content.html#/&lt;page-id&gt;</code>); any page id from
+      <code>src/pages/registry.ts</code> can be loaded the same way, though only dashboard, clients and dhcp have
+      fixture data tailored to them — other pages will render with blank fields rather than fixture values.
+    </p>
+  </body>
+</html>

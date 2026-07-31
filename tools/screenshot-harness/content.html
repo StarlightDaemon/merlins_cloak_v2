@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280, initial-scale=1.0" />
+    <title>Merlin's Cloak — Content UI (harness)</title>
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: #21333e; }
+      #mc2-host { position: fixed; inset: 0; }
+    </style>
+  </head>
+  <body>
+    <!-- content-entry.tsx builds the #mc2-host shadow-root mount itself,
+         mirroring src/entrypoints/content.tsx exactly. -->
+    <script type="module" src="./content-entry.tsx"></script>
+  </body>
+</html>
