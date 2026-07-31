@@ -19,6 +19,8 @@
  */
 import {
   buildWriteRequest,
+  redactBuiltWrite,
+  REDACTED_VALUE,
   submitBuiltWrite,
   verifyNvram,
   type BuiltWriteRequest,
@@ -33,6 +35,13 @@ import { log } from './log';
 export interface WriteLogEntry {
   id: number;
   timestamp: number;
+  /**
+   * The REDACTED view of the request (redactBuiltWrite): sensitive field
+   * values are replaced with a placeholder before this entry exists, so the
+   * in-memory log, the diagnostics inspector, and anything else that renders
+   * an entry can never surface a secret. The real body lives only inside the
+   * guardedWrite call frame for the duration of the submit.
+   */
   request: BuiltWriteRequest;
   /** false when read-only mode or a hard exclusion intercepted the write. */
   submitted: boolean;
@@ -114,10 +123,14 @@ export async function guardedWrite(
   onProgress: WriteProgress = () => {},
 ): Promise<GuardedWriteOutcome> {
   const request = buildWriteRequest(spec);
+  // The entry — and through it the write log, the diagnostics inspector, and
+  // every console line below — only ever sees the redacted view. `request`
+  // (with real secret values) stays confined to this call frame.
+  const loggedRequest = redactBuiltWrite(request);
   const entry: WriteLogEntry = {
     id: nextId++,
     timestamp: Date.now(),
-    request,
+    request: loggedRequest,
     submitted: false,
   };
 
@@ -133,14 +146,14 @@ export async function guardedWrite(
   }
 
   if (readOnly) {
-    log.info('read-only mode: write intercepted, not sent', request.url, request.body);
+    log.info('read-only mode: write intercepted, not sent', request.url, loggedRequest.body);
     pushEntry(entry);
     return { entry, applied: false, dryRun: true, blocked: false };
   }
 
   try {
     onProgress({ phase: 'submitting' });
-    log.info('submitting write', request.url, request.body);
+    log.info('submitting write', request.url, loggedRequest.body);
     entry.result = await submitBuiltWrite(request);
     entry.submitted = true;
     if (verifyKeys && Object.keys(verifyKeys).length > 0) {
@@ -152,7 +165,24 @@ export async function guardedWrite(
       log.info(
         `verifying by forced-fresh nvram re-read: settle ${budget.settleMs}ms, ceiling ${budget.timeoutMs}ms, poll ${budget.intervalMs}ms`,
       );
-      entry.verify = await verifyNvram(verifyKeys, { ...budget, onProgress });
+      const verify = await verifyNvram(verifyKeys, { ...budget, onProgress, redactKeys: spec.sensitiveKeys });
+      // Verify detail carries expected/actual VALUES per key — for sensitive
+      // keys those are the secrets themselves (e.g. the expected new PSK), so
+      // they get the same redaction as the request body before the result is
+      // retained. The match booleans and counts are kept: they carry the
+      // outcome without carrying the value.
+      const sensitive = new Set(spec.sensitiveKeys ?? []);
+      entry.verify = sensitive.size
+        ? {
+            ...verify,
+            detail: Object.fromEntries(
+              Object.entries(verify.detail).map(([k, d]) => [
+                k,
+                sensitive.has(k) ? { ...d, expected: REDACTED_VALUE, actual: REDACTED_VALUE } : d,
+              ]),
+            ),
+          }
+        : verify;
     }
     pushEntry(entry);
     const applied = entry.verify ? entry.verify.verified : entry.result.ok;

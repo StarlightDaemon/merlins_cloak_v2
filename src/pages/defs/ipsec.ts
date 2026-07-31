@@ -396,6 +396,12 @@ export const ipsecServerPage: SettingsPageDef = {
     // branching" for the prior static-restart gap this replaces.
     rcService: (_changed, all) => (all.ipsec_server_enable === '1' ? 'ipsec_start' : 'ipsec_stop'),
     actionWait: 5,
+    // Every one of these is a composite that embeds credentials: the two
+    // client-list shards carry account passwords, and both profile strings
+    // embed the pre-shared key. Redacted from the write log/inspector; the
+    // submitted request is unaffected. (ipsec_preshared_key itself is a
+    // control:'password' field and is collected automatically.)
+    sensitiveKeys: ['ipsec_client_list_1', 'ipsec_client_list_2', 'ipsec_profile_1', 'ipsec_profile_2'],
     // CAVEAT (pre-existing, not introduced by this pass): this project only
     // rebuilds ipsec_profile_1 (and, per this fix, ipsec_profile_2 with it)
     // when `profileTouched` — i.e. when one of PROFILE1_VIEW_KEYS itself was

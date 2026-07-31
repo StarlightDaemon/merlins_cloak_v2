@@ -209,6 +209,10 @@ function GuestProfileModal({
           fields: payload.fields,
           rcService: payload.rcService,
           currentPage: 'SDN.asp',
+          // apg{idx}_security is a composite whose fields include the WPA
+          // passphrase — redacted from the write log/inspector (the write
+          // itself, were this category ever cleared, is unaffected).
+          sensitiveKeys: Object.keys(payload.fields).filter((k) => /^apg\d+_security$/.test(k)),
         },
         payload.verify,
       );

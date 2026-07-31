@@ -210,6 +210,17 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
       // against the same (dirty, values) pair buildFields/buildVerify see.
       const rcServiceValue =
         typeof def.write.rcService === 'function' ? def.write.rcService(dirty, values) : def.write.rcService;
+      // Secret-bearing keys, for log/inspector redaction only (never affects
+      // what is submitted): every `control: 'password'` field's key
+      // automatically, plus any composite carriers the def names explicitly
+      // (WriteDef.sensitiveKeys — serialized lists and joined strings a
+      // control type can't mark). Template keys expand the same way the
+      // posted fields do. Extra names that don't occur in this particular
+      // delta are harmless — redaction is a lookup, not a validation.
+      const sensitiveKeys = [
+        ...allFields.filter((f) => f.control === 'password').map((f) => f.key),
+        ...(def.write.sensitiveKeys ?? []),
+      ].map(expand);
       const spec: WriteSpec = {
         endpoint: def.write.endpoint,
         // Threaded through so the guard can enforce it. The UI below also
@@ -222,6 +233,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
         confirmTimeoutMs: def.write.confirmTimeoutMs,
         currentPage: def.aspPage,
         nextPage: def.aspPage,
+        sensitiveKeys: sensitiveKeys.length ? sensitiveKeys : undefined,
       };
       const verify = def.write.buildVerify ? def.write.buildVerify(dirty, values) : { ...dirty };
       const result = await guardedWrite(spec, verify ? expandRecord(verify) : null, onWriteProgress);

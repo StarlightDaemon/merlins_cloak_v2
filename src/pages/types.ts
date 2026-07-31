@@ -156,6 +156,17 @@ export interface WriteDef {
    * verbatim. Return null to skip nvram verification (non-nvram actions).
    */
   buildVerify?: (changed: Record<string, string>, all: Record<string, string>) => Record<string, string> | null;
+  /**
+   * Posted keys (template form, '{p}' allowed) whose VALUES are secrets that
+   * a `control: 'password'` marker cannot express — composite/serialized
+   * carriers such as a username>password rule list or a joined string with a
+   * passphrase inside. Keys of password-control fields are collected
+   * automatically and need not be repeated here. Redaction only: values for
+   * these keys are replaced with a placeholder in the console log, the
+   * diagnostics write inspector, and stored verify detail — the submitted
+   * request itself is untouched. See WriteSpec.sensitiveKeys.
+   */
+  sensitiveKeys?: string[];
 }
 
 export interface PageProps {

@@ -523,6 +523,9 @@ function VpnCertsPage({ caps }: PageProps) {
           writeExclusion: 'vpn', // hard-excluded: guardedWrite refuses this unconditionally
           fields: { unit: ovUnit, [fieldName]: ovText },
           currentPage: 'Advanced_VPN_OpenVPN.asp',
+          // Pasted key/cert material must never reach the write log — even a
+          // hard-excluded dry-run records the constructed request there.
+          sensitiveKeys: [fieldName],
         },
         // Lands in a jffs file via set_ovpn_key(), not plain nvram — nothing
         // to forced-fresh-read-confirm even if this category were ever

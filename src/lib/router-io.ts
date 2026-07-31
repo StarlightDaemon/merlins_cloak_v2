@@ -195,13 +195,35 @@ export interface WriteSpec {
   confirmTimeoutMs?: number;
   currentPage?: string;
   nextPage?: string;
+  /**
+   * Names of `fields` entries whose VALUES are secrets (passwords, pre-shared
+   * keys, key/certificate material, credential-bearing rule lists). Redaction
+   * only — membership changes nothing about what is submitted to the router.
+   * The redacted body/field views below are what the console log and the
+   * diagnostics write inspector are given; the real values exist only in the
+   * live request object at submit time and are never retained. Populated
+   * automatically for declarative pages from `control: 'password'` fields
+   * (SettingsPage.tsx), plus any keys the def lists explicitly in
+   * `WriteDef.sensitiveKeys` (composite/serialized carriers a control type
+   * can't mark, e.g. a username>password rule list).
+   */
+  sensitiveKeys?: string[];
 }
+
+/** Placeholder written in place of a secret value in any logged/displayed view. */
+export const REDACTED_VALUE = '[redacted]';
 
 export interface BuiltWriteRequest {
   url: string;
   method: 'POST';
   headers: Record<string, string>;
   body: string;
+  /**
+   * `body` with every `spec.sensitiveKeys` value replaced by REDACTED_VALUE.
+   * The ONLY body form that may ever be logged, stored, or rendered. When the
+   * spec names no sensitive keys the two strings are identical.
+   */
+  redactedBody: string;
   spec: WriteSpec;
 }
 
@@ -211,35 +233,51 @@ export interface BuiltWriteRequest {
  * inspector logs, and what submitWrite() actually sends.
  */
 export function buildWriteRequest(spec: WriteSpec): BuiltWriteRequest {
-  const params = new URLSearchParams();
-  if (spec.endpoint === 'applyapp') {
-    params.set('action_mode', spec.actionMode ?? 'apply');
-    if (spec.rcService) params.set('rc_service', spec.rcService);
-    for (const [k, v] of Object.entries(spec.fields)) params.set(k, v);
-    return {
-      url: '/applyapp.cgi',
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: params.toString(),
-      spec,
-    };
-  }
-  // start_apply.htm — the native form path. Whole-page semantics are the
-  // caller's responsibility (fields must be the complete current set).
-  params.set('action_mode', 'apply');
-  if (spec.rcService) params.set('action_script', spec.rcService);
-  params.set('action_wait', String(spec.actionWait ?? 5));
-  if (spec.currentPage) params.set('current_page', spec.currentPage);
-  if (spec.nextPage) params.set('next_page', spec.nextPage);
-  params.set('modified', '0');
-  for (const [k, v] of Object.entries(spec.fields)) params.set(k, v);
+  const sensitive = new Set(spec.sensitiveKeys ?? []);
+  // Real and redacted bodies are built from the same parameter walk so they
+  // cannot drift; the redacted one substitutes REDACTED_VALUE for sensitive
+  // field values and is the only form the log/inspector layer receives.
+  const buildBody = (redact: boolean): string => {
+    const params = new URLSearchParams();
+    const fieldValue = (k: string, v: string) => (redact && sensitive.has(k) ? REDACTED_VALUE : v);
+    if (spec.endpoint === 'applyapp') {
+      params.set('action_mode', spec.actionMode ?? 'apply');
+      if (spec.rcService) params.set('rc_service', spec.rcService);
+      for (const [k, v] of Object.entries(spec.fields)) params.set(k, fieldValue(k, v));
+      return params.toString();
+    }
+    params.set('action_mode', 'apply');
+    if (spec.rcService) params.set('action_script', spec.rcService);
+    params.set('action_wait', String(spec.actionWait ?? 5));
+    if (spec.currentPage) params.set('current_page', spec.currentPage);
+    if (spec.nextPage) params.set('next_page', spec.nextPage);
+    params.set('modified', '0');
+    for (const [k, v] of Object.entries(spec.fields)) params.set(k, fieldValue(k, v));
+    return params.toString();
+  };
   return {
-    url: '/start_apply.htm',
+    url: spec.endpoint === 'applyapp' ? '/applyapp.cgi' : '/start_apply.htm',
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params.toString(),
+    body: buildBody(false),
+    redactedBody: buildBody(true),
     spec,
   };
+}
+
+/**
+ * The view of a built request that is safe to retain: body replaced by the
+ * redacted form and `spec.fields` values redacted in the same way. Used by the
+ * write chokepoint for its log entries so a secret never outlives the submit
+ * call itself.
+ */
+export function redactBuiltWrite(req: BuiltWriteRequest): BuiltWriteRequest {
+  const sensitive = new Set(req.spec.sensitiveKeys ?? []);
+  if (sensitive.size === 0) return req;
+  const fields = Object.fromEntries(
+    Object.entries(req.spec.fields).map(([k, v]) => [k, sensitive.has(k) ? REDACTED_VALUE : v]),
+  );
+  return { ...req, body: req.redactedBody, spec: { ...req.spec, fields } };
 }
 
 export interface SubmitResult {
@@ -305,6 +343,13 @@ export interface VerifyOptions {
   intervalMs?: number;
   /** Optional observability hook; defaults to a no-op. See VerifyProgressEvent. */
   onProgress?: VerifyProgress;
+  /**
+   * Keys whose expected/actual values are secrets. Affects verifyNvram's OWN
+   * console logging only (its returned VerifyResult stays unredacted — the
+   * write chokepoint redacts before retaining it, and callers that verify
+   * secrets must not log the raw result themselves).
+   */
+  redactKeys?: string[];
 }
 
 export interface VerifyResult {
@@ -431,9 +476,18 @@ export async function verifyNvram(
     // the last read lands ON the ceiling rather than one interval short of it.
     const remaining = timeoutMs - (Date.now() - started);
     if (remaining <= 0) {
+      // Console form of the detail map redacts secret values (opts.redactKeys)
+      // — expected/actual for e.g. a PSK are the secret itself.
+      const redact = new Set(opts.redactKeys ?? []);
+      const loggedDetail = Object.fromEntries(
+        Object.entries(detail).map(([k, d]) => [
+          k,
+          redact.has(k) ? { ...d, expected: REDACTED_VALUE, actual: REDACTED_VALUE } : d,
+        ]),
+      );
       log.warn(
         `verifyNvram: ${timeoutMs}ms window closed with no matching nvram read (${reads} of ${attempts} reads answered)`,
-        detail,
+        loggedDetail,
         lastError ?? '',
       );
       return finish(false);

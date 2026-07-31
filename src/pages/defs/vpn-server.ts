@@ -558,6 +558,9 @@ export const openvpnServerPage: SettingsPageDef = {
     // gap this replaces.
     rcService: (_changed, all) => (all.vpn_server_enable === '1' ? 'restart_chpass;restart_vpnserver{p}' : 'stop_vpnserver{p}'),
     actionWait: 15,
+    // The serialized clientlist embeds every account's password — redacted
+    // from the write log/inspector; the submitted request is unaffected.
+    sensitiveKeys: ['vpn_serverx_clientlist'],
     buildFields: (changed, all) => {
       const fields: Record<string, string> = {};
       for (const [k, v] of Object.entries(changed)) {
@@ -932,6 +935,9 @@ export const pptpServerPage: SettingsPageDef = {
     // branching" for the prior static-restart gap this replaces.
     rcService: (_changed, all) => (all.pptpd_enable === '1' ? 'restart_pptpd' : 'stop_pptpd'),
     actionWait: 10,
+    // The serialized user list embeds every account's password — redacted
+    // from the write log/inspector; the submitted request is unaffected.
+    sensitiveKeys: ['pptpd_clientlist'],
     buildFields: (changed, all) => {
       const fields: Record<string, string> = {};
       let clientsTouched = false;
