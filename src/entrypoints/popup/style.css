@@ -1,10 +1,10 @@
 :root {
-  font-family: Verdana, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--fujin-font-family-base);
   font-size: 13px;
   line-height: 1.5;
   color-scheme: dark;
-  color: #ffffff;
-  background-color: #21333e;
+  color: var(--fujin-text-primary);
+  background-color: var(--fujin-bg-base);
 }
 
 body {

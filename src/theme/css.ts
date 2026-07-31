@@ -1,18 +1,11 @@
 /**
  * The Fujin theme, materialized. Builds the complete stylesheet injected as a
  * <style> element at the shadow root (external stylesheets and @import do not
- * work inside a shadow root). Tokens come from the real `@fujin/ui` package
- * (git-tag install, see package.json) rather than a hand-copied snapshot —
- * `scalarVars` carries the mode/accent-invariant tokens, `resolveDark('blue')`
- * carries the dark-mode semantic roles under Fujin's `blue` accent preset
- * (chosen to match this extension's existing blue identity; see
- * .raiden/state/DECISIONS.md). This extension is dark-only today — no
- * `resolveLight` call, no mode toggle.
- *
- * `--badge-wired` / `--badge-24` / `--badge-5` / `--badge-6` (the connection-
- * type badges) are a local extension: Fujin's semantic system has no
- * categorical/qualitative role for a 4-way badge like this, so these are
- * pulled from Fujin's raw palette ramps instead of a semantic token.
+ * work inside a shadow root). Token resolution itself (`scalarVars` +
+ * `resolveDark('blue')` + the local badge ramps) lives in `./vars.ts`, shared
+ * with the popup's own theme injector (`popup-theme.ts`) so both surfaces of
+ * this extension agree on the same resolved values. See that module and
+ * .raiden/state/DECISIONS.md D-005 for why `blue` and dark-only.
  *
  * Radius follows Fujin's rule faithfully (0px, no exceptions) everywhere
  * that shape was previously a themeable "roundedness" choice — including the
@@ -23,32 +16,13 @@
  * of a rotating-ring loading indicator (a sharp-cornered spinner does not
  * read as "loading"), and Fujin's own docs never address it either way.
  */
-import { scalarVars, resolveDark, palette } from '@fujin/ui';
-
-const badgeVars: Record<string, string> = {
-  '--badge-wired': palette.blue[5],
-  '--badge-24': palette.green[5],
-  '--badge-5': palette.orange[5],
-  '--badge-6': palette.grape[5],
-};
-
-const hostVars: Record<string, string> = {
-  ...scalarVars,
-  ...resolveDark('blue'),
-  ...badgeVars,
-};
-
-function hostVarsCss(): string {
-  return Object.entries(hostVars)
-    .map(([name, value]) => `  ${name}: ${value};`)
-    .join('\n');
-}
+import { buildThemeVars, varsToCssLines } from './vars';
 
 export function buildThemeCss(): string {
   return `
 :host {
   all: initial;
-${hostVarsCss()}
+${varsToCssLines(buildThemeVars())}
   --shadow: var(--fujin-shadow-lg);
 }
 
