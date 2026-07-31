@@ -1,8 +1,11 @@
 /**
- * USB category: Network Place (Samba), FTP Share, Media Server, NFS Exports.
+ * USB category: Network Place (Samba), FTP Share, Media Server, NFS Exports,
+ * Time Machine, and a read-only USB-apps (Download Master) status surface.
  * Field sets, validation bounds, and action_script values extracted from the
  * corresponding pages in the Merlin 3006.102.7_2 www/ source (RAW/merlin). No
- * RT-BE92U sysdep overlay exists for any of them.
+ * RT-BE92U sysdep overlay exists for any of them. Time Machine / accounts /
+ * Download Master scoping decisions below are from
+ * scratchpad/research/04-usb-trio.md (the "USB-domain trio" brief).
  *
  * These pages only matter when USB storage is actually attached — that is
  * runtime device state, not a capability flag, so none of the fields below
@@ -22,17 +25,58 @@
  * through this project's uniform applyapp + rcService path, which has the
  * same net effect (nvram set + service restart) as the native toggle.
  *
- * Per-user/per-group share permissions (Network Place + FTP) are a whole
- * parallel subsystem keyed by account/pool/folder and posted through other
- * dedicated aidisk.cgi endpoints (set_account_permission.asp,
- * set_group_permission.asp, popCreateAccount.asp, ...); modeling that is out
- * of scope for a declarative nvram-field page, so it — along with the
- * account-vs-share management-mode selector (st_samba_mode / st_ftp_mode,
- * toggled via switch_share_mode.asp) that gates it — is skipped entirely.
+ * Per-user/per-group share permissions (Network Place + FTP) — DESCOPED,
+ * fully out of scope, no new file added for it. The trio brief (§A) traced
+ * this down to six dedicated /aidisk/*.asp cgi endpoints (create_account.asp,
+ * delete_account.asp, modify_account.asp, initial_account.asp,
+ * set_account_permission.asp, set_account_all_folder_permission.asp; +
+ * set_group_* under RTCONFIG_PERMISSION_MANAGEMENT), none of which is
+ * `action_mode=apply` / `applyapp.cgi` at all — this project's WriteSpec
+ * (lib/router-io.ts WriteEndpoint) only knows how to submit 'applyapp' and
+ * 'start_apply', so these writes cannot be expressed without editing that
+ * shared file, which is out of bounds for this change. Reads are only
+ * partially clean: `get_all_accounts` returns JSON, but
+ * `get_permissions_of_account` emits embedded JS source ("ej writes JS
+ * source", not JSON) rather than an appGet.cgi-shaped response, and no
+ * folder/pool enumeration hook is documented — so the full accounts × shares
+ * × permission-level read table the task asked for is not confirmed
+ * feasible either. The account/pool/folder-keyed CRUD shape also doesn't fit
+ * this project's flat nvram-field page model. `acc_list`/`acc_num` ARE
+ * literal defaults.c entries (shared/defaults.c:3402-3406) but must NEVER be
+ * posted directly through applyapp — the brief confirms their true backing
+ * store is partly opaque on-disk `.__*` files on the USB filesystem itself
+ * (written by closed-source `add_account`/`mod_account`/`del_account`, no
+ * definitions anywhere in this GPL tree), so a raw nvram write would very
+ * likely desync nvram from that on-disk state with no way to detect or roll
+ * it back. The account-vs-share management-mode selector (st_samba_mode /
+ * st_ftp_mode, toggled via switch_share_mode.asp) that gates this subsystem
+ * is skipped for the same reasons.
+ *
+ * Time Machine (Advanced_TimeMachine.asp) — see timemachinePage below. Clean
+ * fit: all four posted fields are literal defaults.c entries reached through
+ * the ordinary applyapp path (trio brief §B).
+ *
+ * Download Master / USB Apps status (APP_Installation.asp) — see
+ * downloadMasterPage below. READ-ONLY: the install/remove/enable/upgrade/
+ * switch action path (`apps_action`, trio brief §C) is a self-posting cgi
+ * hook embedded in APP_Installation.asp itself — POST /APP_Installation.asp
+ * with apps_action/apps_name/apps_flag, again not 'applyapp' or
+ * 'start_apply' — so like §A it cannot be expressed through the existing
+ * WriteSpec without editing lib/router-io.ts, which this change does not do.
+ * It would also shell out via `notify_rc("start_apps_<action> <name> <flag>")`
+ * with both `apps_name` and `apps_flag` gated only by the closed-source,
+ * per-board `check_cmd_whitelist()` (compiled into per-board
+ * httpd/prebuild/<MODEL>/web_hook.o, no source in this GPL tree) — materially
+ * higher blast radius than a
+ * settings toggle. Download Master's actual torrent/queue UI is a wholly
+ * separate web app on its own port (dm_http_port, default 8081, not even an
+ * nvram-configurable key from this page) that httpd never proxies into or
+ * reads from — entirely out of reach from here regardless.
  *
  * Advanced_AiDisk_NFS.asp is Merlin-only and is in the operator's
- * live-verified page list; the other three are structural (source-derived,
- * not exercised live this session).
+ * live-verified page list; the other three (samba/ftp/mediaserver) are
+ * structural (source-derived, not exercised live this session), as is
+ * Time Machine and the Download Master status page.
  */
 import type { SettingsPageDef } from '../types';
 import { hasFlag } from '../../lib/capabilities';
@@ -463,4 +507,197 @@ export const nfsPage: SettingsPageDef = {
   },
 };
 
-export const usbPages: SettingsPageDef[] = [sambaPage, ftpPage, mediaserverPage, nfsPage];
+// ---------------------------------------------------------------------------
+// Time Machine — Advanced_TimeMachine.asp
+// ---------------------------------------------------------------------------
+
+/**
+ * All four fields are literal defaults.c entries, shared/defaults.c:4507-4511,
+ * gated behind #ifdef RTCONFIG_TIMEMACHINE (:4506):
+ *   { "timemachine_enable", "0", ... }
+ *   { "tm_device_name", "", CKN_STR64, ... }
+ *   { "tm_vol_size", "0", CKN_STR8, ... }
+ *   { "tm_ui_setting", "0", ... }
+ * (tm_partition_num also exists at defaults.c:4510 but is read-only/internal —
+ * not a field on the native form, not modeled here.)
+ *
+ * tm_device_name is the raw partition DEVICE LEAF NAME (e.g. "sda1"), not a
+ * mount path (Advanced_TimeMachine.asp:163-172 setPart(); cross-checked
+ * against ej_get_usb_info's isTM/hasTM match on nvram_match("tm_device_name",
+ * follow_partition->device), web.c:11364-11371). The native page populates
+ * this from a live folderTree_panel partition picker fed by ej_get_usb_info
+ * (web.c:11270); this project's declarative renderer has no live
+ * disk/partition enumeration widget, so the field is modeled as plain text —
+ * the operator must type the device leaf name exactly as shown by the
+ * router's own USB/disk page. Documented limitation, not a bug.
+ *
+ * tm_vol_size is transmitted in KB (native page multiplies its displayed GB
+ * value by 1024 before submit, Advanced_TimeMachine.asp:183); 0 = unlimited.
+ * Its true bound ([0, free space on the selected partition in GB]) is
+ * dynamic and disk-dependent, enforced only client-side on the native page
+ * (validator.rangeAllowZero, :180) — grepped validate_apply/validate_instance
+ * for tm_vol_size/tm_device_name/timemachine_enable and found no server-side
+ * range logic, only the generic CKN_STR8 length cap. This field is modeled
+ * as the raw KB value with no unit conversion; the operator enters KB
+ * directly, and no fixed max is enforced here (matches several other
+ * usb.ts fields whose true bound is native-JS-only, not httpd-enforced).
+ *
+ * tm_ui_setting is hardcoded to "1" on every native submit
+ * (Advanced_TimeMachine.asp:185) regardless of which field actually changed —
+ * it reads as a "has the operator touched Time Machine settings via the UI"
+ * marker, not a meaningful option (no form control sets it to anything
+ * else). Modeled here as a read-only display field; buildFields/buildVerify
+ * below force it to '1' on every write this page issues, matching native
+ * behavior exactly rather than leaving it unset.
+ */
+export const timemachinePage: SettingsPageDef = {
+  kind: 'settings',
+  id: 'timemachine',
+  aspPage: 'Advanced_TimeMachine.asp',
+  title: 'Time Machine',
+  navGroup: 'usb',
+  navOrder: 55,
+  // timemachine_support reflects RTCONFIG_TIMEMACHINE (www/state.js:630);
+  // APP_Installation.asp:162-165 hides the Time Machine tile entirely when
+  // false. Mirrors nfsPage's gate on nfsd_support.
+  gate: (c) => hasFlag(c, 'timemachine_support'),
+  confidence: { read: 'structural', write: 'unverified-write' },
+  writeExclusion: null,
+  intro:
+    'Disk/partition selection has no live picker here — enter the exact partition device leaf name (e.g. sda1) as shown on the router\'s own USB/disk page. Quota is entered in KB; the native page converts from GB before submit, this page does not.',
+  read: {
+    nvram: ['timemachine_enable', 'tm_device_name', 'tm_vol_size', 'tm_ui_setting'],
+  },
+  sections: [
+    {
+      title: 'Basic config',
+      fields: [
+        { key: 'timemachine_enable', label: 'Enable Time Machine backup target', control: 'radio', options: yesNo },
+        {
+          key: 'tm_device_name',
+          label: 'Partition device name',
+          hint: 'Raw device leaf name (e.g. sda1), not a mount path — no live partition picker; see intro',
+          control: 'text',
+          validate: { maxLength: 64, pattern: '^[a-zA-Z0-9]*$', patternHint: 'Device leaf name, e.g. sda1' },
+          showIf: (v) => v.timemachine_enable === '1',
+        },
+        {
+          key: 'tm_vol_size',
+          label: 'Quota (KB)',
+          hint: '0 = unlimited. Native page enters this in GB and multiplies by 1024 before submit; this field is the raw KB value. True upper bound is the selected partition\'s free space, enforced only by the native page\'s own JS — not reproduced here.',
+          control: 'number',
+          validate: { min: 0, required: true },
+          showIf: (v) => v.timemachine_enable === '1',
+        },
+        {
+          key: 'tm_ui_setting',
+          label: 'UI-touched marker (tm_ui_setting)',
+          hint: 'Not operator-editable — the native page always resubmits this as 1 on every save regardless of which field changed, and so does this one',
+          control: 'readonly',
+          showIf: (v) => v.timemachine_enable === '1',
+        },
+      ],
+    },
+  ],
+  write: {
+    endpoint: 'applyapp',
+    rcService: 'restart_timemachine',
+    actionWait: 5,
+    buildFields: (changed) => ({ ...changed, tm_ui_setting: '1' }),
+    buildVerify: (changed) => ({ ...changed, tm_ui_setting: '1' }),
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Download Master / USB Apps status — APP_Installation.asp (READ-ONLY)
+// ---------------------------------------------------------------------------
+
+/**
+ * Status-only surface. The install/remove/enable/upgrade/switch action path
+ * (apps_action) is NOT modeled — see the file header comment for why (it's a
+ * dedicated self-posting cgi endpoint this project's WriteSpec cannot express
+ * without editing lib/router-io.ts, gated only by a closed-source per-board
+ * whitelist). Every field below is a literal defaults.c entry
+ * (shared/defaults.c:7058-7074, ungated by any #ifdef in that region),
+ * written only by the router's own (opaque, external) app-management scripts
+ * as actions progress — never modeled as writable here, deliberately.
+ *
+ * The numeric apps_state_* codes' meaning (pending/running/done/error?) is
+ * NOT confirmed from source — no enum found in this GPL tree, only bare
+ * integer comparisons in APP_Installation.asp's own JS — so raw values are
+ * shown as-is rather than translated to a label that might be wrong.
+ */
+export const downloadMasterPage: SettingsPageDef = {
+  kind: 'settings',
+  id: 'download-master',
+  aspPage: 'APP_Installation.asp',
+  title: 'Download Master / USB Apps (status)',
+  navGroup: 'usb',
+  navOrder: 56,
+  confidence: { read: 'structural' },
+  // No write path ships for this page (see file header + comment above);
+  // null only documents "nothing hard-excluded", not "a write exists".
+  writeExclusion: null,
+  intro:
+    'Read-only. Install/remove/enable actions for Download Master and other USB apps are not modeled here (dedicated self-posting cgi endpoint, closed-source command whitelist — see source comment). Download Master\'s own torrent/queue UI runs on a separate port (commonly 8081) that this router UI never reaches.',
+  read: {
+    nvram: [
+      'apps_dev',
+      'apps_mounted_path',
+      'apps_state_install',
+      'apps_state_upgrade',
+      'apps_state_update',
+      'apps_state_remove',
+      'apps_state_enable',
+      'apps_state_switch',
+      'apps_state_autorun',
+      'apps_state_error',
+      'apps_download_file',
+      'apps_download_percent',
+      'apps_depend_do',
+      'apps_depend_action',
+      'apps_depend_action_target',
+    ],
+  },
+  sections: [
+    {
+      title: 'App-storage target',
+      fields: [
+        { key: 'apps_dev', label: 'Active app-storage partition (apps_dev)', control: 'readonly' },
+        { key: 'apps_mounted_path', label: 'App-storage mount path', control: 'readonly' },
+      ],
+    },
+    {
+      title: 'Action state (raw codes — meaning not confirmed from source)',
+      fields: [
+        { key: 'apps_state_install', label: 'Install state', control: 'readonly' },
+        { key: 'apps_state_upgrade', label: 'Upgrade state', control: 'readonly' },
+        { key: 'apps_state_update', label: 'Update-check state', control: 'readonly' },
+        { key: 'apps_state_remove', label: 'Remove state', control: 'readonly' },
+        { key: 'apps_state_enable', label: 'Enable/disable state', control: 'readonly' },
+        { key: 'apps_state_switch', label: 'Storage-switch state', control: 'readonly' },
+        { key: 'apps_state_autorun', label: 'Autorun state', control: 'readonly' },
+        { key: 'apps_state_error', label: 'Last error code', control: 'readonly' },
+      ],
+    },
+    {
+      title: 'Download / dependency progress',
+      fields: [
+        { key: 'apps_download_file', label: 'Current download file', control: 'readonly' },
+        { key: 'apps_download_percent', label: 'Download progress (%)', control: 'readonly' },
+        { key: 'apps_depend_do', label: 'Dependency action in progress', control: 'readonly' },
+        { key: 'apps_depend_action', label: 'Dependency action', control: 'readonly' },
+        { key: 'apps_depend_action_target', label: 'Dependency action target', control: 'readonly' },
+      ],
+    },
+  ],
+};
+
+export const usbPages: SettingsPageDef[] = [
+  sambaPage,
+  ftpPage,
+  mediaserverPage,
+  nfsPage,
+  timemachinePage,
+  downloadMasterPage,
+];
