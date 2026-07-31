@@ -134,3 +134,28 @@ See `mocks/fixtures.ts` for the full table. Everything is invented:
 - Not yet visually verified in a browser (out of scope this round); the
   next pass should load each URL above, confirm layout at 1280×800, and
   capture the screenshots.
+
+## Capturing store screenshots
+
+The in-app Browser pane's screenshot tool can't persist PNGs to disk, and a
+canvas-rasterization workaround was rejected by Chrome (tainted-canvas
+export). The working method is headless Chrome (or Edge, same engine) via
+the CLI, against a running instance of this harness (`npx vite
+tools/screenshot-harness`, default `http://localhost:5173`):
+
+```sh
+"C:\Program Files\Google\Chrome\Application\chrome.exe" \
+  --headless=new --disable-gpu --hide-scrollbars \
+  --window-size=1280,800 --virtual-time-budget=15000 \
+  --screenshot="<abs-output-path>.png" \
+  "http://localhost:5173/<route>"
+```
+
+One invocation per route (`popup.html`, `content.html#/dashboard`,
+`content.html#/clients`, `content.html#/dhcp`). `--virtual-time-budget`
+gives the SPA time to mount and the fixture fetches time to resolve before
+the screenshot is taken; raise it if a capture comes back blank.
+`msedge.exe` at the same path pattern under `Microsoft\Edge\Application`
+works as a drop-in fallback if Chrome isn't installed. Verify each output
+is exactly 1280×800 by reading the PNG IHDR width/height (bytes 16 and 20,
+big-endian) rather than trusting the file to "look right".

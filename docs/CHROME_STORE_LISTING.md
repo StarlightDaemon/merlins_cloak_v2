@@ -176,8 +176,29 @@ relying on the form's silence to imply it.
 
 ## Assets still needed (not covered by this draft)
 
-- At least one screenshot (1280×800 or 640×400) — needs the extension
-  loaded live against a router or a realistic mock, not something this
-  document can produce.
+- **Screenshots (1280×800): captured.** Produced via headless Chrome CLI
+  (`chrome.exe --headless=new --disable-gpu --hide-scrollbars
+  --window-size=1280,800 --virtual-time-budget=15000
+  --screenshot="<out>.png" "http://localhost:5173/<route>"`) against the
+  fixture harness (`tools/screenshot-harness/`, dev server via
+  `npx vite tools/screenshot-harness`) — see the harness README's
+  "Capturing store screenshots" section for the exact commands. All four
+  were verified at exactly 1280×800px, rendering cleanly with fictional
+  data only (`RT-DEMO88U`, `192.168.50.x` LAN, `203.0.113.x` WAN,
+  `MerlinNet-Demo*` SSIDs, `02:1A:2B:00:10:0x` MACs). Files, relative to
+  the repo root:
+  - `docs/store-assets/screenshot-1280x800-dashboard.png` — Router Status
+    (WAN/LAN summary + wireless radio table)
+  - `docs/store-assets/screenshot-1280x800-clients.png` — Connected
+    Devices (6 fixture clients, band badges)
+  - `docs/store-assets/screenshot-1280x800-dhcp.png` — Address Assignment
+    (DHCP) settings page
+  - `docs/store-assets/screenshot-1280x800-popup.png` — toolbar popup;
+    captured at the same 1280×800 canvas for consistency, but the popup's
+    real content only occupies a small top-left region (a popup's natural
+    size is far smaller than a full page) — **likely not usable as-is for
+    the store listing** without cropping/compositing onto a proper
+    background; treat it as a placeholder pending a decision on how to
+    present the popup screenshot.
 - Optional promotional tile images.
 - A Chrome Web Store developer account (one-time $5 registration).
