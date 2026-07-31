@@ -182,39 +182,50 @@ function Last24Page(_props: PageProps) {
     void load();
   }, [load]);
 
-  if (error) return <Banner tone="err">Failed to read speed history: {error}</Banner>;
-  if (!data) return <Loading />;
-  const names = Object.keys(data);
-  const sel = data[selected];
+  function renderLast24(data: Record<string, { rx: number[]; tx: number[] }>) {
+    const names = Object.keys(data);
+    const sel = data[selected];
+    return (
+      <>
+        <div className="mc-feedbar">
+          <Button small onClick={() => void load()}>
+            Refresh
+          </Button>
+        </div>
+        {names.length === 0 ? (
+          <EmptyState>No speed history recorded (rstats may be disabled)</EmptyState>
+        ) : (
+          <Card
+            title={
+              <>
+                Average speeds
+                <Select value={selected} onChange={setSelected} options={names.map((n) => ({ value: n, label: n }))} />
+              </>
+            }
+          >
+            {sel && <RateChart rx={sel.rx.map((v) => v / 120)} tx={sel.tx.map((v) => v / 120)} />}
+            {sel && (
+              <p className="mc-card__note">
+                {sel.rx.length} samples (2-minute buckets) · peak ↓ {fmtRate(Math.max(0, ...sel.rx) / 120)} · peak ↑{' '}
+                {fmtRate(Math.max(0, ...sel.tx) / 120)}
+              </p>
+            )}
+          </Card>
+        )}
+      </>
+    );
+  }
 
   return (
     <div>
       <h1 className="mc-page-title">Last 24 Hours</h1>
       <p className="mc-page-subtitle">Main_TrafficMonitor_last24.asp</p>
-      <div className="mc-feedbar">
-        <Button small onClick={() => void load()}>
-          Refresh
-        </Button>
-      </div>
-      {names.length === 0 ? (
-        <EmptyState>No speed history recorded (rstats may be disabled)</EmptyState>
+      {error ? (
+        <Banner tone="err">Failed to read speed history: {error}</Banner>
+      ) : !data ? (
+        <Loading />
       ) : (
-        <Card
-          title={
-            <>
-              Average speeds
-              <Select value={selected} onChange={setSelected} options={names.map((n) => ({ value: n, label: n }))} />
-            </>
-          }
-        >
-          {sel && <RateChart rx={sel.rx.map((v) => v / 120)} tx={sel.tx.map((v) => v / 120)} />}
-          {sel && (
-            <p className="mc-card__note">
-              {sel.rx.length} samples (2-minute buckets) · peak ↓ {fmtRate(Math.max(0, ...sel.rx) / 120)} · peak ↑{' '}
-              {fmtRate(Math.max(0, ...sel.tx) / 120)}
-            </p>
-          )}
-        </Card>
+        renderLast24(data)
       )}
     </div>
   );

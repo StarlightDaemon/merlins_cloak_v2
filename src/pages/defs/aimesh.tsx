@@ -359,185 +359,195 @@ function AiMeshPage(_props: PageProps) {
     [load],
   );
 
-  if (error) return <Banner tone="err">Failed to read AiMesh node data: {error}</Banner>;
-  if (!nodes) return <Loading />;
+  function renderMesh(nodes: NodeRow[]) {
+    const extraCount = nodes.filter((n) => !n.isMaster).length;
+    const onlineCount = nodes.filter((n) => n.online).length;
+    return (
+      <>
+        {isReadOnlyMode() && (
+          <Banner tone="info">
+            Read-only mode: Reboot, LED, and Save location preview the exact request without sending it.
+          </Banner>
+        )}
+        <div className="mc-feedbar">
+          <Button small onClick={() => void load()}>
+            Refresh
+          </Button>
+        </div>
 
-  const extraCount = nodes.filter((n) => !n.isMaster).length;
-  const onlineCount = nodes.filter((n) => n.online).length;
+        {nodes.length === 0 ? (
+          <EmptyState>No AiMesh node data returned by the router.</EmptyState>
+        ) : (
+          <Card title={`Mesh nodes (${nodes.length}, ${onlineCount} online)`}>
+            {extraCount === 0 && (
+              <p className="mc-card__note">
+                No additional AiMesh nodes found — this router is currently running solo (only the CAP/master row below).
+              </p>
+            )}
+            <table className="mc-table mc-table--mono">
+              <thead>
+                <tr>
+                  <th>Alias / location</th>
+                  <th>Model</th>
+                  <th>MAC address</th>
+                  <th>IP</th>
+                  <th>Firmware</th>
+                  <th>Status</th>
+                  <th>Hop</th>
+                  <th>Backhaul</th>
+                  <th className="num">Signal</th>
+                  <th style={{ width: 260 }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nodes.map((n) => {
+                  const busy = busyMac === n.mac;
+                  const draft = locationDraft[n.mac];
+                  return (
+                    <tr key={n.mac}>
+                      <td>
+                        {n.alias}
+                        {n.isMaster && (
+                          <>
+                            {' '}
+                            <Badge tone="info">CAP</Badge>
+                          </>
+                        )}
+                      </td>
+                      <td>{n.model}</td>
+                      <td>{n.mac}</td>
+                      <td>{n.ip || '—'}</td>
+                      <td>
+                        {n.fwver || '—'}
+                        {n.newfwver && n.newfwver !== n.fwver ? ` (update: ${n.newfwver})` : ''}
+                      </td>
+                      <td>
+                        <Badge tone={n.online ? 'ok' : 'err'}>{n.online ? 'online' : 'offline'}</Badge>
+                      </td>
+                      <td>{n.isMaster ? '—' : n.level || '—'}</td>
+                      <td>{n.isMaster ? '—' : n.backhaul}</td>
+                      <td className="num">{n.isMaster ? '—' : n.rssi || '—'}</td>
+                      <td>
+                        {n.isMaster ? (
+                          <span style={{ opacity: 0.5 }}>this router — no per-node actions</span>
+                        ) : draft !== undefined ? (
+                          <div>
+                            <TextInput
+                              value={draft}
+                              onChange={(v) => setLocationDraft((d) => ({ ...d, [n.mac]: v }))}
+                              width={140}
+                            />{' '}
+                            <Button
+                              small
+                              variant="primary"
+                              disabled={busy || !draft.trim() || draft.includes('"') || draft.length > 32}
+                              onClick={() => void saveLocation(n.mac, draft.trim())}
+                            >
+                              {isReadOnlyMode() ? 'Preview' : 'Save'}
+                            </Button>{' '}
+                            <Button
+                              small
+                              disabled={busy}
+                              onClick={() =>
+                                setLocationDraft((d) => {
+                                  const next = { ...d };
+                                  delete next[n.mac];
+                                  return next;
+                                })
+                              }
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        ) : (
+                          <>
+                            <Button small disabled={busy} onClick={() => void rebootNode(n.mac)}>
+                              {isReadOnlyMode() ? 'Preview reboot' : 'Reboot'}
+                            </Button>{' '}
+                            <Button small disabled={busy} onClick={() => void setLed(n.mac, !(n.ledOn ?? true))}>
+                              {n.ledOn === null ? 'LED toggle' : n.ledOn ? 'LED off' : 'LED on'}
+                            </Button>{' '}
+                            <Button
+                              small
+                              disabled={busy}
+                              onClick={() => setLocationDraft((d) => ({ ...d, [n.mac]: n.alias }))}
+                            >
+                              Edit location
+                            </Button>
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="mc-card__note">
+              LED and location writes forward an unvalidated JSON payload to the target node&apos;s own config daemon
+              (config_changed, web.c:14486-14497) — the router&apos;s httpd performs no schema check on it.
+            </p>
+          </Card>
+        )}
+
+        <Card title="Onboarding (read-only)" note="Pairing/removal are not implemented on this page — see the file header for why.">
+          {status && (
+            <p className="mc-card__note">
+              Node count: {String(status.cfg_recount ?? '—')} / {String(status.cfg_re_maxnum ?? '—')} · Config daemon
+              ready: {String(status.cfg_ready ?? '—') === '1' ? 'yes' : 'no'} · Search state:{' '}
+              {OB_STATUS_LABEL[String(status.cfg_obstatus ?? '')] ?? String(status.cfg_obstatus ?? '—')}
+            </p>
+          )}
+          {candidates.length === 0 ? (
+            <EmptyState>No unconfigured AiMesh candidates currently visible.</EmptyState>
+          ) : (
+            <table className="mc-table mc-table--mono">
+              <thead>
+                <tr>
+                  <th>Candidate MAC</th>
+                  <th>Model</th>
+                  <th>Seen via parent</th>
+                  <th className="num">Signal</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody>
+                {candidates.map((c, i) => (
+                  <tr key={`${c.parentMac}-${c.candidateMac}-${i}`}>
+                    <td>{c.candidateMac}</td>
+                    <td>{c.model}</td>
+                    <td>{c.parentMac}</td>
+                    <td className="num">{c.rssi || '—'}</td>
+                    <td>{c.source || '—'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+
+        {outcome && (
+          <Banner tone={outcome.dryRun ? 'info' : outcome.applied ? 'info' : 'err'}>
+            <Badge tone={outcome.dryRun ? 'info' : outcome.applied ? 'ok' : 'err'}>
+              {outcome.blocked ? 'BLOCKED' : outcome.dryRun ? 'DRY RUN' : outcome.applied ? 'DONE' : 'SENT (unconfirmed)'}
+            </Badge>{' '}
+            <code>POST {outcome.entry.request.url}</code> · <code>{outcome.entry.request.body}</code>
+            {outcome.blockedReason && <div>{outcome.blockedReason}</div>}
+          </Banner>
+        )}
+      </>
+    );
+  }
 
   return (
     <div>
       <h1 className="mc-page-title">AiMesh Node Management</h1>
       <p className="mc-page-subtitle">AiMesh.asp</p>
-      {isReadOnlyMode() && (
-        <Banner tone="info">
-          Read-only mode: Reboot, LED, and Save location preview the exact request without sending it.
-        </Banner>
-      )}
-      <div className="mc-feedbar">
-        <Button small onClick={() => void load()}>
-          Refresh
-        </Button>
-      </div>
-
-      {nodes.length === 0 ? (
-        <EmptyState>No AiMesh node data returned by the router.</EmptyState>
+      {error ? (
+        <Banner tone="err">Failed to read AiMesh node data: {error}</Banner>
+      ) : !nodes ? (
+        <Loading />
       ) : (
-        <Card title={`Mesh nodes (${nodes.length}, ${onlineCount} online)`}>
-          {extraCount === 0 && (
-            <p className="mc-card__note">
-              No additional AiMesh nodes found — this router is currently running solo (only the CAP/master row below).
-            </p>
-          )}
-          <table className="mc-table mc-table--mono">
-            <thead>
-              <tr>
-                <th>Alias / location</th>
-                <th>Model</th>
-                <th>MAC address</th>
-                <th>IP</th>
-                <th>Firmware</th>
-                <th>Status</th>
-                <th>Hop</th>
-                <th>Backhaul</th>
-                <th className="num">Signal</th>
-                <th style={{ width: 260 }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {nodes.map((n) => {
-                const busy = busyMac === n.mac;
-                const draft = locationDraft[n.mac];
-                return (
-                  <tr key={n.mac}>
-                    <td>
-                      {n.alias}
-                      {n.isMaster && (
-                        <>
-                          {' '}
-                          <Badge tone="info">CAP</Badge>
-                        </>
-                      )}
-                    </td>
-                    <td>{n.model}</td>
-                    <td>{n.mac}</td>
-                    <td>{n.ip || '—'}</td>
-                    <td>
-                      {n.fwver || '—'}
-                      {n.newfwver && n.newfwver !== n.fwver ? ` (update: ${n.newfwver})` : ''}
-                    </td>
-                    <td>
-                      <Badge tone={n.online ? 'ok' : 'err'}>{n.online ? 'online' : 'offline'}</Badge>
-                    </td>
-                    <td>{n.isMaster ? '—' : n.level || '—'}</td>
-                    <td>{n.isMaster ? '—' : n.backhaul}</td>
-                    <td className="num">{n.isMaster ? '—' : n.rssi || '—'}</td>
-                    <td>
-                      {n.isMaster ? (
-                        <span style={{ opacity: 0.5 }}>this router — no per-node actions</span>
-                      ) : draft !== undefined ? (
-                        <div>
-                          <TextInput
-                            value={draft}
-                            onChange={(v) => setLocationDraft((d) => ({ ...d, [n.mac]: v }))}
-                            width={140}
-                          />{' '}
-                          <Button
-                            small
-                            variant="primary"
-                            disabled={busy || !draft.trim() || draft.includes('"') || draft.length > 32}
-                            onClick={() => void saveLocation(n.mac, draft.trim())}
-                          >
-                            {isReadOnlyMode() ? 'Preview' : 'Save'}
-                          </Button>{' '}
-                          <Button
-                            small
-                            disabled={busy}
-                            onClick={() =>
-                              setLocationDraft((d) => {
-                                const next = { ...d };
-                                delete next[n.mac];
-                                return next;
-                              })
-                            }
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      ) : (
-                        <>
-                          <Button small disabled={busy} onClick={() => void rebootNode(n.mac)}>
-                            {isReadOnlyMode() ? 'Preview reboot' : 'Reboot'}
-                          </Button>{' '}
-                          <Button small disabled={busy} onClick={() => void setLed(n.mac, !(n.ledOn ?? true))}>
-                            {n.ledOn === null ? 'LED toggle' : n.ledOn ? 'LED off' : 'LED on'}
-                          </Button>{' '}
-                          <Button
-                            small
-                            disabled={busy}
-                            onClick={() => setLocationDraft((d) => ({ ...d, [n.mac]: n.alias }))}
-                          >
-                            Edit location
-                          </Button>
-                        </>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <p className="mc-card__note">
-            LED and location writes forward an unvalidated JSON payload to the target node&apos;s own config daemon
-            (config_changed, web.c:14486-14497) — the router&apos;s httpd performs no schema check on it.
-          </p>
-        </Card>
-      )}
-
-      <Card title="Onboarding (read-only)" note="Pairing/removal are not implemented on this page — see the file header for why.">
-        {status && (
-          <p className="mc-card__note">
-            Node count: {String(status.cfg_recount ?? '—')} / {String(status.cfg_re_maxnum ?? '—')} · Config daemon
-            ready: {String(status.cfg_ready ?? '—') === '1' ? 'yes' : 'no'} · Search state:{' '}
-            {OB_STATUS_LABEL[String(status.cfg_obstatus ?? '')] ?? String(status.cfg_obstatus ?? '—')}
-          </p>
-        )}
-        {candidates.length === 0 ? (
-          <EmptyState>No unconfigured AiMesh candidates currently visible.</EmptyState>
-        ) : (
-          <table className="mc-table mc-table--mono">
-            <thead>
-              <tr>
-                <th>Candidate MAC</th>
-                <th>Model</th>
-                <th>Seen via parent</th>
-                <th className="num">Signal</th>
-                <th>Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {candidates.map((c, i) => (
-                <tr key={`${c.parentMac}-${c.candidateMac}-${i}`}>
-                  <td>{c.candidateMac}</td>
-                  <td>{c.model}</td>
-                  <td>{c.parentMac}</td>
-                  <td className="num">{c.rssi || '—'}</td>
-                  <td>{c.source || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Card>
-
-      {outcome && (
-        <Banner tone={outcome.dryRun ? 'info' : outcome.applied ? 'info' : 'err'}>
-          <Badge tone={outcome.dryRun ? 'info' : outcome.applied ? 'ok' : 'err'}>
-            {outcome.blocked ? 'BLOCKED' : outcome.dryRun ? 'DRY RUN' : outcome.applied ? 'DONE' : 'SENT (unconfirmed)'}
-          </Badge>{' '}
-          <code>POST {outcome.entry.request.url}</code> · <code>{outcome.entry.request.body}</code>
-          {outcome.blockedReason && <div>{outcome.blockedReason}</div>}
-        </Banner>
+        renderMesh(nodes)
       )}
     </div>
   );

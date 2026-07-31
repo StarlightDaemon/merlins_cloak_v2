@@ -87,114 +87,124 @@ function WolPage(_props: PageProps) {
     [load],
   );
 
-  if (error) return <Banner tone="err">Failed to read WOL list: {error}</Banner>;
-  if (!entries) return <Loading />;
-
-  const dirty = serializeRuleList(entries, WOL_SPEC) !== baseline;
+  function renderWol(entries: string[][]) {
+    const dirty = serializeRuleList(entries, WOL_SPEC) !== baseline;
+    return (
+      <>
+        {isReadOnlyMode() && (
+          <Banner tone="info">Read-only mode: Wake and Save preview the exact request without sending it.</Banner>
+        )}
+        <Card title="Quick wake">
+          <div className="mc-row">
+            <div className="mc-row__label">Target MAC address</div>
+            <div className="mc-row__control">
+              <TextInput value={manualMac} onChange={setManualMac} placeholder="AA:BB:CC:DD:EE:FF" width={220} />
+              <Button
+                variant="primary"
+                disabled={busy || !MAC_PATTERN.test(manualMac)}
+                onClick={() => void wake(manualMac)}
+              >
+                Wake
+              </Button>
+            </div>
+          </div>
+        </Card>
+        <Card title={`Saved targets (${entries.length})`}>
+          {entries.length === 0 && !draft ? (
+            <EmptyState>No saved WOL targets</EmptyState>
+          ) : (
+            <table className="mc-table mc-table--mono">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>MAC address</th>
+                  <th style={{ width: 160 }} />
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map((row, i) => (
+                  <tr key={i}>
+                    <td>{row[0]}</td>
+                    <td>{row[1]}</td>
+                    <td>
+                      <Button small disabled={busy} onClick={() => void wake(row[1])}>
+                        Wake
+                      </Button>{' '}
+                      <Button small disabled={busy} onClick={() => setEntries(entries.filter((_, j) => j !== i))}>
+                        Remove
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+                {draft && (
+                  <tr>
+                    <td>
+                      <TextInput value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} width={160} />
+                    </td>
+                    <td>
+                      <TextInput value={draft.mac} onChange={(v) => setDraft({ ...draft, mac: v })} width={190} />
+                    </td>
+                    <td>
+                      <Button
+                        small
+                        variant="primary"
+                        disabled={!draft.name || !MAC_PATTERN.test(draft.mac)}
+                        onClick={() => {
+                          setEntries([...entries, [draft.name, draft.mac]]);
+                          setDraft(null);
+                        }}
+                      >
+                        Add
+                      </Button>{' '}
+                      <Button small onClick={() => setDraft(null)}>
+                        Cancel
+                      </Button>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+          <div className="mc-listedit__bar">
+            {!draft && (
+              <Button small onClick={() => setDraft({ name: '', mac: '' })}>
+                + Add target
+              </Button>
+            )}
+            {dirty && (
+              <>
+                <Button small variant="primary" disabled={busy} onClick={() => void saveList(entries)}>
+                  {isReadOnlyMode() ? 'Preview save' : 'Save list'}
+                </Button>
+                <Button small disabled={busy} onClick={() => void load()}>
+                  Revert
+                </Button>
+              </>
+            )}
+          </div>
+        </Card>
+        {outcome && (
+          <Banner tone={outcome.dryRun ? 'info' : outcome.applied ? 'info' : 'err'}>
+            <Badge tone={outcome.dryRun ? 'info' : outcome.applied ? 'ok' : 'err'}>
+              {outcome.dryRun ? 'DRY RUN' : outcome.applied ? 'DONE' : 'SENT (unconfirmed)'}
+            </Badge>{' '}
+            <code>POST {outcome.entry.request.url}</code> · <code>{outcome.entry.request.body}</code>
+          </Banner>
+        )}
+      </>
+    );
+  }
 
   return (
     <div>
       <h1 className="mc-page-title">Wake a Device (Wake-on-LAN)</h1>
       <p className="mc-page-subtitle">Main_WOL_Content.asp</p>
-      {isReadOnlyMode() && (
-        <Banner tone="info">Read-only mode: Wake and Save preview the exact request without sending it.</Banner>
-      )}
-      <Card title="Quick wake">
-        <div className="mc-row">
-          <div className="mc-row__label">Target MAC address</div>
-          <div className="mc-row__control">
-            <TextInput value={manualMac} onChange={setManualMac} placeholder="AA:BB:CC:DD:EE:FF" width={220} />
-            <Button
-              variant="primary"
-              disabled={busy || !MAC_PATTERN.test(manualMac)}
-              onClick={() => void wake(manualMac)}
-            >
-              Wake
-            </Button>
-          </div>
-        </div>
-      </Card>
-      <Card title={`Saved targets (${entries.length})`}>
-        {entries.length === 0 && !draft ? (
-          <EmptyState>No saved WOL targets</EmptyState>
-        ) : (
-          <table className="mc-table mc-table--mono">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>MAC address</th>
-                <th style={{ width: 160 }} />
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((row, i) => (
-                <tr key={i}>
-                  <td>{row[0]}</td>
-                  <td>{row[1]}</td>
-                  <td>
-                    <Button small disabled={busy} onClick={() => void wake(row[1])}>
-                      Wake
-                    </Button>{' '}
-                    <Button small disabled={busy} onClick={() => setEntries(entries.filter((_, j) => j !== i))}>
-                      Remove
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-              {draft && (
-                <tr>
-                  <td>
-                    <TextInput value={draft.name} onChange={(v) => setDraft({ ...draft, name: v })} width={160} />
-                  </td>
-                  <td>
-                    <TextInput value={draft.mac} onChange={(v) => setDraft({ ...draft, mac: v })} width={190} />
-                  </td>
-                  <td>
-                    <Button
-                      small
-                      variant="primary"
-                      disabled={!draft.name || !MAC_PATTERN.test(draft.mac)}
-                      onClick={() => {
-                        setEntries([...entries, [draft.name, draft.mac]]);
-                        setDraft(null);
-                      }}
-                    >
-                      Add
-                    </Button>{' '}
-                    <Button small onClick={() => setDraft(null)}>
-                      Cancel
-                    </Button>
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        )}
-        <div className="mc-listedit__bar">
-          {!draft && (
-            <Button small onClick={() => setDraft({ name: '', mac: '' })}>
-              + Add target
-            </Button>
-          )}
-          {dirty && (
-            <>
-              <Button small variant="primary" disabled={busy} onClick={() => void saveList(entries)}>
-                {isReadOnlyMode() ? 'Preview save' : 'Save list'}
-              </Button>
-              <Button small disabled={busy} onClick={() => void load()}>
-                Revert
-              </Button>
-            </>
-          )}
-        </div>
-      </Card>
-      {outcome && (
-        <Banner tone={outcome.dryRun ? 'info' : outcome.applied ? 'info' : 'err'}>
-          <Badge tone={outcome.dryRun ? 'info' : outcome.applied ? 'ok' : 'err'}>
-            {outcome.dryRun ? 'DRY RUN' : outcome.applied ? 'DONE' : 'SENT (unconfirmed)'}
-          </Badge>{' '}
-          <code>POST {outcome.entry.request.url}</code> · <code>{outcome.entry.request.body}</code>
-        </Banner>
+      {error ? (
+        <Banner tone="err">Failed to read WOL list: {error}</Banner>
+      ) : !entries ? (
+        <Loading />
+      ) : (
+        renderWol(entries)
       )}
     </div>
   );

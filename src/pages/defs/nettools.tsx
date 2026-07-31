@@ -102,105 +102,115 @@ function SysinfoPage(_props: PageProps) {
     return () => clearInterval(t);
   }, [polling, loadFeed]);
 
-  if (error) return <Banner tone="err">Failed to read ajax_sysinfo.asp: {error}</Banner>;
-  if (!feed) return <Loading />;
-
-  const mem = feed.memStats;
-  const bandLabels = ['2.4 GHz', '5 GHz', '6 GHz', 'Radio 3'].slice(0, feed.wifiClients.length);
+  function renderSysinfo(feed: SysinfoSnapshot) {
+    const mem = feed.memStats;
+    const bandLabels = ['2.4 GHz', '5 GHz', '6 GHz', 'Radio 3'].slice(0, feed.wifiClients.length);
+    return (
+      <>
+        <div className="mc-feedbar">
+          <label className="mc-feedbar__poll">
+            <Toggle on={polling} onChange={setPolling} /> auto-refresh (3s)
+          </label>
+        </div>
+        <div className="mc-grid-2">
+          <Card title="CPU">
+            <dl className="mc-kv">
+              <dt>Model</dt>
+              <dd>
+                {scalars?.cpuModel || '—'}
+                {scalars?.cpuFreq ? ` @ ${scalars.cpuFreq}\u00A0MHz` : ''}
+              </dd>
+              <dt>Load (1 / 5 / 15 min)</dt>
+              <dd>{feed.cpuLoad.join(' / ') || '—'}</dd>
+              <dt>HW acceleration</dt>
+              <dd>
+                {scalars?.hwaccelRunner ? `Runner: ${scalars.hwaccelRunner}` : ''}
+                {scalars?.hwaccelFc ? ` · Flow Cache: ${scalars.hwaccelFc}` : ''}
+                {!scalars?.hwaccelRunner && !scalars?.hwaccelFc && '—'}
+              </dd>
+            </dl>
+          </Card>
+          <Card title="Memory">
+            <dl className="mc-kv">
+              <dt>Total / free / available</dt>
+              <dd>
+                {fmtMb(mem[0])} / {fmtMb(mem[1])} / {fmtMb(mem[9] ?? '')}
+              </dd>
+              <dt>Buffers / cache</dt>
+              <dd>
+                {fmtMb(mem[2])} / {fmtMb(mem[3])}
+              </dd>
+              <dt>Swap</dt>
+              <dd>
+                {fmtMb(mem[4])} / {fmtMb(mem[5])}
+              </dd>
+              <dt>nvram usage</dt>
+              <dd>
+                {mem[6] || '—'}
+                {scalars?.nvramTotal ? ` / ${scalars.nvramTotal}\u00A0bytes` : ''}
+              </dd>
+              <dt>JFFS free</dt>
+              <dd>{mem[7] || '—'}</dd>
+            </dl>
+          </Card>
+        </div>
+        <Card title="Connections">
+          <dl className="mc-kv">
+            <dt>Tracked / active</dt>
+            <dd>
+              {feed.connStats[0] ?? '—'}
+              {scalars?.connMax ? ` / ${scalars.connMax}\u00A0max` : ''} ·{' '}
+              {`${feed.connStats[1] ?? '—'}\u00A0active`}
+            </dd>
+          </dl>
+        </Card>
+        <Card title="Wireless clients (associated / authorized / authenticated)">
+          <table className="mc-table">
+            <tbody>
+              {feed.wifiClients.map((counts, i) => (
+                <tr key={i}>
+                  <td>
+                    <Badge tone={i === 0 ? '24' : i === 1 ? '5' : '6'}>{bandLabels[i] ?? `Radio ${i}`}</Badge>
+                  </td>
+                  <td className="num">{counts.join(' / ')}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+        {(scalars?.cfeVersion || (scalars?.driverVersions.length ?? 0) > 0) && (
+          <Card title="Firmware components">
+            <dl className="mc-kv">
+              <dt>Bootloader (CFE)</dt>
+              <dd className="mc-nowrap">{scalars?.cfeVersion || '—'}</dd>
+              <dt>Wireless driver</dt>
+              <dd>
+                {scalars?.driverVersions.length
+                  ? scalars.driverVersions.map((v, i) => (
+                      <span key={i}>
+                        {i > 0 ? ' · ' : ''}
+                        <span className="mc-nowrap">{v}</span>
+                      </span>
+                    ))
+                  : '—'}
+              </dd>
+            </dl>
+          </Card>
+        )}
+      </>
+    );
+  }
 
   return (
     <div>
       <h1 className="mc-page-title">Router Resources</h1>
       <p className="mc-page-subtitle">Tools_Sysinfo.asp · Merlin</p>
-      <div className="mc-feedbar">
-        <label className="mc-feedbar__poll">
-          <Toggle on={polling} onChange={setPolling} /> auto-refresh (3s)
-        </label>
-      </div>
-      <div className="mc-grid-2">
-        <Card title="CPU">
-          <dl className="mc-kv">
-            <dt>Model</dt>
-            <dd>
-              {scalars?.cpuModel || '—'}
-              {scalars?.cpuFreq ? ` @ ${scalars.cpuFreq}\u00A0MHz` : ''}
-            </dd>
-            <dt>Load (1 / 5 / 15 min)</dt>
-            <dd>{feed.cpuLoad.join(' / ') || '—'}</dd>
-            <dt>HW acceleration</dt>
-            <dd>
-              {scalars?.hwaccelRunner ? `Runner: ${scalars.hwaccelRunner}` : ''}
-              {scalars?.hwaccelFc ? ` · Flow Cache: ${scalars.hwaccelFc}` : ''}
-              {!scalars?.hwaccelRunner && !scalars?.hwaccelFc && '—'}
-            </dd>
-          </dl>
-        </Card>
-        <Card title="Memory">
-          <dl className="mc-kv">
-            <dt>Total / free / available</dt>
-            <dd>
-              {fmtMb(mem[0])} / {fmtMb(mem[1])} / {fmtMb(mem[9] ?? '')}
-            </dd>
-            <dt>Buffers / cache</dt>
-            <dd>
-              {fmtMb(mem[2])} / {fmtMb(mem[3])}
-            </dd>
-            <dt>Swap</dt>
-            <dd>
-              {fmtMb(mem[4])} / {fmtMb(mem[5])}
-            </dd>
-            <dt>nvram usage</dt>
-            <dd>
-              {mem[6] || '—'}
-              {scalars?.nvramTotal ? ` / ${scalars.nvramTotal}\u00A0bytes` : ''}
-            </dd>
-            <dt>JFFS free</dt>
-            <dd>{mem[7] || '—'}</dd>
-          </dl>
-        </Card>
-      </div>
-      <Card title="Connections">
-        <dl className="mc-kv">
-          <dt>Tracked / active</dt>
-          <dd>
-            {feed.connStats[0] ?? '—'}
-            {scalars?.connMax ? ` / ${scalars.connMax}\u00A0max` : ''} ·{' '}
-            {`${feed.connStats[1] ?? '—'}\u00A0active`}
-          </dd>
-        </dl>
-      </Card>
-      <Card title="Wireless clients (associated / authorized / authenticated)">
-        <table className="mc-table">
-          <tbody>
-            {feed.wifiClients.map((counts, i) => (
-              <tr key={i}>
-                <td>
-                  <Badge tone={i === 0 ? '24' : i === 1 ? '5' : '6'}>{bandLabels[i] ?? `Radio ${i}`}</Badge>
-                </td>
-                <td className="num">{counts.join(' / ')}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
-      {(scalars?.cfeVersion || (scalars?.driverVersions.length ?? 0) > 0) && (
-        <Card title="Firmware components">
-          <dl className="mc-kv">
-            <dt>Bootloader (CFE)</dt>
-            <dd className="mc-nowrap">{scalars?.cfeVersion || '—'}</dd>
-            <dt>Wireless driver</dt>
-            <dd>
-              {scalars?.driverVersions.length
-                ? scalars.driverVersions.map((v, i) => (
-                    <span key={i}>
-                      {i > 0 ? ' · ' : ''}
-                      <span className="mc-nowrap">{v}</span>
-                    </span>
-                  ))
-                : '—'}
-            </dd>
-          </dl>
-        </Card>
+      {error ? (
+        <Banner tone="err">Failed to read ajax_sysinfo.asp: {error}</Banner>
+      ) : !feed ? (
+        <Loading />
+      ) : (
+        renderSysinfo(feed)
       )}
     </div>
   );

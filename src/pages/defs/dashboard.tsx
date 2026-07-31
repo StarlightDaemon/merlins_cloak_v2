@@ -254,24 +254,147 @@ export function DashboardPage({ caps }: PageProps) {
     })();
   }, [caps]);
 
-  if (error) return <Banner tone="err">Failed to read router status: {error}</Banner>;
-  if (!data) return <Loading />;
-
-  const wan = wanStateBadge(data.wanState);
-  const routerCard = (
-    <Card title="Router">
-      <dl className="mc-kv">
-        <dt>LAN IP</dt>
-        <dd className="mc-nowrap">{data.lanIp}</dd>
-        <dt>Firmware</dt>
-        <dd className="mc-nowrap">{caps.identity.displayVersion}</dd>
-        <dt>Branch</dt>
-        <dd className="mc-nowrap">{caps.identity.branch === 'merlin' ? 'Asuswrt-Merlin' : caps.identity.branch}</dd>
-        <dt>Uptime</dt>
-        <dd>{data.uptimeStr || '—'}</dd>
-      </dl>
-    </Card>
-  );
+  function renderDash(data: DashData) {
+    const wan = wanStateBadge(data.wanState);
+    const routerCard = (
+      <Card title="Router">
+        <dl className="mc-kv">
+          <dt>LAN IP</dt>
+          <dd className="mc-nowrap">{data.lanIp}</dd>
+          <dt>Firmware</dt>
+          <dd className="mc-nowrap">{caps.identity.displayVersion}</dd>
+          <dt>Branch</dt>
+          <dd className="mc-nowrap">{caps.identity.branch === 'merlin' ? 'Asuswrt-Merlin' : caps.identity.branch}</dd>
+          <dt>Uptime</dt>
+          <dd>{data.uptimeStr || '—'}</dd>
+        </dl>
+      </Card>
+    );
+    return (
+      <>
+        {data.dualWan ? (
+          <>
+            <p className="mc-page-subtitle" style={{ marginTop: -12 }}>
+              Dual WAN — {WANS_MODE_LABEL[data.dualWan.mode] ?? `mode ${data.dualWan.mode}`}
+              {data.dualWan.mode === 'lb' && data.dualWan.lbRatio ? ` (ratio ${data.dualWan.lbRatio})` : ''}
+            </p>
+            <div className="mc-grid-2">
+              {data.dualWan.units.map((u) => {
+                const isFailover = data.dualWan!.mode === 'fo' || data.dualWan!.mode === 'fb';
+                const roleLabel = isFailover
+                  ? u.unit === data.dualWan!.primaryUnit
+                    ? 'Primary'
+                    : 'Standby'
+                  : `WAN unit ${u.unit + 1}`;
+                const badge = wanStateBadge(u.state);
+                return (
+                  <Card key={u.unit} title={`Internet — ${roleLabel}`} badge={<Badge tone={badge.tone}>{badge.label}</Badge>}>
+                    <dl className="mc-kv">
+                      <dt>WAN IP</dt>
+                      <dd className="mc-nowrap">{u.ip || '—'}</dd>
+                      <dt>Gateway</dt>
+                      <dd className="mc-nowrap">{u.gateway || '—'}</dd>
+                      <dt>DNS</dt>
+                      <dd>{u.dns || '—'}</dd>
+                      <dt>Connection type</dt>
+                      <dd className="mc-nowrap">{u.proto || '—'}</dd>
+                    </dl>
+                  </Card>
+                );
+              })}
+            </div>
+            {routerCard}
+          </>
+        ) : (
+          <div className="mc-grid-2">
+            <Card title="Internet" badge={<Badge tone={wan.tone}>{wan.label}</Badge>}>
+              <dl className="mc-kv">
+                <dt>WAN IP</dt>
+                <dd className="mc-nowrap">{data.wanIp || '—'}</dd>
+                <dt>Gateway</dt>
+                <dd className="mc-nowrap">{data.wanGateway || '—'}</dd>
+                <dt>DNS</dt>
+                <dd>{data.wanDns || '—'}</dd>
+                <dt>Connection type</dt>
+                <dd className="mc-nowrap">{data.wanProto || '—'}</dd>
+              </dl>
+            </Card>
+            {routerCard}
+          </div>
+        )}
+        {data.sdnNetworks ? (
+          <Card title="Wireless networks">
+            <div className="mc-feedbar" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
+              {data.radioStates.map((r) => (
+                <span key={r.band} className="mc-nowrap">
+                  <Badge tone={r.tone}>{r.band}</Badge> {r.enabled ? <Badge tone="ok">on</Badge> : <Badge>off</Badge>}
+                </span>
+              ))}
+            </div>
+            <table className="mc-table">
+              <thead>
+                <tr>
+                  <th>Network</th>
+                  <th>SSID</th>
+                  <th>Bands</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.sdnNetworks.length === 0 ? (
+                  <tr>
+                    <td colSpan={3}>No enabled networks found</td>
+                  </tr>
+                ) : (
+                  data.sdnNetworks.map((n) => (
+                    <tr key={n.idx}>
+                      <td className="mc-nowrap">{n.label}</td>
+                      <td>{n.ssid || '—'}</td>
+                      <td>
+                        {n.bands.length === 0 ? (
+                          '—'
+                        ) : (
+                          <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {n.bands.map((b) => (
+                              <Badge key={b} tone={b}>
+                                {BAND_LABEL[b]}
+                              </Badge>
+                            ))}
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </Card>
+        ) : (
+          <Card title="Wireless radios">
+            <table className="mc-table">
+              <thead>
+                <tr>
+                  <th>Band</th>
+                  <th>SSID</th>
+                  <th>State</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(data.legacyRadios ?? []).map((r) => (
+                  <tr key={r.band}>
+                    <td>
+                      <Badge tone={r.tone}>{r.band}</Badge>
+                    </td>
+                    <td>{r.ssid || '—'}</td>
+                    <td>{r.enabled ? <Badge tone="ok">on</Badge> : <Badge>off</Badge>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        )}
+      </>
+    );
+  }
 
   return (
     <div>
@@ -279,125 +402,12 @@ export function DashboardPage({ caps }: PageProps) {
       <p className="mc-page-subtitle">
         {caps.identity.productId} · {caps.identity.displayVersion}
       </p>
-      {data.dualWan ? (
-        <>
-          <p className="mc-page-subtitle" style={{ marginTop: -12 }}>
-            Dual WAN — {WANS_MODE_LABEL[data.dualWan.mode] ?? `mode ${data.dualWan.mode}`}
-            {data.dualWan.mode === 'lb' && data.dualWan.lbRatio ? ` (ratio ${data.dualWan.lbRatio})` : ''}
-          </p>
-          <div className="mc-grid-2">
-            {data.dualWan.units.map((u) => {
-              const isFailover = data.dualWan!.mode === 'fo' || data.dualWan!.mode === 'fb';
-              const roleLabel = isFailover
-                ? u.unit === data.dualWan!.primaryUnit
-                  ? 'Primary'
-                  : 'Standby'
-                : `WAN unit ${u.unit + 1}`;
-              const badge = wanStateBadge(u.state);
-              return (
-                <Card key={u.unit} title={`Internet — ${roleLabel}`} badge={<Badge tone={badge.tone}>{badge.label}</Badge>}>
-                  <dl className="mc-kv">
-                    <dt>WAN IP</dt>
-                    <dd className="mc-nowrap">{u.ip || '—'}</dd>
-                    <dt>Gateway</dt>
-                    <dd className="mc-nowrap">{u.gateway || '—'}</dd>
-                    <dt>DNS</dt>
-                    <dd>{u.dns || '—'}</dd>
-                    <dt>Connection type</dt>
-                    <dd className="mc-nowrap">{u.proto || '—'}</dd>
-                  </dl>
-                </Card>
-              );
-            })}
-          </div>
-          {routerCard}
-        </>
+      {error ? (
+        <Banner tone="err">Failed to read router status: {error}</Banner>
+      ) : !data ? (
+        <Loading />
       ) : (
-        <div className="mc-grid-2">
-          <Card title="Internet" badge={<Badge tone={wan.tone}>{wan.label}</Badge>}>
-            <dl className="mc-kv">
-              <dt>WAN IP</dt>
-              <dd className="mc-nowrap">{data.wanIp || '—'}</dd>
-              <dt>Gateway</dt>
-              <dd className="mc-nowrap">{data.wanGateway || '—'}</dd>
-              <dt>DNS</dt>
-              <dd>{data.wanDns || '—'}</dd>
-              <dt>Connection type</dt>
-              <dd className="mc-nowrap">{data.wanProto || '—'}</dd>
-            </dl>
-          </Card>
-          {routerCard}
-        </div>
-      )}
-      {data.sdnNetworks ? (
-        <Card title="Wireless networks">
-          <div className="mc-feedbar" style={{ marginBottom: 12, flexWrap: 'wrap' }}>
-            {data.radioStates.map((r) => (
-              <span key={r.band} className="mc-nowrap">
-                <Badge tone={r.tone}>{r.band}</Badge> {r.enabled ? <Badge tone="ok">on</Badge> : <Badge>off</Badge>}
-              </span>
-            ))}
-          </div>
-          <table className="mc-table">
-            <thead>
-              <tr>
-                <th>Network</th>
-                <th>SSID</th>
-                <th>Bands</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.sdnNetworks.length === 0 ? (
-                <tr>
-                  <td colSpan={3}>No enabled networks found</td>
-                </tr>
-              ) : (
-                data.sdnNetworks.map((n) => (
-                  <tr key={n.idx}>
-                    <td className="mc-nowrap">{n.label}</td>
-                    <td>{n.ssid || '—'}</td>
-                    <td>
-                      {n.bands.length === 0 ? (
-                        '—'
-                      ) : (
-                        <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {n.bands.map((b) => (
-                            <Badge key={b} tone={b}>
-                              {BAND_LABEL[b]}
-                            </Badge>
-                          ))}
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </Card>
-      ) : (
-        <Card title="Wireless radios">
-          <table className="mc-table">
-            <thead>
-              <tr>
-                <th>Band</th>
-                <th>SSID</th>
-                <th>State</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(data.legacyRadios ?? []).map((r) => (
-                <tr key={r.band}>
-                  <td>
-                    <Badge tone={r.tone}>{r.band}</Badge>
-                  </td>
-                  <td>{r.ssid || '—'}</td>
-                  <td>{r.enabled ? <Badge tone="ok">on</Badge> : <Badge>off</Badge>}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        renderDash(data)
       )}
     </div>
   );

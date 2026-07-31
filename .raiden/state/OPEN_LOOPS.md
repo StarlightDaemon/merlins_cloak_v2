@@ -815,8 +815,17 @@ docs-drift, and verification-gap sections that never shipped. That gap is
 not re-opened here as a loop of its own; the verification report's §3 has
 a ready-made worklist if a future pass wants to finish it.
 
-### Custom-page loading/error shell inconsistency
-- **Status:** Open, low-cost, solo-completable.
+### Custom-page loading/error shell inconsistency — CLOSED 2026-07-31
+- **Status: CLOSED 2026-07-31** (the commit carrying this entry). All five
+  offenders now render the `mc-page-title` h1 and subtitle unconditionally,
+  with the error/loading/loaded branch nested below as a ternary and the
+  loaded JSX moved into a local `render*()` function (the same render-prop
+  idiom `logs.tsx`/`vpn-status.tsx` already use, preserving TypeScript
+  narrowing). `AnalysisPage`/`NetstatPage` (nettools) and
+  `RealtimePage`/`historyPage()` (traffic) already matched the majority
+  pattern and were untouched. Harness-verified: title visible during a
+  deliberately delayed load on `#/dashboard` and `#/aimesh`, loaded
+  content intact on all five routes; tsc/lint/build/build:firefox clean.
 - **What:** two divergent patterns for custom-page (`SettingsPageDef`
   render functions with `kind: 'custom'`) loading/error state. Most pages
   render `<h1 className="mc-page-title">` and the layout shell
@@ -938,7 +947,7 @@ a defect.
   (`load`), `:194-261` (`apply`), `:277-284` (instance `RadioGroup`).
 
 ### `ListEditor` rapid-deletion stale-closure loss — CLOSED 2026-07-31
-- **Status: CLOSED 2026-07-31.** Fixed: the mutating handlers (`setCell`,
+- **Status: CLOSED 2026-07-31** (`41746bb`). Fixed: the mutating handlers (`setCell`,
   the per-row delete, `commitDraft`) now derive their next state from a
   `valueRef` mirroring the latest committed raw value (updated
   synchronously inside `commit()`, re-synced from the `value` prop every
