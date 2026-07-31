@@ -114,23 +114,23 @@ export function DashboardPage({ caps }: PageProps) {
         <Card title="Internet" badge={<Badge tone={wan.tone}>{wan.label}</Badge>}>
           <dl className="mc-kv">
             <dt>WAN IP</dt>
-            <dd>{data.wanIp || '—'}</dd>
+            <dd className="mc-nowrap">{data.wanIp || '—'}</dd>
             <dt>Gateway</dt>
-            <dd>{data.wanGateway || '—'}</dd>
+            <dd className="mc-nowrap">{data.wanGateway || '—'}</dd>
             <dt>DNS</dt>
             <dd>{data.wanDns || '—'}</dd>
             <dt>Connection type</dt>
-            <dd>{data.wanProto || '—'}</dd>
+            <dd className="mc-nowrap">{data.wanProto || '—'}</dd>
           </dl>
         </Card>
         <Card title="Router">
           <dl className="mc-kv">
             <dt>LAN IP</dt>
-            <dd>{data.lanIp}</dd>
+            <dd className="mc-nowrap">{data.lanIp}</dd>
             <dt>Firmware</dt>
-            <dd>{caps.identity.displayVersion}</dd>
+            <dd className="mc-nowrap">{caps.identity.displayVersion}</dd>
             <dt>Branch</dt>
-            <dd>{caps.identity.branch === 'merlin' ? 'Asuswrt-Merlin' : caps.identity.branch}</dd>
+            <dd className="mc-nowrap">{caps.identity.branch === 'merlin' ? 'Asuswrt-Merlin' : caps.identity.branch}</dd>
             <dt>Uptime</dt>
             <dd>{data.uptimeStr || '—'}</dd>
           </dl>

@@ -88,6 +88,29 @@ export const FIXTURE_UPTIME_RAW =
   'Fri, 31 Jul 2026 09:15:22 GMT(14 days, 06:22:10 since boot)';
 
 /**
+ * sysinfo("...") scalar hooks (Tools_Sysinfo.asp / pages/defs/nettools.tsx).
+ * Keyed by the bare arg (the part inside the quotes) — the mock's appGet
+ * handler (mocks/router-fetch.ts) prefixes it back to "sysinfo-<arg>" to
+ * match the real firmware's key-naming convention for parenthesized scalar
+ * hooks. Values are realistic-length FICTIONAL strings chosen specifically
+ * to reproduce the narrow-viewport overflow defects (long CPU model/hwaccel
+ * strings) rather than the short placeholders a real quick-look might use.
+ */
+export const FIXTURE_SYSINFO_SCALARS: Record<string, string> = {
+  'cpu.model': 'BCM6765 - ARMv8 (Cores: 4)',
+  'cpu.freq': '2000',
+  'conn.max': '262144',
+  'nvram.total': '262144',
+  'jffs.total': '15616',
+  cfe_version: '1.0.1.9',
+  'hwaccel.runner': 'Enabled',
+  'hwaccel.fc': 'Enabled',
+  'driver_version.0': '9.30.113.0',
+  'driver_version.1': '9.30.113.0',
+  'driver_version.2': '9.30.113.0',
+};
+
+/**
  * get_wclientlist() — bridge → band → station-MAC → details. Only the MAC
  * keys are read (lib/pages/defs/clients.tsx); the per-station array contents
  * are never inspected, so empty arrays are fine.
@@ -117,12 +140,20 @@ export function buildLeaseArrayPayload(): string {
   return `leasearray = ${JSON.stringify(rows)};`;
 }
 
-/** ajax_sysinfo.asp (Merlin-only feed; also used as the branch-detection probe). */
+/**
+ * ajax_sysinfo.asp (Merlin-only feed; also used as the branch-detection
+ * probe). mem_stats_arr entries arrive pre-scaled in MB per
+ * pages/defs/nettools.tsx's fmtMb() comment (live-observed, e.g. "993.76"),
+ * so these are realistic MB-scale floats/ints for a ~1 GB router, not the
+ * placeholder KB-scale integers a naive fixture might use — those rendered
+ * as absurd "512.00 GB" totals and didn't exercise the real string lengths
+ * ("993.76 MB / 286.27 MB / 311.39 MB") that reproduce the overflow defect.
+ */
 export const FIXTURE_SYSINFO_TEXT = `
 wlc_0_arr = [3,3,3];
 wlc_1_arr = [2,2,2];
 wlc_2_arr = [1,1,1];
 conn_stats_arr = [842,210];
-mem_stats_arr = [524288,183260,9840,71232,0,0,4096,15360,393216,214000];
+mem_stats_arr = [993.76,286.27,18.42,71.23,0,0,164548,15616,393216,311.39];
 cpu_stats_arr = [8,11,14];
 `;

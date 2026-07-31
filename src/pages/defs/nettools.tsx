@@ -24,12 +24,20 @@ interface SysinfoScalars {
   driverVersions: string[];
 }
 
-/** sysinfo memory.* values arrive pre-scaled in MB (live-observed, e.g. "993.76"). */
+/**
+ * sysinfo memory.* values arrive pre-scaled in MB (live-observed, e.g.
+ * "993.76"). Joins the number to its unit with a non-breaking space so a
+ * figure like "993.76 MB" can never wrap between the number and the unit —
+ * it's one atomic byte-size figure, not two separately-wrappable words —
+ * the same class of defect as the dashboard's firmware/branch strings, just
+ * glued instead of forbidden from wrapping outright, since these figures
+ * still need to wrap *between* the "/"-separated triplet.
+ */
 function fmtMb(v: string): string {
   const n = Number(v);
   if (Number.isNaN(n)) return v || '—';
-  if (n >= 1024) return `${(n / 1024).toFixed(2)} GB`;
-  return `${n} MB`;
+  if (n >= 1024) return `${(n / 1024).toFixed(2)}\u00A0GB`;
+  return `${n}\u00A0MB`;
 }
 
 /** Scalar hook output may carry HTML entities (live-observed: cpu.model has &nbsp;). */
@@ -115,7 +123,7 @@ function SysinfoPage(_props: PageProps) {
             <dt>Model</dt>
             <dd>
               {scalars?.cpuModel || '—'}
-              {scalars?.cpuFreq ? ` @ ${scalars.cpuFreq} MHz` : ''}
+              {scalars?.cpuFreq ? ` @ ${scalars.cpuFreq}\u00A0MHz` : ''}
             </dd>
             <dt>Load (1 / 5 / 15 min)</dt>
             <dd>{feed.cpuLoad.join(' / ') || '—'}</dd>
@@ -144,7 +152,7 @@ function SysinfoPage(_props: PageProps) {
             <dt>nvram usage</dt>
             <dd>
               {mem[6] || '—'}
-              {scalars?.nvramTotal ? ` / ${scalars.nvramTotal} bytes` : ''}
+              {scalars?.nvramTotal ? ` / ${scalars.nvramTotal}\u00A0bytes` : ''}
             </dd>
             <dt>JFFS free</dt>
             <dd>{mem[7] || '—'}</dd>
@@ -156,7 +164,8 @@ function SysinfoPage(_props: PageProps) {
           <dt>Tracked / active</dt>
           <dd>
             {feed.connStats[0] ?? '—'}
-            {scalars?.connMax ? ` / ${scalars.connMax} max` : ''} · {feed.connStats[1] ?? '—'} active
+            {scalars?.connMax ? ` / ${scalars.connMax}\u00A0max` : ''} ·{' '}
+            {`${feed.connStats[1] ?? '—'}\u00A0active`}
           </dd>
         </dl>
       </Card>
@@ -178,9 +187,18 @@ function SysinfoPage(_props: PageProps) {
         <Card title="Firmware components">
           <dl className="mc-kv">
             <dt>Bootloader (CFE)</dt>
-            <dd>{scalars?.cfeVersion || '—'}</dd>
+            <dd className="mc-nowrap">{scalars?.cfeVersion || '—'}</dd>
             <dt>Wireless driver</dt>
-            <dd>{scalars?.driverVersions.join(' · ') || '—'}</dd>
+            <dd>
+              {scalars?.driverVersions.length
+                ? scalars.driverVersions.map((v, i) => (
+                    <span key={i}>
+                      {i > 0 ? ' · ' : ''}
+                      <span className="mc-nowrap">{v}</span>
+                    </span>
+                  ))
+                : '—'}
+            </dd>
           </dl>
         </Card>
       )}

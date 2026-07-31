@@ -183,9 +183,9 @@ export function DiagnosticsPage({ caps }: PageProps) {
         <Card title="Detected router identity">
           <dl className="mc-kv">
             <dt>Product ID</dt>
-            <dd>{ident.productId}</dd>
+            <dd className="mc-nowrap">{ident.productId}</dd>
             <dt>Firmware version</dt>
-            <dd>{ident.displayVersion}</dd>
+            <dd className="mc-nowrap">{ident.displayVersion}</dd>
             <dt>Generation</dt>
             <dd>
               {ident.generation === 'asuswrt-50-wifi7'
@@ -195,9 +195,11 @@ export function DiagnosticsPage({ caps }: PageProps) {
                   : 'unknown'}
             </dd>
             <dt>Branch</dt>
-            <dd>{ident.branch === 'merlin' ? 'Asuswrt-Merlin' : ident.branch === 'stock' ? 'stock ASUSWRT' : 'unknown'}</dd>
+            <dd className="mc-nowrap">
+              {ident.branch === 'merlin' ? 'Asuswrt-Merlin' : ident.branch === 'stock' ? 'stock ASUSWRT' : 'unknown'}
+            </dd>
             <dt>LAN address</dt>
-            <dd>{ident.lanIp}</dd>
+            <dd className="mc-nowrap">{ident.lanIp}</dd>
             <dt>Flag source</dt>
             <dd>
               {caps.flagSource === 'main-world'

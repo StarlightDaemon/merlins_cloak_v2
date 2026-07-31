@@ -15,6 +15,7 @@
  */
 import {
   FIXTURE_NVRAM,
+  FIXTURE_SYSINFO_SCALARS,
   FIXTURE_SYSINFO_TEXT,
   FIXTURE_UPTIME_RAW,
   FIXTURE_WCLIENTLIST,
@@ -63,6 +64,13 @@ function buildJsonEnvelope(hooks: string[]): string {
       out.uptime = FIXTURE_UPTIME_RAW;
     } else if (hook === 'get_wclientlist()') {
       out.get_wclientlist = FIXTURE_WCLIENTLIST;
+    } else if ((m = /^sysinfo\("([^"]+)"\)$/.exec(hook))) {
+      // Real firmware keys parenthesized sysinfo() scalar hooks as
+      // "sysinfo-<arg>" (see pages/defs/nettools.tsx: s['sysinfo-cpu.model']
+      // etc.) — fetchScalarHooks (lib/status-feeds.ts) text-scans the
+      // response for that exact key shape, so the fixture must reproduce it
+      // rather than the generic bare-hook-name fallback below.
+      out[`sysinfo-${m[1]}`] = FIXTURE_SYSINFO_SCALARS[m[1]] ?? '';
     } else {
       // Generic fallback for any hook this fixture set doesn't model
       // specifically: answer with the plain nvram value if we have one,

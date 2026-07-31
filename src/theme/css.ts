@@ -471,12 +471,48 @@ ${varsToCssLines(buildThemeVars())}
 }
 @keyframes mc-spin { to { transform: rotate(360deg); } }
 .mc-empty { color: var(--fujin-text-muted); text-align: center; padding: 26px 0; font-size: 12.5px; }
-.mc-kv { display: grid; grid-template-columns: minmax(180px, max-content) minmax(0, 1fr); gap: 4px 16px; font-size: 12.5px; }
+/*
+ * .mc-kv label track: fit-content(180px) sizes the column to its actual
+ * content (so short labels like "Uptime" don't force 180px of dead space in
+ * a narrow card) while still capping it at 180px for long labels — a hard
+ * minmax(180px, …) floor was starving the value column in the ~320px-wide
+ * cards a 236px-nav + ~700px-content window produces. .mc-kv dd drops
+ * word-break: break-all (which sliced
+ * tokens at ANY character, e.g. "Asuswrt-Merlin" -> "Asuswrt-Merli"/"n") for
+ * plain word-boundary wrapping (the browser default: wrap at a space, never
+ * mid-token — overflow-wrap is deliberately left at its normal default
+ * rather than break-word/anywhere, which would still fracture a single
+ * unbroken atomic token as a last resort). Genuinely atomic values (IPs,
+ * firmware strings, branch/product identifiers, …) are marked .mc-nowrap
+ * at the call site instead of ever being allowed to break — see
+ * dashboard.tsx / nettools.tsx / extension.tsx. A value that still can't
+ * fit its column overflows/clips (inside .mc-card's overflow: hidden)
+ * rather than fracturing — the width fixes above (fit-content label track,
+ * content-width card collapse) are what keep that from being needed in
+ * practice.
+ */
+.mc-kv { display: grid; grid-template-columns: fit-content(180px) minmax(0, 1fr); gap: 4px 16px; font-size: 12.5px; }
 .mc-kv dt { color: var(--fujin-text-secondary); }
-.mc-kv dd { margin: 0; font-family: var(--fujin-font-family-mono); font-size: 12px; word-break: break-all; }
+.mc-kv dd { margin: 0; font-family: var(--fujin-font-family-mono); font-size: 12px; }
+.mc-nowrap { white-space: nowrap; }
 .mc-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
-@media (max-width: 900px) {
+
+/*
+ * Content-width breakpoints, not viewport-width ones. This panel is a
+ * shadow-DOM overlay that fills the viewport, but its *usable content area*
+ * is (viewport width − 236px nav − 26px×2 .mc-main padding), so a
+ * viewport-based @media (max-width: …) query fires late: at a live-
+ * observed 958px-wide operator window the content area is only ~670px, yet
+ * a naive 900px viewport media query stays in the wide (2-column) branch
+ * the whole time, starving the two side-by-side cards. .mc-main is
+ * established as an inline-size query container so .mc-grid-2 / .mc-kv
+ * / .mc-row collapse based on the space they actually have.
+ */
+.mc-main { container-type: inline-size; }
+@container (max-width: 760px) {
   .mc-grid-2 { grid-template-columns: 1fr; }
+  .mc-kv { grid-template-columns: 1fr; row-gap: 2px; }
+  .mc-kv dd { margin-bottom: 4px; }
   .mc-row { flex-direction: column; align-items: flex-start; gap: 4px; }
   .mc-row__label { flex-basis: auto; }
 }
