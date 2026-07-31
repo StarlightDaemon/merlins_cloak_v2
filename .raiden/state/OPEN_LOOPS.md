@@ -896,8 +896,17 @@ up — no new loop needed for those; the QoS `restart_firewall` question in
 particular is confirmed-deliberate (see `qos.ts:45-49`'s own comment), not
 a defect.
 
-### Instance-switch state corruption — CONFIRMED, reproduced live
-- **Status:** Open, required fix, solo-completable.
+### Instance-switch state corruption — CLOSED 2026-07-31
+- **Status: CLOSED 2026-07-31.** Fixed by a generation-counter supersedure
+  guard in `load()` (a `loadGen` ref incremented per call; responses — and
+  load errors — belonging to a superseded call are discarded before any
+  `setBaseline`/`setValues`/`setEulaAccepted`/`setLoadError`), plus
+  `disabled={busy}` on the instance `RadioGroup`, matching Revert/Apply.
+  Re-verified against the verification report's §2 repro recipe in *both*
+  timing directions (first response delayed 600ms, and separately the
+  second response delayed): the UI now shows Server 1 selected with port
+  1194 every time (pre-fix: Server 1 selected, port 1195), and a normal
+  switch to Server 2 still shows 1195.
 - **What:** `SettingsPage.tsx`'s `load()` (`:125-158`) has no
   `AbortController` or supersedure/generation guard, and the instance
   `RadioGroup` (`:277-284`) is never disabled while `busy` is true (unlike

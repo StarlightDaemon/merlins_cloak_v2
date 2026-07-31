@@ -12,7 +12,7 @@
  * (containing '{p}'); the selected instance value is substituted only when
  * building read requests and write payloads. Switching instances reloads.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Capabilities } from '../lib/capabilities';
 import { nvramCharToAscii, nvramGet, appGet, type WriteSpec } from '../lib/router-io';
 import { guardedWrite, isReadOnlyMode, type GuardedWriteOutcome, type WriteProgressEvent } from '../lib/write-guard';
@@ -122,7 +122,13 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
     [instance],
   );
 
+  // Supersedure guard: each load() call takes a generation number; responses
+  // belonging to a superseded call (an instance switch, or any newer load)
+  // are discarded instead of overwriting the newer load's state.
+  const loadGen = useRef(0);
+
   const load = useCallback(async () => {
+    const gen = ++loadGen.current;
     setLoadError(null);
     setBaseline(null);
     try {
@@ -144,15 +150,19 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
         if (!(k in merged)) merged[k] = typeof v === 'string' ? v : JSON.stringify(v);
       }
       if (def.read.derive) merged = { ...merged, ...def.read.derive(merged, instance) };
+      let eula: boolean | null = null;
       if (def.eulaGate) {
         const eulaVals = await nvramGet(def.eulaGate.nvramKeys);
         // TM_EULA is versioned: 1 = accepted, 2 = accepted newer text. Any
         // non-zero value counts as accepted.
-        setEulaAccepted(Object.values(eulaVals).some((v) => v !== '' && v !== '0'));
+        eula = Object.values(eulaVals).some((v) => v !== '' && v !== '0');
       }
+      if (gen !== loadGen.current) return; // superseded by a newer load
+      if (eula !== null) setEulaAccepted(eula);
       setBaseline(merged);
       setValues(merged);
     } catch (e) {
+      if (gen !== loadGen.current) return; // superseded by a newer load
       setLoadError(e instanceof Error ? e.message : String(e));
     }
   }, [def, expand, instance]);
@@ -281,6 +291,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
           setInstance(v);
         }}
         options={instanceOptions.map(({ value, label }) => ({ value, label }))}
+        disabled={busy}
       />
     </div>
   );
