@@ -33,6 +33,7 @@ import { sdnPages } from './sdn';
 import { clientsPages } from './clients';
 import { notificationPages } from './notification';
 import { aimeshPages } from './aimesh';
+import { opModePages } from './opmode';
 
 export function registerAllPages(): void {
   registerPages([
@@ -73,6 +74,7 @@ export function registerAllPages(): void {
   registerPages(wolPages);
   registerPages(usbPages);
   registerPages(adminPages);
+  registerPages(opModePages);
   registerPages([
     tweaksPage,
     {
