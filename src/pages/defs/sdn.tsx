@@ -1,12 +1,8 @@
 /**
  * Self-Defined Networks / Guest Network Pro (SDN.asp) — read-focused overview.
- * Record layouts from shared/mtlan_utils.c (vstrsep field order):
- *   sdn_rl:    idx>name>enable>vlan_idx>subnet_idx>apg_idx>vpnc_idx>vpns_idx>
- *              dnsf_idx>urlf_idx>nwf_idx>cp_idx>gre_idx>fw_idx>killsw>ahs>
- *              wan_idx>… (23 max, 6 basic)
- *   subnet_rl: idx>ifname>addr>netmask>dhcp_enable>dhcp_min>dhcp_max>… (13 basic)
- * Per-network SSID/state live in apg<idx>_* nvram families (validated live in
- * the probe session: apg1_ssid etc. via nvram_char_to_ascii).
+ * Record layouts and the sdn_rl/subnet_rl/apg{idx}_* parsing itself live in
+ * lib/sdn.ts (shared with pages/defs/dashboard.tsx's SDN-aware summary, so
+ * both read the identical field layout instead of two independent parsers).
  *
  * SDN profile creation/editing writes an interdependent transaction across
  * sdn_rl + subnet_rl + vlan_rl + apg*_ families — deliberately NOT modeled
@@ -14,7 +10,7 @@
  */
 import { useEffect, useState } from 'react';
 import { hasFlag } from '../../lib/capabilities';
-import { nvramCharToAscii, nvramGet } from '../../lib/router-io';
+import { fetchSdnCore, SDN_TYPE_LABEL } from '../../lib/sdn';
 import type { PageDef, PageProps } from '../types';
 import { Badge, Banner, Card, EmptyState, Loading } from '../../ui/components';
 
@@ -29,44 +25,20 @@ interface SdnNetwork {
   dhcp: string;
 }
 
-const SDN_TYPE_LABEL: Record<string, string> = {
-  MAINFH: 'Main network',
-  MAINBH: 'AiMesh backhaul',
-  LEGACY: 'Legacy guest',
-};
-
 async function fetchSdn(): Promise<SdnNetwork[]> {
-  const lists = await nvramCharToAscii(['sdn_rl', 'subnet_rl']);
-  const sdnRecords = (lists.sdn_rl ?? '')
-    .split('<')
-    .filter(Boolean)
-    .map((rec) => rec.split('>'));
-  const subnetByIdx = new Map<string, string[]>();
-  for (const rec of (lists.subnet_rl ?? '').split('<').filter(Boolean)) {
-    const cols = rec.split('>');
-    subnetByIdx.set(cols[0], cols);
-  }
-  const apgIdxes = sdnRecords.map((r) => r[5]).filter((v) => v && v !== '0');
-  const apgKeys = apgIdxes.flatMap((i) => [`apg${i}_ssid`, `apg${i}_dut_list`]);
-  const apgEnable = apgIdxes.map((i) => `apg${i}_enable`);
-  let apgValues: Record<string, string> = {};
-  try {
-    apgValues = { ...(await nvramCharToAscii(apgKeys)), ...(await nvramGet(apgEnable)) };
-  } catch {
-    // per-network detail is best-effort; the sdn_rl skeleton still renders
-  }
-  return sdnRecords.map((r) => {
-    const subnet = subnetByIdx.get(r[4]);
-    const apg = r[5];
+  const { records, subnetByIdx, apgValues } = await fetchSdnCore();
+  return records.map((r) => {
+    const subnet = subnetByIdx.get(r.subnetIdx);
+    const apg = r.apgIdx;
     // apgX_dut_list records carry per-band radio assignments; presence of a
     // band digit is a rough indicator only, so just count entries.
     const bands = (apgValues[`apg${apg}_dut_list`] ?? '')
       .split('<')
       .filter(Boolean).length;
     return {
-      idx: Number(r[0]),
-      name: r[1] ?? '',
-      enabled: r[2] === '1',
+      idx: Number(r.idx),
+      name: r.name,
+      enabled: r.enabled,
       apgIdx: Number(apg),
       ssid: apgValues[`apg${apg}_ssid`] ?? '',
       band: bands > 0 ? `${bands} radio assignment${bands === 1 ? '' : 's'}` : '',

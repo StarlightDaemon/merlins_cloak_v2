@@ -15,6 +15,7 @@
  */
 import {
   FIXTURE_NVRAM,
+  FIXTURE_RC_SUPPORT_CLASSIC,
   FIXTURE_SYSINFO_SCALARS,
   FIXTURE_SYSINFO_TEXT,
   FIXTURE_UPTIME_RAW,
@@ -23,6 +24,24 @@ import {
 } from './fixtures';
 
 const originalFetch = window.fetch.bind(window);
+
+/**
+ * `?classic=1` (before the `#`, e.g. `content.html?classic=1#/dashboard` —
+ * hash-fragment content is never part of `location.search`) switches the
+ * rc_support fixture to FIXTURE_RC_SUPPORT_CLASSIC, dropping the `mtlancfg`
+ * token so lib/capabilities.ts's hasFlag('mtlancfg_support') sees it unset
+ * and the Dashboard renders its classic (non-SDN) fallback path. Every other
+ * fixture value (sdn_rl, apg*, wl0/1/2_ssid, …) is left in place either way —
+ * the classic path simply never reads the SDN-only keys, gated the same way
+ * the real extension gates them (hasFlag(caps, 'mtlancfg_support')).
+ */
+const CLASSIC_FIXTURE = new URLSearchParams(window.location.search).has('classic');
+
+/** Resolve one plain/ascii nvram fixture value, honoring the ?classic= override. */
+function nvramValue(key: string): string {
+  if (key === 'rc_support' && CLASSIC_FIXTURE) return FIXTURE_RC_SUPPORT_CLASSIC;
+  return FIXTURE_NVRAM[key] ?? '';
+}
 
 function textResponse(body: string, status = 200): Response {
   return new Response(body, { status, headers: { 'Content-Type': 'text/plain' } });
@@ -57,9 +76,9 @@ function buildJsonEnvelope(hooks: string[]): string {
   for (const hook of hooks) {
     let m: RegExpExecArray | null;
     if ((m = /^nvram_get\(([^)]+)\)$/.exec(hook))) {
-      out[m[1]] = FIXTURE_NVRAM[m[1]] ?? '';
+      out[m[1]] = nvramValue(m[1]);
     } else if ((m = /^nvram_char_to_ascii\(([^,]+),([^)]+)\)$/.exec(hook))) {
-      out[m[1]] = FIXTURE_NVRAM[m[1]] ?? '';
+      out[m[1]] = nvramValue(m[1]);
     } else if (hook === 'uptime()') {
       out.uptime = FIXTURE_UPTIME_RAW;
     } else if (hook === 'get_wclientlist()') {
@@ -77,7 +96,7 @@ function buildJsonEnvelope(hooks: string[]): string {
       // otherwise an empty string. Never throws — unfixtured pages render
       // with blank fields instead of crashing the harness.
       const bare = hook.replace(/\(.*\)$/, '');
-      out[bare] = FIXTURE_NVRAM[bare] ?? '';
+      out[bare] = nvramValue(bare);
     }
   }
   return JSON.stringify(out);

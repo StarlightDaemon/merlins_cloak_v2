@@ -39,6 +39,19 @@ export const FIXTURE_STATIC_LEASES: { mac: string; ip: string; dns: string; host
   { mac: '02:1A:2B:00:10:09', ip: '192.168.50.105', dns: '', hostname: 'nas-server' },
 ];
 
+/**
+ * rc_support token controlling the SDN (mtlancfg) capability flag — see
+ * lib/capabilities.ts hasFlag()'s rc_support fallback (this harness never has
+ * real MAIN-world `*_support` globals, so rc_support parsing is always the
+ * live path here). SDN is the DEFAULT fixture shape (matches the Dashboard
+ * SSID defect fix's primary target: SDN-managed ASUSWRT 5.0 units); appending
+ * `?classic=1` to the harness URL (before the `#` — see router-fetch.ts)
+ * switches to FIXTURE_RC_SUPPORT_CLASSIC so the plain wl0/1/2_ssid fallback
+ * table can still be exercised, e.g. `content.html?classic=1#/dashboard`.
+ */
+export const FIXTURE_RC_SUPPORT_SDN = 'band6g appbase mtlancfg';
+export const FIXTURE_RC_SUPPORT_CLASSIC = 'band6g appbase';
+
 /** Plain nvram_get / nvram_char_to_ascii key → value fixture table. */
 export const FIXTURE_NVRAM: Record<string, string> = {
   // --- identity (collectCapabilities) ---
@@ -47,7 +60,7 @@ export const FIXTURE_NVRAM: Record<string, string> = {
   firmver: '3.0.0.6',
   buildno: '9999',
   extendno: 'fixture_demo',
-  rc_support: 'band6g appbase',
+  rc_support: FIXTURE_RC_SUPPORT_SDN,
   lan_ipaddr: '192.168.50.1',
 
   // --- dashboard: WAN ---
@@ -57,13 +70,59 @@ export const FIXTURE_NVRAM: Record<string, string> = {
   wan0_dns: '203.0.113.53 203.0.113.54',
   wan0_proto: 'dhcp',
 
-  // --- dashboard: wireless radios ---
+  // --- dashboard: wireless radios (per-band on/off state — read regardless
+  // of SDN vs. classic; also the classic fallback table's SSID source) ---
   wl0_radio: '1',
   wl1_radio: '1',
   wl2_radio: '1',
   wl0_ssid: 'MerlinNet-Demo',
   wl1_ssid: 'MerlinNet-Demo-5G',
   wl2_ssid: 'MerlinNet-Demo-6G',
+
+  // --- dashboard (SDN path) / SDN.asp: sdn_rl + subnet_rl + apg{idx}_* ---
+  // Format reference: lib/sdn.ts header comment, RAW/merlin/.../shared/
+  // amas_apg_shared.h (~93-273) and RAW SDN.asp sdn.js get_dut_list()
+  // (~11542-11594, dut_list record shape `<mac>bandBitwise>lanport`).
+  // sdn_rl columns: idx>name>enable>vlan_idx>subnet_idx>apg_idx>… (rest
+  // unused by this extension's read path, left blank).
+  // Four networks modeled, all FICTIONAL:
+  //   idx1 MAINFH  (Main, all 3 bands)   -> apg1 "MerlinNet-Demo"
+  //   idx2 Guest   (2.4+5 GHz)           -> apg2 "MerlinNet-Guest"
+  //   idx3 IoT     (2.4 GHz only)        -> apg3 "MerlinNet-IoT"
+  //   idx4 MAINBH  (AiMesh backhaul, all 3 bands) -> apg4 "MerlinNet-Demo-BH"
+  //     — enabled and carries a normal apg_idx/SSID/dut_list on purpose, so
+  //     the fixture actually exercises the dashboard's MAINBH name filter
+  //     (sdn.tsx's full list still shows it; the dashboard's network table
+  //     must not).
+  //   idx5 Kids    (disabled)            -> apg5 "MerlinNet-Kids-Disabled"
+  //     — enabled=0, exercises the dashboard's enabled-only filter (sdn.tsx's
+  //     full list still shows it as "disabled").
+  sdn_rl:
+    '<1>MAINFH>1>1>1>1>>>>>>>>>>' +
+    '<2>Guest>1>2>2>2>>>>>>>>>>' +
+    '<3>IoT>1>3>3>3>>>>>>>>>>' +
+    '<4>MAINBH>1>1>1>4>>>>>>>>>>' +
+    '<5>Kids>0>5>5>5>>>>>>>>>>',
+  subnet_rl:
+    '<1>br0>192.168.50.1>255.255.255.0>1>192.168.50.100>192.168.50.200>' +
+    '<2>br1>192.168.20.1>255.255.255.0>1>192.168.20.100>192.168.20.200>' +
+    '<3>br2>192.168.30.1>255.255.255.0>1>192.168.30.100>192.168.30.200>' +
+    '<5>br4>192.168.40.1>255.255.255.0>1>192.168.40.100>192.168.40.200>',
+  apg1_ssid: 'MerlinNet-Demo',
+  apg1_dut_list: '<02:1A:2B:00:20:01>19>', // 19 = 1 (2.4G) | 2 (5G) | 16 (6G)
+  apg1_enable: '1',
+  apg2_ssid: 'MerlinNet-Guest',
+  apg2_dut_list: '<02:1A:2B:00:20:01>3>', // 3 = 1 (2.4G) | 2 (5G)
+  apg2_enable: '1',
+  apg3_ssid: 'MerlinNet-IoT',
+  apg3_dut_list: '<02:1A:2B:00:20:01>1>', // 1 = 2.4G only
+  apg3_enable: '1',
+  apg4_ssid: 'MerlinNet-Demo-BH',
+  apg4_dut_list: '<02:1A:2B:00:20:01>19>',
+  apg4_enable: '1',
+  apg5_ssid: 'MerlinNet-Kids-Disabled',
+  apg5_dut_list: '<02:1A:2B:00:20:01>1>',
+  apg5_enable: '0',
 
   // --- DHCP settings page (pages/defs/lan.ts dhcpPage) ---
   dhcp_enable_x: '1',

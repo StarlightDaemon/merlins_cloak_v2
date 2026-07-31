@@ -36,7 +36,8 @@ disposable build artifact, not something to ship or commit.
 | --- | --- | --- |
 | `/index.html` | Landing page with links to everything below | |
 | `/popup.html` | The real toolbar popup (`src/entrypoints/popup`) | Router address + read-only toggle, pre-seeded to the fixture address |
-| `/content.html#/dashboard` | Dashboard / Network Map replacement | WAN status, LAN IP, wireless radios |
+| `/content.html#/dashboard` | Dashboard / Network Map replacement | WAN status, LAN IP, wireless — SDN fixture by default (network-centric "Wireless networks" table + per-band radio-state strip) |
+| `/content.html?classic=1#/dashboard` | Dashboard, classic (non-SDN) fallback | Same page with the `mtlancfg_support` capability flag off — the original plain per-band wl0/1/2_ssid "Wireless radios" table |
 | `/content.html#/clients` | Connected Devices | DHCP leases merged with live wireless-station presence |
 | `/content.html#/dhcp` | Address Assignment (DHCP) settings page | A representative declarative `SettingsPageDef` page, incl. the static-lease rule-list editor |
 
@@ -78,9 +79,20 @@ fallback path in this harness (no real "MAIN world" `*_support` globals
 exist on a plain page, and the background-collector message always
 rejects), so the fixture's `rc_support` nvram value
 (`mocks/fixtures.ts` → `FIXTURE_NVRAM.rc_support`) is what actually turns
-features like the 6 GHz radio row on/off. `ajax_sysinfo.asp` is also the
-Merlin-vs-stock branch probe; the fixture answers it, so the header shows
-"Asuswrt-Merlin".
+features like the 6 GHz radio row and the SDN (`mtlancfg_support`) path
+on/off. `ajax_sysinfo.asp` is also the Merlin-vs-stock branch probe; the
+fixture answers it, so the header shows "Asuswrt-Merlin".
+
+`rc_support` defaults to `FIXTURE_RC_SUPPORT_SDN` (includes `mtlancfg`), so
+`content.html#/dashboard` renders the SDN-managed path by default. Appending
+`?classic=1` to the URL *before* the `#` (hash-fragment content is never
+part of `location.search`, so it must go there, not after the route) —
+e.g. `content.html?classic=1#/dashboard` — makes `mocks/router-fetch.ts`
+answer `rc_support` with `FIXTURE_RC_SUPPORT_CLASSIC` instead (drops
+`mtlancfg`), switching the Dashboard to its classic non-SDN fallback
+rendering. This is the harness's only per-request fixture-variant switch
+today; extend `router-fetch.ts`'s `CLASSIC_FIXTURE` check if a future page
+needs a similar toggle.
 
 `content-entry.tsx` reproduces only the *mounting* half of
 `src/entrypoints/content.tsx` (shadow root, `buildThemeCss()` injection,
@@ -97,7 +109,13 @@ See `mocks/fixtures.ts` for the full table. Everything is invented:
   "DEMO"/"fixture" so it can't be mistaken for a real device.
 - LAN `192.168.50.0/24` (RFC1918); WAN address `203.0.113.42`
   (RFC 5737 TEST-NET-3 — never a real routable address).
-- SSIDs `MerlinNet-Demo` / `-5G` / `-6G`.
+- SSIDs `MerlinNet-Demo` / `-5G` / `-6G` (classic per-band fallback path).
+- SDN path (default): four fictional `sdn_rl` networks — `MerlinNet-Demo`
+  (Main, all 3 bands), `MerlinNet-Guest` (2.4+5 GHz), `MerlinNet-IoT`
+  (2.4 GHz only), plus a `MAINBH` backhaul record and a disabled `Kids`
+  network to exercise the Dashboard's backhaul-skip and enabled-only
+  filters. See `mocks/fixtures.ts` FIXTURE_NVRAM's `sdn_rl`/`subnet_rl`/
+  `apg{idx}_*` block.
 - Six fictional client devices (`study-laptop`, `living-room-tv`,
   `kitchen-tablet`, `guest-phone`, `nas-server`, `garage-cam`) with
   `02:1A:2B:00:10:0x` MAC addresses (the `02:` prefix is the
