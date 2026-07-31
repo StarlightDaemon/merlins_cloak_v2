@@ -65,9 +65,7 @@ async function reloadRouterTabs(routerAddress: string): Promise<void> {
   if (!host) return;
   const tabs = await browser.tabs.query({ url: [`http://${host}/*`, `https://${host}/*`] }).catch(() => []);
   await Promise.all(
-    tabs
-      .filter((t): t is typeof t & { id: number } => t.id !== undefined)
-      .map((t) => browser.tabs.reload(t.id).catch(() => undefined)),
+    tabs.map((t) => (t.id === undefined ? undefined : browser.tabs.reload(t.id).catch(() => undefined))),
   );
 }
 
