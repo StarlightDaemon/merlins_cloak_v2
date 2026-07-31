@@ -12,6 +12,10 @@
     "strictPropertyInitialization": true,
     "noImplicitThis": true,
     "alwaysStrict": true,
+    // wxt 0.21's generated .wxt/tsconfig.json turns this on by default; the
+    // codebase predates it and was never written against it, so pin it back
+    // off here rather than touching every indexed-access call site in src/.
+    "noUncheckedIndexedAccess": false,
     "jsx": "react-jsx",
     "esModuleInterop": true,
     "skipLibCheck": true,
