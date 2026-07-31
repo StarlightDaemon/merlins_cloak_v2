@@ -24,6 +24,34 @@ Full detail: [README.md](../../README.md), [STATUS.md](../../STATUS.md),
 
 ---
 
+## This Session (2026-07-31, latest) — rc-source acquisition + research
+
+Operator-approved follow-up to the deferred-features pass. Acquired the
+firmware `rc/` init-script package — long missing from `RAW/`, the cause of
+most "blocked, source unavailable" gaps — for both generations
+(`RAW/merlin-rc` @ 3006.102.7_2, `RAW/merlin-3004-rc` @ 3004.388.11,
+source-only, gitignored). Five read-only research agents closed/narrowed the
+standing rc-layer questions (DECISIONS D-028; `docs/RC_SOURCE_FINDINGS.md`):
+
+- VPN stop-vs-restart: PPTP/IPsec daemons self-gate → old static approach
+  harmless at daemon level; D-010 fix matches native regardless. Loop
+  RESOLVED from source.
+- WireGuard: unit 2 is genuinely functional at rc level and peer keygen is
+  automatic in rc — the shipped second-instance and peer features are
+  confirmed correct; two "UNCONFIRMED" header caveats corrected.
+- Download Master: confirmed read-only; found a `;`-injection primitive in
+  the `rc_service` mini-language → hard sanitization constraint recorded on
+  the guarded-CGI-extension loop (firmware-side property, not our defect).
+- SDN: no reboot escalation, MAINFH has no server-side guard (client-JS
+  only) → validates the extension's structural MAINFH/apm refusal; 3004 has
+  no SDN.
+- Time Machine: firmware has no path-traversal guard, but the extension's
+  existing charset validation already blocks it — elevated to a documented
+  security boundary (doc-only).
+
+No code behavior change; header caveats corrected, one security-margin doc
+elevation, state docs updated. `rc/` trees remain in `RAW/` for future use.
+
 ## This Session (2026-07-31, later) — deferred-features pass (all 13)
 
 Orchestrated single pass per the D-025 handoff: 9 research + 10

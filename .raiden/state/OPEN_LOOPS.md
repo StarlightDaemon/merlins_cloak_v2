@@ -4,6 +4,16 @@ Each entry below is written to be picked up standalone, by an agent session
 with no memory of how it got here. Grouped by track; within a track, ordered
 roughly by how self-contained the work is, not by priority.
 
+> **Source note (2026-07-31):** the firmware `rc/` init-script package —
+> long absent from `RAW/` and the cause of most "blocked, source
+> unavailable" entries — is now vendored for both generations
+> (`RAW/merlin-rc` @ 3006.102.7_2, `RAW/merlin-3004-rc` @ 3004.388.11,
+> source-only, gitignored). Findings in `docs/RC_SOURCE_FINDINGS.md`,
+> acquisition in DECISIONS D-028. Still NOT vendored: `shared/` bodies for
+> the 3004 tree and a handful of genuinely closed-source units (see that
+> doc's "Residual unconfirmables"). Future rc-layer questions can now be
+> answered from source — check there before marking anything blocked.
+
 ## Chrome Web Store readiness
 
 ### Store listing screenshots
@@ -360,14 +370,23 @@ question without a materially different method.
   standalone entry — see "rc daemon stop-vs-restart behavior — blocked,
   source unavailable" later in this file.
 
-### rc daemon stop-vs-restart behavior — blocked, source unavailable
-- **Status: mooted for this codebase 2026-07-31** — since `1b92640` this
+### rc daemon stop-vs-restart behavior — RESOLVED FROM SOURCE 2026-07-31
+- **Status: RESOLVED** — the missing `rc/` init-script source was acquired
+  this pass (`RAW/merlin-rc`, `RAW/merlin-3004-rc`; see
+  `docs/RC_SOURCE_FINDINGS.md` §1 and DECISIONS D-028) and directly answers
+  the question this entry was blocked on. **PPTP** (`rc/vpn.c` ~99-118):
+  `start_pptpd()` self-gates on `pptpd_enable` and no-ops when off, so a
+  restart-while-disabled ends stopped — the old static approach was harmless
+  at the daemon level. **IPsec** (`rc/rc_ipsec.c` ~2449/2689): `rc_ipsec_set()`
+  self-terminates regardless of verb, so `ipsec_restart` alone ends stopped.
+  **OpenVPN**: daemon-internal check is still in prebuilt `libovpn.so`, but
+  native never restarts-to-disable, so the shipped D-010 fix (`1b92640`)
+  matches native regardless. No further work; retained as resolved-background.
+- **Was: mooted for this codebase 2026-07-31** — since `1b92640` this
   UI issues the same direction-branched actions native does, so whatever
   the rc scripts do with a restart-while-disabled no longer affects this
-  project's correctness. The underlying empirical question (below) is
-  unchanged and still unanswerable from the source in `RAW/`, but it is
-  no longer load-bearing for any of this project's write paths; it stays
-  recorded only as background.
+  project's correctness. (The empirical question is now also answered from
+  source, above, not merely mooted.)
 - **Status (pre-fix):** Open, blocked. Logged as its own entry (2026-07-29) per the
   audit-verification pass's finding that this specific sub-question was
   previously only reachable as a paragraph inside the `rcService` entry
@@ -723,6 +742,24 @@ picking this up should feel free to resequence.
   it is a change to load-bearing safety architecture and is reserved for a
   pass the operator reviews. Full endpoint/param citations live in the
   research briefs' findings as recorded in each def's header comment.
+- **HARD DESIGN CONSTRAINT (from rc-source research, 2026-07-31, D-028 /
+  `docs/RC_SOURCE_FINDINGS.md` §3):** any such extension MUST sanitize `;`
+  — and validate against the rc-service tokenizer — in every value that can
+  reach an `rc_service`/`action_script` field. The firmware's
+  `handle_notifications()` splits `rc_service` on `;` *before* argv, and
+  Download Master's `apps_action` passes attacker-controllable fields into
+  that mini-language gated only by a closed-source, unverifiable
+  `check_cmd_whitelist()`. A smuggled `;` is a real injection primitive
+  (e.g. appending `reboot`). Do not trust the firmware's own gate. This
+  specifically raises the bar on any Download Master write path;
+  independent of it, DM's own management UI lives on port 8081 outside
+  httpd's reach, so DM stays **read-only** with a source-backed reason.
+- **Accounts specifically (RC_SOURCE_FINDINGS.md §5):** the
+  `add_account`/`del_account`/`mod_account`/`set_permission` helpers are
+  confirmed absent from the whole `RAW` tree (closed-source); `start_samba()`
+  bulk-reprovisions from `acc_list` on every restart. So the write path must
+  go through the firmware's own CGI handlers — replicating `acc_list`
+  directly would skip invisible validation. Don't do that.
 - **Where:** `src/lib/router-io.ts` (WriteEndpoint), `src/lib/write-guard.ts`;
   consumers `usb-accounts.tsx`, `certificates.tsx`, `usb.ts` (DM).
 

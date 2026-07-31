@@ -941,3 +941,82 @@
   display is native parity and arguably necessary UX (peer setup requires
   copying them), but a masked-with-reveal treatment would be strictly
   better; flagged for an operator UX decision, not silently changed.
+
+## D-028
+
+- Date: 2026-07-31
+- Status: Closed (source acquired; five source-blocked questions resolved
+  or substantially narrowed; docs updated)
+- Decision: Acquired the firmware `rc/` init-script package — the one GPL
+  component missing from every previously-vendored tree (`httpd/`+`shared/`
+  +`www/` only), and the root cause of most "blocked, source unavailable"
+  entries across this project's history. Fetched for BOTH active
+  generations, version-matched to the vendored trees: `RAW/merlin-rc` at
+  tag `3006.102.7_2` (154 source files) and `RAW/merlin-3004-rc` at tag
+  `3004.388.11` (131). Source-only — the per-model `rc/prebuild/**/*.o`
+  binaries were excluded as pure "every-router" bloat with no source value.
+  Both are sparse partial clones of `RMerl/asuswrt-merlin.ng`; `RAW/` is
+  gitignored, so no repo impact. This was operator-approved as the
+  highest-value next step: it targeted the missing PACKAGE (rc), not model
+  breadth, on the reasoning that per-model variance is mostly runtime
+  capability flags the extension already handles, whereas the rc gap blocked
+  named correctness questions.
+- Acquisition method (recorded for reuse — it fought Windows/partial-clone
+  friction): `git clone --filter=blob:none --no-checkout --depth 1 --branch
+  <tag>`, then — because (a) a full-tree checkout aborts on Windows-illegal
+  colon-paths under `udev/test/sys/devices/pci0000:00/...`, and (b) the
+  partial-clone lazy blob fetch does NOT fire on `git checkout -- pathspec`
+  in this Git-for-Windows build — resolve the annotated tag to its commit,
+  force-fetch the rc source blobs by piping the tree's blob OIDs
+  (`git ls-tree -r <commit> <rc> | grep -v /prebuild/ | awk '{print $3}'`)
+  through `git cat-file --batch-check` (which DOES trigger the promisor),
+  then `git checkout <commit> -- <rc> ':(exclude)<rc>/prebuild'`. Do these
+  ONE repo at a time (concurrent runs collide on `.git/index.lock`).
+- Findings (full writeup: `docs/RC_SOURCE_FINDINGS.md`), each closing or
+  narrowing a standing gap:
+  1. **VPN stop-vs-restart** (closes OPEN_LOOPS "rc daemon stop-vs-restart"):
+     PPTP `start_pptpd()` and IPsec `rc_ipsec_set()` both self-gate on the
+     enable flag, so restart-while-disabled ends stopped — the old static
+     approach was harmless at the daemon level for those two; OpenVPN's
+     internal check stays in prebuilt `libovpn.so` but native never
+     restarts-to-disable, so the D-010 fix matches native regardless.
+  2. **WireGuard unit 2 + peer keygen** (retires two "UNCONFIRMED" caveats
+     in `vpn-server.ts`): unit 2 is a genuine functional instance at the rc
+     level (`start_wgs(unit)` fully parametrized, `restart_wgs 2` works), and
+     peer keypairs are generated automatically in rc (`wg genkey/pubkey/
+     genpsk`, idempotent) — NOT a client/native-UI responsibility. The
+     shipped second-instance and peer features are confirmed correct as
+     built. Header comments corrected in this pass.
+  3. **Download Master** (confirms read-only, adds a hazard): `apps_action`
+     flows into the `rc_service` mini-language, which `handle_notifications()`
+     splits on `;` before argv, gated only by the still-closed-source
+     `check_cmd_whitelist()`. That is a genuine `;`-injection primitive.
+     Verdict: stay read-only; and any FUTURE guarded dedicated-CGI write
+     path must itself sanitize `;` in rc_service-bound values rather than
+     trust the firmware gate (recorded as a hard constraint on the
+     guarded-CGI-extension open loop). This is a firmware-side property,
+     not a defect in this extension (which has no DM write path) — NOT a
+     §3 halt condition; the conservative outcome it argues for is the one
+     already shipped.
+  4. **SDN internals** (validates the shipped SDN design): `restart_sdn`/
+     `sdn_del` never touch radios directly and `restart_wireless` never
+     escalates to `reboot()`; the `nvram_modified_sdn` sync gap is a no-op
+     for the CRUD endpoints; MAINFH has NO server-side guard (client-JS
+     only) — validating this project's structural `apm`/MAINFH refusal. 3004
+     has no SDN at all (legacy per-band VIF model) — a cross-generation fact
+     for a future compatibility matrix.
+  5. **Time Machine / Notification / accounts:** TM `find_mountpoint()`
+     builds `/tmp/mnt/<tm_device_name>` with no traversal guard in shipped
+     source — but the extension's existing `^[a-zA-Z0-9]*$` field validation
+     already makes a traversal payload unconstructible; elevated to a
+     documented security boundary inline (doc-only, no functional change
+     needed). Notification mark-read confirmed to never reach rc at all
+     (validates its `writeExclusion: null`). Account write helpers confirmed
+     closed-source across the whole tree (sharpens the deferred-account
+     write loop: must use the firmware CGI, not raw `acc_list`).
+- Rationale: this pass produced no code behavior change (one security-margin
+  doc elevation on an already-safe field; several header caveats corrected
+  from UNCONFIRMED to confirmed). Its value is closing the largest remaining
+  class of source-blocked questions with primary-source evidence, matching
+  this project's standing rigor for write-path characterization. The `rc/`
+  trees remain available in `RAW/` for future rc-layer questions.
