@@ -879,6 +879,81 @@ a ready-made worklist if a future pass wants to finish it.
 - **Where:** `src/ui/SettingsPage.tsx:238`; representative pairs in
   `src/pages/defs/tools-tweaks.ts:135-156`, `qos.ts:213-230,558-580`.
 
+## Adversarial non-security audit pass, new items (2026-07-31)
+
+A second third-party pass, an *adversarial* non-security audit (stability/
+race-condition-focused, not the same lane as the Gemini pass above), was
+run and independently verified — see
+`.audits/NON_SECURITY_ADVERSARIAL_AUDIT_2026-07-31.md` (original) and
+`.audits/NON_SECURITY_ADVERSARIAL_AUDIT_VERIFICATION_2026-07-31.md`
+(verification; both gitignored). Unlike the Gemini pass, this one's two
+headline findings were not just source-plausible — they were **reproduced
+live** against `tools/screenshot-harness` in a real browser tab, with
+exact repro recipes recorded in the verification report. Both are filed
+here as required fixes, not backlog items. Its §2 (NVRAM/state
+resilience) and §3 (write-policy enforcement) were spot-checked and hold
+up — no new loop needed for those; the QoS `restart_firewall` question in
+particular is confirmed-deliberate (see `qos.ts:45-49`'s own comment), not
+a defect.
+
+### Instance-switch state corruption — CONFIRMED, reproduced live
+- **Status:** Open, required fix, solo-completable.
+- **What:** `SettingsPage.tsx`'s `load()` (`:125-158`) has no
+  `AbortController` or supersedure/generation guard, and the instance
+  `RadioGroup` (`:277-284`) is never disabled while `busy` is true (unlike
+  the Revert/Apply buttons beside it, which are). Rapidly switching
+  instances (or switching while a write is in flight) can let an
+  out-of-order, stale `load()` response overwrite `baseline`/`values`
+  after a newer instance's load already rendered correctly — the UI ends
+  up showing one instance selected while displaying another instance's
+  data.
+- **Reproduced:** on `/content.html#/openvpn-server` (fixture
+  deliberately differs per-unit: port 1194 vs 1195), delaying the mocked
+  instance-2 response ~600ms and switching Server 2 → Server 1 within
+  30ms left the UI showing "Server 1" selected with port `1195` (instance
+  2's value) displayed. Exact repro script, and the expected pre/post-fix
+  results, are in the verification report §2.
+- **Impact if unfixed and the user then edits + Apply:** `apply()` builds
+  the write payload from the corrupted `values` and expands template keys
+  against the *current* `instance` — i.e. it would post one instance's
+  field values to a different instance's nvram keys. Silent cross-instance
+  data corruption.
+- **Fix shape (per the audit's own recommendation, confirmed sound):**
+  give `load()` a supersedure guard — either an `AbortController` per call
+  or a simple `let active = true` / generation-counter closure that
+  no-ops `setBaseline`/`setValues` if a newer `load()` has since started —
+  plus `disabled={busy}` on the instance `RadioGroup` at
+  `SettingsPage.tsx:277-284`, matching the pattern already used on
+  Revert/Apply.
+- **Where:** `src/ui/SettingsPage.tsx:120-123` (`expand`), `:125-158`
+  (`load`), `:194-261` (`apply`), `:277-284` (instance `RadioGroup`).
+
+### `ListEditor` rapid-deletion stale-closure loss — CONFIRMED, reproduced live
+- **Status:** Open, required fix, solo-completable.
+- **What:** each row's delete button closes over that render's `rows`
+  (`useMemo` off the `value` prop, `ListEditor.tsx:52-62`). Two delete
+  clicks landing before an intervening React commit both compute their
+  filter against the same stale `rows` snapshot, so the second click's
+  result silently overwrites the first's — one deletion is lost.
+- **Reproduced:** on `/content.html#/dhcp` (2 fixture rows), firing both
+  rows' delete buttons back-to-back in the same synchronous tick left 1
+  row remaining, not 0. Exact repro script in the verification report §3.
+- **Trigger-frequency caveat (carry into fix prioritization, not into
+  whether to fix):** reproducing this required two click events with no
+  React commit between them — plausible for a fast real double-click or
+  any future bulk-delete UI built on `ListEditor`, not guaranteed on every
+  rapid click a human makes. The code has no mitigation regardless.
+- **Fix shape (per the audit's own recommendation, confirmed sound, with
+  one refinement):** don't just switch to a reducer — a reducer dispatched
+  from the same stale closure has the identical bug. The fix needs each
+  delete/edit handler to compute against the *latest* committed value at
+  click time (e.g. re-derive from a ref that mirrors the current `value`
+  prop synchronously, or key operations by row identity against that ref)
+  rather than trusting the `useMemo`'d `rows` snapshot across multiple
+  same-tick events.
+- **Where:** `src/ui/ListEditor.tsx:52-70` (`rows`, `commit`, `setCell`,
+  `commitDraft`).
+
 ## Cross-reference: pre-existing, operator-gated loops
 
 Tracked in full in `GOALS.md`, not duplicated here — both require the
