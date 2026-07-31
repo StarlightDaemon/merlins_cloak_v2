@@ -25,32 +25,37 @@
  * through this project's uniform applyapp + rcService path, which has the
  * same net effect (nvram set + service restart) as the native toggle.
  *
- * Per-user/per-group share permissions (Network Place + FTP) — DESCOPED,
- * fully out of scope, no new file added for it. The trio brief (§A) traced
- * this down to six dedicated /aidisk/*.asp cgi endpoints (create_account.asp,
- * delete_account.asp, modify_account.asp, initial_account.asp,
- * set_account_permission.asp, set_account_all_folder_permission.asp; +
- * set_group_* under RTCONFIG_PERMISSION_MANAGEMENT), none of which is
- * `action_mode=apply` / `applyapp.cgi` at all — this project's WriteSpec
- * (lib/router-io.ts WriteEndpoint) only knows how to submit 'applyapp' and
- * 'start_apply', so these writes cannot be expressed without editing that
- * shared file, which is out of bounds for this change. Reads are only
- * partially clean: `get_all_accounts` returns JSON, but
- * `get_permissions_of_account` emits embedded JS source ("ej writes JS
- * source", not JSON) rather than an appGet.cgi-shaped response, and no
- * folder/pool enumeration hook is documented — so the full accounts × shares
- * × permission-level read table the task asked for is not confirmed
- * feasible either. The account/pool/folder-keyed CRUD shape also doesn't fit
- * this project's flat nvram-field page model. `acc_list`/`acc_num` ARE
- * literal defaults.c entries (shared/defaults.c:3402-3406) but must NEVER be
- * posted directly through applyapp — the brief confirms their true backing
- * store is partly opaque on-disk `.__*` files on the USB filesystem itself
- * (written by closed-source `add_account`/`mod_account`/`del_account`, no
- * definitions anywhere in this GPL tree), so a raw nvram write would very
- * likely desync nvram from that on-disk state with no way to detect or roll
- * it back. The account-vs-share management-mode selector (st_samba_mode /
- * st_ftp_mode, toggled via switch_share_mode.asp) that gates this subsystem
- * is skipped for the same reasons.
+ * Per-user/per-group share permissions (Network Place + FTP) — the WRITE side
+ * remains DESCOPED, fully out of scope, no write path added for it here. The
+ * trio brief (§A) traced this down to six dedicated /aidisk/*.asp cgi
+ * endpoints (create_account.asp, delete_account.asp, modify_account.asp,
+ * initial_account.asp, set_account_permission.asp,
+ * set_account_all_folder_permission.asp; + set_group_* under
+ * RTCONFIG_PERMISSION_MANAGEMENT), none of which is `action_mode=apply` /
+ * `applyapp.cgi` at all — this project's WriteSpec (lib/router-io.ts
+ * WriteEndpoint) only knows how to submit 'applyapp' and 'start_apply', so
+ * these writes cannot be expressed without editing that shared file, which
+ * is out of bounds for this change; extending it to cover these six
+ * endpoints is deliberately left for a separate, reviewed pass. The READ
+ * side, however, is now modeled: see ./usb-accounts.tsx (usbAccountPages),
+ * a read-only custom page rendering the account list (get_all_accounts) and
+ * a best-effort, defensively-parsed per-account/pool/folder/protocol
+ * permission table (get_permissions_of_account, which emits embedded JS
+ * source rather than JSON, per the brief) — full detail, including the
+ * exact permission-integer semantics table and why no write path exists, is
+ * in that file's header comment. The account/pool/folder-keyed CRUD shape
+ * still doesn't fit this project's flat nvram-field SettingsPageDef model,
+ * which is why the read surface is a CustomPageDef rather than an addition
+ * to this file. `acc_list`/`acc_num` ARE literal defaults.c entries
+ * (shared/defaults.c:3402-3406) but must NEVER be posted directly through
+ * applyapp — the brief confirms their true backing store is partly opaque
+ * on-disk `.__*` files on the USB filesystem itself (written by
+ * closed-source `add_account`/`mod_account`/`del_account`, no definitions
+ * anywhere in this GPL tree), so a raw nvram write would very likely desync
+ * nvram from that on-disk state with no way to detect or roll it back. The
+ * account-vs-share management-mode selector (st_samba_mode / st_ftp_mode,
+ * toggled via switch_share_mode.asp) that gates this subsystem is skipped
+ * for the same reasons.
  *
  * Time Machine (Advanced_TimeMachine.asp) — see timemachinePage below. Clean
  * fit: all four posted fields are literal defaults.c entries reached through
