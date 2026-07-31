@@ -263,8 +263,19 @@ export const wpsPage: SettingsPageDef = {
   // No instance selector: wps_enable / wps_band_x are single global nvram
   // keys (the band being configured is itself the field's value), not a
   // wl{p}_-templated family.
+  // LIVE-VERIFIED 2026-07-31 (operator-supervised, RT-BE92U): wps_enable
+  // confirmed bidirectionally — 1->0 and 0->1, each submitted by the
+  // operator's own click, each independently confirmed by a live nvram
+  // re-read, each producing the expected restart_wireless client
+  // reassociation (matches native page behavior). writeExclusion lifted
+  // for this reason. wps_band_x remains UNTESTED — confidence.write stays
+  // 'unverified-write' rather than claiming the whole page, since that
+  // field was never submitted live. Full record:
+  // docs/WRITE_PATH_CHARACTERIZATION.md §2, DECISIONS.md D-022. Every
+  // other page in this file keeps its 'wireless' exclusion — this is not
+  // a precedent for lifting them without the same live, supervised
+  // process.
   confidence: { read: 'structural', write: 'unverified-write' },
-  writeExclusion: 'wireless',
   read: {
     nvram: ['wps_enable', 'wps_band_x'],
   },

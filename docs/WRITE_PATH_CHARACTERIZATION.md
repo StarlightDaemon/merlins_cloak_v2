@@ -197,6 +197,64 @@ gap.
 
 ---
 
+## 4. Session 2 — Wireless: Push-Button Pairing (WPS), 2026-07-31
+
+Different in kind from Session 1: that session reverse-engineered the
+**native page's** own write transport from scratch (no extension def
+existed yet). This session exercised **this extension's own already-
+implemented** write path for the first time against live hardware —
+`src/pages/defs/wireless.ts`'s `wpsPage`, whose `writeExclusion` was
+lifted for this one page only, for this one field, after the operator
+explicitly chose to proceed (see `DECISIONS.md` D-022). Every write was
+submitted by the operator's own click, through the extension's normal
+Apply flow (read-only mode was already off going in, so both submissions
+were real, not dry-run previews) — never scripted or clicked by the
+assistant.
+
+### 4.1 Transport confirmed
+
+- `POST /applyapp.cgi`, `action_mode=apply`, `rc_service=restart_wireless`
+  — matches this project's settled architecture decision ("applyapp.cgi
+  delta writes for every settings page," `STATUS.md`), and unlike Session
+  1's native-page shared-whole-form behavior, **the payload was a true
+  delta**: only `wps_enable` was posted, not the untouched `wps_band_x` —
+  confirming the delta-write design holds in practice for this page, not
+  just in source-code theory.
+- Response: `200 { "modify": "1", "run_service": "restart_wireless" }` on
+  both submissions. Per this project's own stated policy, the response
+  body was **not trusted as confirmation** — the extension's built-in
+  `verifyNvram` mechanism (forced-fresh nvram re-read; 3000ms settle wait
+  per the page's `actionWait`, 30000ms ceiling, 800ms poll) supplied the
+  actual ground truth, and is itself what this session verifies as
+  working correctly for the first time against live hardware.
+
+### 4.2 Per-field detail
+
+| | Disable (1→0) | Enable (0→1) |
+|---|---|---|
+| Payload | `wps_enable=0` | `wps_enable=1` |
+| Response | `200 {"modify":"1","run_service":"restart_wireless"}` | `200 {"modify":"1","run_service":"restart_wireless"}` |
+| Live nvram re-read | `wps_enable = "0"` — **confirmed**, 3149ms into the 30000ms window | `wps_enable = "1"` — **confirmed**, 3182ms into the 30000ms window |
+| Connectivity impact | Wi-Fi clients disconnected/reconnected (`restart_wireless`), matching native's own behavior for the same action — operator-confirmed | Same, operator-confirmed |
+
+`wps_band_x` (the band selector) was **not** touched or tested — the
+operator's session covered `wps_enable` only. This field remains
+unverified; see `OPEN_LOOPS.md`.
+
+### 4.3 Open items from this session
+
+1. **`wps_band_x` remains untested.** `wpsPage.confidence.write` is
+   deliberately left `'unverified-write'` rather than `'live-verified'`
+   for this reason — see the inline comment in `wireless.ts`.
+2. **Every other wireless page stays hard-excluded.** This session
+   verified one field's write mechanism (endpoint, delta behavior,
+   verification timing) on the RT-BE92U; it says nothing about SSID,
+   security, channel, MAC-filter, RADIUS, WDS, or the Professional page's
+   fields, several of which carry materially higher blast radius (see
+   `OPEN_LOOPS.md`'s "Wireless-general SSID semantics on SDN units").
+
+---
+
 ## 4. Excluded categories — explicitly unresolved, carried forward
 
 The following were **hard-excluded from this session by the operator's own

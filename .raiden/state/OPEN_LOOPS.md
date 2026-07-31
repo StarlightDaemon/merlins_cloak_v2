@@ -667,5 +667,9 @@ picking this up should feel free to resequence.
 Tracked in full in `GOALS.md`, not duplicated here — both require the
 operator's live router and/or browser, not solo-agent-completable:
 
-- Live-hardware verification of write paths (48 of 49 never live-submitted).
+- Live-hardware verification of write paths (47 of 49 pages never
+  live-submitted at all; one page — `wpsPage` — is now a partial
+  exception: `wps_enable` live-verified bidirectionally 2026-07-31,
+  `wps_band_x` still untested. See `GOALS.md` and
+  `docs/WRITE_PATH_CHARACTERIZATION.md` §4.).
 - Firefox live verification (never run against live hardware at all).

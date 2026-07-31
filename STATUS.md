@@ -58,10 +58,51 @@ pass and are current in `.output/`.
 - Repo hook note: the commit-msg hook rejects Co-Authored-By trailers;
   all session commits carry the operator identity only.
 
-Remaining open, all operator-gated: live write-path verification (48/49
-never submitted), Firefox live verification, live confirmation of the
+Remaining open, all operator-gated: live write-path verification (47/49
+pages never submitted at all — see below for the one now-partial
+exception), Firefox live verification, live confirmation of the
 WireGuard/IPSec/rc-branching fixes and the SDN dashboard view, Chrome
 Web Store submission, push to origin, gh-pages policy sync.
+
+## Session of 2026-07-31 (continued) — first wireless write-path live test
+
+Interactive, operator-driven addendum to the pass above: a supervised
+live write test in the wireless category, the project's most
+write-cautious category (SSID/security/channel risk). Full record:
+`docs/WRITE_PATH_CHARACTERIZATION.md` §4, `DECISIONS.md` D-022.
+
+- **Scope, deliberately narrow:** `wireless.ts`'s `wpsPage`, `wps_enable`
+  field only — chosen because it can't touch SSID/security/channel, so
+  existing client connections were never at risk from a wrong value.
+  `writeExclusion` was lifted for this one page only; every other
+  wireless page (General SSID/Security, WDS, MAC Filter, RADIUS,
+  Professional) keeps its exclusion, unchanged.
+- **Both directions submitted by the operator's own click** (never by
+  the assistant, per this project's standing "no write by the agent"
+  rule) and independently confirmed by live nvram re-read:
+  `wps_enable` 1→0 and 0→1, both verified.
+- **Confirms the core write mechanism end to end against real hardware**
+  for the first time outside the original Tweaks session: the
+  `applyapp.cgi` delta-write architecture (only the changed field was
+  posted, not the untouched `wps_band_x`), the write guard, and
+  `verifyNvram`'s forced-fresh-read confirmation all behaved exactly as
+  designed. The expected `restart_wireless` client-reassociation blip
+  was operator-confirmed to match native behavior.
+- **`wps_band_x` (the band selector) was not tested** — `wpsPage`'s
+  `confidence.write` intentionally stays `'unverified-write'` rather
+  than being marked fully verified, since page-level confidence has no
+  per-field granularity in this codebase and claiming the whole page
+  would overstate coverage.
+- **Net change to the write-path count:** still 47 of 49 *pages* never
+  submitted at all (Tweaks was the prior exception); WPS is now a
+  *second*, partial exception — one of its two fields live-verified, one
+  still open. Every category-wide exclusion besides this single field
+  remains exactly as conservative as before.
+
+tsc clean, lint clean (`npm run lint`), Chrome MV3 rebuilt and reloaded
+by the operator for this test. Not yet re-verified against the
+Definition-of-Done full suite as of this addendum — see commit history
+for the closing verification pass.
 
 ## Session of 2026-07-25 — licensing, disclosure, versioning, end-user docs
 

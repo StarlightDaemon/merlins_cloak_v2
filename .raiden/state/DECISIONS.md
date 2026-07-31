@@ -659,3 +659,36 @@
   information architecture (one section per network with band icons,
   confirmed live in docs/LIVE_PROBE_RT-BE92U.md) is the correct shape,
   and sdn.tsx already proved the data path.
+
+## D-022
+
+- Date: 2026-07-31
+- Status: Closed
+- Decision: With the operator present and driving, `writeExclusion` was
+  deliberately lifted for exactly one wireless page/field —
+  `wpsPage`'s `wps_enable` — as the first supervised live write-path test
+  in the wireless category. Chosen specifically because it cannot affect
+  SSID, security, or channel, so existing client connections were never
+  at risk from a wrong value, only from the (expected, native-matching)
+  `restart_wireless` reassociation blip. The operator submitted both
+  directions (1→0, then 0→1) via their own click in the extension's
+  normal UI; the assistant never submitted a write itself, per the
+  project's standing "no write of any kind by the agent" boundary — it
+  prepared the code change, explained the exact payload in advance, and
+  observed/verified alongside the operator. Both submissions independently
+  confirmed by live nvram re-read, and the expected client-reassociation
+  side effect was operator-confirmed to match native behavior exactly.
+  Full record: `docs/WRITE_PATH_CHARACTERIZATION.md` §4.
+- Rationale: this both closes a small piece of the "48 of 49 write paths
+  never live-submitted" gap and, more importantly, validates the
+  project's core write mechanism end to end against real hardware for
+  the first time outside the original Tweaks session: the
+  applyapp.cgi-delta-write architecture, the write guard, and the
+  verifyNvram confirmation logic all behaved exactly as designed.
+  `wpsPage.confidence.write` intentionally stays `'unverified-write'`
+  rather than being marked fully verified — `wps_band_x` was never
+  tested, and page-level confidence has no per-field granularity in this
+  codebase's type system, so claiming the whole page would overstate
+  coverage. Every other wireless page keeps its exclusion; this is not a
+  precedent for lifting them without the same live, supervised process
+  per page.

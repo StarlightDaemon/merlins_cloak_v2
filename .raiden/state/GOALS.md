@@ -15,7 +15,14 @@
 - **Related loops:** `OPEN_LOOPS.md` "Write-path correctness gaps" —
   source-research can narrow four specific open questions ahead of the live
   pass, but the live pass itself still needs the operator.
-- **Updates:** none yet.
+- **Updates:** 2026-07-31 — first live write test completed, operator-
+  supervised: `wireless.ts`'s `wpsPage`, `wps_enable` field, both
+  directions (1→0, 0→1), each independently confirmed by live nvram
+  re-read; `wps_band_x` and every other wireless page remain untested and
+  excluded. Full record: `docs/WRITE_PATH_CHARACTERIZATION.md` §4,
+  `DECISIONS.md` D-022. Count: still 47 of 49 *pages* never submitted at
+  all (Tweaks was the sole prior exception); WPS is now a second, partial
+  exception.
 
 ### Firefox live verification
 
