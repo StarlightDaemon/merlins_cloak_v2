@@ -802,6 +802,83 @@ picking this up should feel free to resequence.
   against the table-driven write path (possible silent drop); SDN editor
   excludes them entirely. Recorded in `sdn.ts`/`sdn.tsx` headers.
 
+## Non-security audit pass, new items (2026-07-31)
+
+A third-party non-security audit (Google Gemini 3.1 Pro) was run against
+this repo and independently verified before filing here — see
+`.audits/NON_SECURITY_AUDIT_2026-07-31.md` (original) and
+`.audits/NON_SECURITY_AUDIT_VERIFICATION_2026-07-31.md` (verification,
+with corrected file:line citations and offender lists; both gitignored).
+Only its §3.1-equivalent (code quality & consistency) findings were
+delivered — the audit's own scope note committed to architecture,
+docs-drift, and verification-gap sections that never shipped. That gap is
+not re-opened here as a loop of its own; the verification report's §3 has
+a ready-made worklist if a future pass wants to finish it.
+
+### Custom-page loading/error shell inconsistency
+- **Status:** Open, low-cost, solo-completable.
+- **What:** two divergent patterns for custom-page (`SettingsPageDef`
+  render functions with `kind: 'custom'`) loading/error state. Most pages
+  render `<h1 className="mc-page-title">` and the layout shell
+  unconditionally, with `<Loading />`/`<Banner tone="err">` nested inside
+  it. Five pages instead early-return the loading/error state *before* the
+  title renders, so the title vanishes during reload or on error — a
+  perceived-stability regression relative to the rest of the app.
+- **Where (all five, corrected from the audit's original list of two):**
+  `src/pages/defs/aimesh.tsx:362` (before title at `:370`),
+  `src/pages/defs/wol.tsx:90` (before `:97`),
+  `src/pages/defs/nettools.tsx:105` (before `:113`),
+  `src/pages/defs/traffic.tsx:185-186` (before `:192`),
+  `src/pages/defs/dashboard.tsx:257-258` (before `:278` — this is the
+  landing page, so it's the highest-traffic offender).
+- **Fix shape:** move the title (and any static layout chrome) above the
+  early-return guards in each file, matching the pattern already used by
+  `clients.tsx`, `vpn-status.tsx`, `certificates.tsx`, `notification.tsx`,
+  `extension.tsx`, `sdn.tsx`, `logs.tsx`, `usb-accounts.tsx`,
+  `site-survey.tsx`, and `qos-stats.tsx`. Mechanical, no data-flow change.
+
+### `ListColumnDef` lacks column-level read/write mappers
+- **Status:** Open, informational/backlog — not urgent.
+- **What:** `src/lib/rulelist.ts`'s `parseRuleList`/`serializeRuleList`
+  handle the standard `<`/`>` two-level nvram list encoding, but several
+  page defs bypass it with bespoke `split`/`join` because the firmware's
+  actual on-wire format diverges per-field (padded columns, KB/s stored vs
+  MB/s displayed, or — `parental.ts`'s case — four parallel `>`-joined
+  keys instead of one `<`/`>` list at all). Confirmed bypass sites:
+  `dnsdirector.ts`, `vpn-server.ts`, `ipsec.ts`, `vpn-client.ts`,
+  `firewall.ts`, `usb.ts`, `qos.ts`, `lib/sdn.ts`.
+- **Possible direction:** extend `ListColumnDef` (`src/pages/types.ts`)
+  with optional `mapRead`/`mapWrite` per-column hooks so the common
+  padding/unit-conversion cases can use the shared utility instead of
+  reimplementing list virtualization per page. `parental.ts`'s
+  parallel-keys case would still need bespoke handling regardless — it
+  isn't a `<`/`>` list at all.
+- **Where:** `src/lib/rulelist.ts`, `src/pages/types.ts` (`ListColumnDef`).
+
+### `buildFields`/`buildVerify` duplication — accepted risk, not a defect
+- **Status:** Closed as understood/accepted; recorded here only so a
+  future session doesn't rediscover it as a "new" finding.
+- **What:** `SettingsPage.tsx:238` defaults the write-verification payload
+  to raw `dirty` UI state unless a page def supplies `buildVerify`. Pages
+  with virtual fields (UI-only keys that don't exist in nvram, e.g.
+  `qos_orates_min_0` in `qos.ts:558-580`) must supply both `buildFields`
+  and `buildVerify`, and the two are near-identical by necessity — one
+  maps virtual→real for the write, the other for the read-back check.
+- **Why this is a real (if low-probability) verification-gap:** neither
+  `tsc --noEmit`, `eslint`, nor the screenshot harness would catch the two
+  functions silently diverging if a future edit updates one virtual-field
+  mapping and not its pair — both compile clean, lint clean, and render
+  identically in every fixture. This is exactly the class of regression
+  `.raiden/local/prompts/non-security-audit-handoff.md` §3.4 asked this
+  audit to find, and it's the strongest concrete example in the repo.
+- **Not filed as an actionable fix:** the duplication is a direct
+  consequence of the `dirty`-default design, not a mistake, and
+  de-duplicating it would mean re-deriving `buildVerify` from
+  `buildFields` generically — a real refactor, not a bug fix. If it's ever
+  worth doing, treat it as its own scoped design task, not a quick fix.
+- **Where:** `src/ui/SettingsPage.tsx:238`; representative pairs in
+  `src/pages/defs/tools-tweaks.ts:135-156`, `qos.ts:213-230,558-580`.
+
 ## Cross-reference: pre-existing, operator-gated loops
 
 Tracked in full in `GOALS.md`, not duplicated here — both require the
