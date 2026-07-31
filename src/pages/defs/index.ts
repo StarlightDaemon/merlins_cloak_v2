@@ -34,6 +34,7 @@ import { clientsPages } from './clients';
 import { notificationPages } from './notification';
 import { aimeshPages } from './aimesh';
 import { opModePages } from './opmode';
+import { certificatePages } from './certificates';
 
 export function registerAllPages(): void {
   registerPages([
@@ -75,6 +76,7 @@ export function registerAllPages(): void {
   registerPages(usbPages);
   registerPages(adminPages);
   registerPages(opModePages);
+  registerPages(certificatePages);
   registerPages([
     tweaksPage,
     {
