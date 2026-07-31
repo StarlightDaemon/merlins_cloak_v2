@@ -32,6 +32,7 @@ import { vpnStatusPages } from './vpn-status';
 import { sdnPages } from './sdn';
 import { clientsPages } from './clients';
 import { notificationPages } from './notification';
+import { aimeshPages } from './aimesh';
 
 export function registerAllPages(): void {
   registerPages([
@@ -57,6 +58,7 @@ export function registerAllPages(): void {
   registerPages(wirelessPages);
   registerPages(siteSurveyPages);
   registerPages(lanPages);
+  registerPages(aimeshPages);
   registerPages(wanPages);
   registerPages(ipv6Pages);
   registerPages(vpnStatusPages);
