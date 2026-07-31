@@ -266,6 +266,34 @@ export async function submitBuiltWrite(req: BuiltWriteRequest): Promise<SubmitRe
   return { ok: res.ok, status: res.status, responseText: text };
 }
 
+/**
+ * Progress events emitted by verifyNvram as it works through the settle wait
+ * and the poll loop, purely for UI observability — nothing here feeds back
+ * into the verification logic itself.
+ *
+ *  - 'settle-start' fires once, synchronously, at entry — even when settleMs
+ *    is 0 — so a caller always gets a fixed anchor point/budget to render a
+ *    countdown against (or can simply ignore it when settleMs is 0).
+ *  - 'poll-attempt' fires once per forced-fresh read, whether it matched,
+ *    mismatched, or errored (`error` is set on a failed read; `matched` is
+ *    false in that case too).
+ *  - 'complete' fires exactly once, last, carrying the final VerifyResult.
+ */
+export type VerifyProgressEvent =
+  | { phase: 'settle-start'; settleMs: number }
+  | {
+      phase: 'poll-attempt';
+      attempt: number;
+      /** ms since verifyNvram was entered (settle included), at this attempt. */
+      elapsedMs: number;
+      timeoutMs: number;
+      matched: boolean;
+      error?: string;
+    }
+  | { phase: 'complete'; result: VerifyResult };
+
+export type VerifyProgress = (event: VerifyProgressEvent) => void;
+
 export interface VerifyOptions {
   /**
    * ms to wait after the write before issuing the FIRST forced-fresh read.
@@ -275,6 +303,8 @@ export interface VerifyOptions {
   /** Total ms budget, measured from entry and INCLUDING settleMs. */
   timeoutMs?: number;
   intervalMs?: number;
+  /** Optional observability hook; defaults to a no-op. See VerifyProgressEvent. */
+  onProgress?: VerifyProgress;
 }
 
 export interface VerifyResult {
@@ -321,6 +351,7 @@ export async function verifyNvram(
   const timeoutMs = Math.max(0, opts.timeoutMs ?? 10000);
   const intervalMs = Math.max(50, opts.intervalMs ?? 800);
   const settleMs = Math.max(0, Math.min(opts.settleMs ?? 0, timeoutMs));
+  const onProgress: VerifyProgress = opts.onProgress ?? (() => {});
   const keys = Object.keys(expected);
   const started = Date.now();
   let attempts = 0;
@@ -337,7 +368,13 @@ export async function verifyNvram(
     timeoutMs,
     lastError,
   });
+  const finish = (verified: boolean): VerifyResult => {
+    const r = result(verified);
+    onProgress({ phase: 'complete', result: r });
+    return r;
+  };
 
+  onProgress({ phase: 'settle-start', settleMs });
   if (settleMs > 0) {
     log.info(`verifyNvram: settling ${settleMs}ms (action_wait) before the first confirmation read`);
     await sleep(settleMs);
@@ -345,6 +382,8 @@ export async function verifyNvram(
 
   for (;;) {
     attempts++;
+    let matched = false;
+    let attemptError: string | undefined;
     try {
       const actual = await nvramGet(keys);
       reads++;
@@ -356,16 +395,38 @@ export async function verifyNvram(
         detail[k] = { expected: expected[k], actual: actual[k], match };
         if (!match) allMatch = false;
       }
-      if (allMatch) return result(true);
+      matched = allMatch;
     } catch (e) {
       if (e instanceof RouterAuthError) {
         lastError = e.message;
+        attemptError = lastError;
+        onProgress({
+          phase: 'poll-attempt',
+          attempt: attempts,
+          elapsedMs: Date.now() - started,
+          timeoutMs,
+          matched: false,
+          error: attemptError,
+        });
         log.warn('verifyNvram: router session lost, cannot confirm this write', e.message);
-        return result(false);
+        return finish(false);
       }
       lastError = e instanceof Error ? e.message : String(e);
+      attemptError = lastError;
       log.info('verifyNvram: read failed inside the confirmation window, still polling', lastError);
     }
+
+    onProgress({
+      phase: 'poll-attempt',
+      attempt: attempts,
+      elapsedMs: Date.now() - started,
+      timeoutMs,
+      matched,
+      error: attemptError,
+    });
+
+    if (matched) return finish(true);
+
     // Stop only once the budget is genuinely spent, and never sleep past it, so
     // the last read lands ON the ceiling rather than one interval short of it.
     const remaining = timeoutMs - (Date.now() - started);
@@ -375,7 +436,7 @@ export async function verifyNvram(
         detail,
         lastError ?? '',
       );
-      return result(false);
+      return finish(false);
     }
     await sleep(Math.min(intervalMs, remaining));
   }

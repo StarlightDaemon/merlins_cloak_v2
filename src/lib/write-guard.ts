@@ -23,6 +23,7 @@ import {
   verifyNvram,
   type BuiltWriteRequest,
   type SubmitResult,
+  type VerifyProgressEvent,
   type VerifyResult,
   type WriteSpec,
 } from './router-io';
@@ -56,6 +57,16 @@ export interface GuardedWriteOutcome {
   /** Operator-facing explanation, set only when blocked. */
   blockedReason?: string;
 }
+
+/**
+ * Progress events surfaced through a whole guardedWrite() call. 'submitting'
+ * fires once, before submitBuiltWrite; every other event is verifyNvram's own
+ * VerifyProgressEvent, threaded straight through unchanged. Modeled as a
+ * union (rather than a separate callback per phase) so one UI handler can
+ * switch on `.phase` for the entire write lifecycle.
+ */
+export type WriteProgressEvent = { phase: 'submitting' } | VerifyProgressEvent;
+export type WriteProgress = (event: WriteProgressEvent) => void;
 
 const writeLog: WriteLogEntry[] = [];
 const MAX_LOG = 200;
@@ -93,10 +104,14 @@ function pushEntry(entry: WriteLogEntry): void {
  * @param verifyKeys  nvram key → expected value after the write. Callers must
  *                    supply this for every nvram-backed write; it is the only
  *                    confirmation that counts.
+ * @param onProgress  optional observability hook covering the whole submit +
+ *                    verify lifecycle; defaults to a no-op so every existing
+ *                    call site keeps working unchanged. See WriteProgressEvent.
  */
 export async function guardedWrite(
   spec: WriteSpec,
   verifyKeys: Record<string, string> | null,
+  onProgress: WriteProgress = () => {},
 ): Promise<GuardedWriteOutcome> {
   const request = buildWriteRequest(spec);
   const entry: WriteLogEntry = {
@@ -124,6 +139,7 @@ export async function guardedWrite(
   }
 
   try {
+    onProgress({ phase: 'submitting' });
     log.info('submitting write', request.url, request.body);
     entry.result = await submitBuiltWrite(request);
     entry.submitted = true;
@@ -136,7 +152,7 @@ export async function guardedWrite(
       log.info(
         `verifying by forced-fresh nvram re-read: settle ${budget.settleMs}ms, ceiling ${budget.timeoutMs}ms, poll ${budget.intervalMs}ms`,
       );
-      entry.verify = await verifyNvram(verifyKeys, budget);
+      entry.verify = await verifyNvram(verifyKeys, { ...budget, onProgress });
     }
     pushEntry(entry);
     const applied = entry.verify ? entry.verify.verified : entry.result.ok;

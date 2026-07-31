@@ -63,6 +63,20 @@ export const FIXTURE_NVRAM: Record<string, string> = {
   rc_support: FIXTURE_RC_SUPPORT_SDN,
   lan_ipaddr: '192.168.50.1',
 
+  // --- DNS Director (used to exercise/screenshot the write-progress UI via
+  // ?slowwrite=1 — see mocks/router-fetch.ts SLOW_WRITE) ---
+  dnsfilter_enable_x: '0',
+
+  // --- Tweaks (Tools_OtherSettings.asp) — required/numeric fields need a
+  // valid starting value or SettingsPage's validation blocks Apply outright;
+  // also used to exercise/screenshot the write-progress UI (this page's
+  // write has no actionWait, so it settles instantly and heads straight into
+  // the verify-poll loop, which is handy for observing that phase without
+  // ?slowwrite=1's ~5s settle wait in the way).
+  ct_max: '65536',
+  ct_tcp_timeout: '0 432000 120 60 120 120 10 60 30 0',
+  ct_udp_timeout: '30 180',
+
   // --- dashboard: WAN ---
   wan0_state_t: '2', // Connected
   wan0_ipaddr: '203.0.113.42', // TEST-NET-3 — never a routable address

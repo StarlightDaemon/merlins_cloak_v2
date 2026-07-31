@@ -15,10 +15,25 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Capabilities } from '../lib/capabilities';
 import { nvramCharToAscii, nvramGet, appGet, type WriteSpec } from '../lib/router-io';
-import { guardedWrite, isReadOnlyMode, type GuardedWriteOutcome } from '../lib/write-guard';
+import { guardedWrite, isReadOnlyMode, type GuardedWriteOutcome, type WriteProgressEvent } from '../lib/write-guard';
 import { hardExclusionReason, isHardExcludedWriteCategory } from '../lib/write-policy';
 import type { FieldDef, SettingsPageDef } from '../pages/types';
-import { Badge, Banner, Button, Card, Loading, Modal, RadioGroup, Row, Select, TextInput, Toggle } from './components';
+import {
+  ApplyProgress,
+  applyProgressReducer,
+  type ApplyProgressState,
+  Badge,
+  Banner,
+  Button,
+  Card,
+  Loading,
+  Modal,
+  RadioGroup,
+  Row,
+  Select,
+  TextInput,
+  Toggle,
+} from './components';
 import { ListEditor, validateRuleList } from './ListEditor';
 
 function validateField(f: FieldDef, value: string): string | null {
@@ -91,6 +106,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
   const [values, setValues] = useState<Record<string, string>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [applyProgress, setApplyProgress] = useState<ApplyProgressState | null>(null);
   const [outcome, setOutcome] = useState<GuardedWriteOutcome | null>(null);
   const [eulaAccepted, setEulaAccepted] = useState<boolean | null>(null);
 
@@ -171,9 +187,14 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
   /** Non-null only for the categories the write guard refuses outright. */
   const hardExcluded = isHardExcludedWriteCategory(def.writeExclusion) ? def.writeExclusion : null;
 
+  const onWriteProgress = useCallback((event: WriteProgressEvent) => {
+    setApplyProgress((prev) => applyProgressReducer(prev, event));
+  }, []);
+
   const apply = useCallback(async () => {
     if (!def.write || !baseline || dirtyCount === 0) return;
     setBusy(true);
+    setApplyProgress(null);
     try {
       const fields = def.write.buildFields ? def.write.buildFields(dirty, values) : { ...dirty };
       const fullSet = Object.fromEntries(allFields.map((f) => [f.key, values[f.key] ?? '']));
@@ -203,7 +224,21 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
         nextPage: def.aspPage,
       };
       const verify = def.write.buildVerify ? def.write.buildVerify(dirty, values) : { ...dirty };
-      const result = await guardedWrite(spec, verify ? expandRecord(verify) : null);
+      const result = await guardedWrite(spec, verify ? expandRecord(verify) : null, onWriteProgress);
+      // The write chokepoint swallows submit-time failures rather than
+      // throwing (entry.error) — verifyNvram never runs in that case, so no
+      // 'complete' progress event covers it. Surface it explicitly here so
+      // the progress indicator doesn't just stall on 'Submitting…'.
+      if (result.entry.error) {
+        setApplyProgress((prev) => ({
+          phase: 'failed',
+          settleMs: prev?.settleMs ?? 0,
+          timeoutMs: prev?.timeoutMs ?? 0,
+          attempt: prev?.attempt ?? 0,
+          errorMessage: result.entry.error,
+          startedAt: prev?.startedAt ?? Date.now(),
+        }));
+      }
       setOutcome(result);
       if (result.applied) {
         await load();
@@ -211,7 +246,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
     } finally {
       setBusy(false);
     }
-  }, [def, baseline, dirty, values, allFields, dirtyCount, load, expand]);
+  }, [def, baseline, dirty, values, allFields, dirtyCount, load, expand, onWriteProgress]);
 
   if (loadError) {
     return (
@@ -319,6 +354,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
               <Button variant="primary" onClick={() => void apply()} disabled={busy || hasErrors}>
                 {busy ? 'Applying…' : isReadOnlyMode() ? 'Preview Apply' : 'Apply'}
               </Button>
+              {busy && applyProgress && <ApplyProgress state={applyProgress} />}
             </div>
           )}
         </>

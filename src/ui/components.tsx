@@ -2,7 +2,8 @@
  * Shared UI primitives for the shadow-mounted app. Plain class-based styling;
  * all classes live in theme/css.ts.
  */
-import { type ReactNode, useEffect, useRef } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import type { WriteProgressEvent } from '../lib/write-guard';
 
 export function Card({ title, children, badge, note }: { title?: ReactNode; children: ReactNode; badge?: ReactNode; note?: ReactNode }) {
   return (
@@ -204,6 +205,147 @@ export function Loading({ label = 'Reading from router…' }: { label?: string }
     <div className="mc-loading">
       <span className="mc-spinner" />
       {label}
+    </div>
+  );
+}
+
+/**
+ * Live state for the apply-in-flight indicator, derived from the stream of
+ * WriteProgressEvent (write-guard.ts) a caller accumulates in its own
+ * useState via applyProgressReducer. Deliberately mechanical rather than a
+ * generic spinner: every phase after 'submitting' carries the concrete
+ * numbers (elapsed/ceiling, attempt count) an advanced operator asked for,
+ * and the progress bar tracks them directly instead of just animating.
+ */
+export interface ApplyProgressState {
+  phase: 'submitting' | 'settling' | 'verifying' | 'verified' | 'timeout' | 'failed';
+  /** Total settle (action_wait) budget in ms, once known. */
+  settleMs: number;
+  /** Total verify ceiling in ms (settle included), once known. */
+  timeoutMs: number;
+  /** Last poll-attempt number seen (0 before the first one). */
+  attempt: number;
+  /** Last read error seen mid-window, if any — reporting only. */
+  lastError?: string;
+  /** Set only in the 'failed' phase (submit itself threw). */
+  errorMessage?: string;
+  /**
+   * Date.now() anchor for the current phase's elapsed-time display. Carried
+   * forward from 'settling' into 'verifying' so the on-screen elapsed count
+   * stays continuous across that transition, matching verifyNvram's own
+   * elapsedMs (which is measured from entry, settle included).
+   */
+  startedAt: number;
+}
+
+/**
+ * Pure reducer folding one WriteProgressEvent into the previous
+ * ApplyProgressState. Exported so any apply flow (not just SettingsPage) can
+ * drive the same accumulation from guardedWrite's onProgress callback.
+ */
+export function applyProgressReducer(
+  prev: ApplyProgressState | null,
+  event: WriteProgressEvent,
+): ApplyProgressState {
+  const now = Date.now();
+  switch (event.phase) {
+    case 'submitting':
+      return { phase: 'submitting', settleMs: 0, timeoutMs: 0, attempt: 0, startedAt: now };
+    case 'settle-start':
+      // A zero-length settle (no actionWait for this path) isn't worth its
+      // own visible phase — the very next poll-attempt event supersedes it
+      // immediately anyway, so skip straight to keeping the prior state.
+      if (event.settleMs <= 0) return prev ?? { phase: 'submitting', settleMs: 0, timeoutMs: 0, attempt: 0, startedAt: now };
+      return { phase: 'settling', settleMs: event.settleMs, timeoutMs: prev?.timeoutMs ?? 0, attempt: 0, startedAt: now };
+    case 'poll-attempt':
+      return {
+        phase: 'verifying',
+        settleMs: prev?.settleMs ?? 0,
+        timeoutMs: event.timeoutMs,
+        attempt: event.attempt,
+        lastError: event.error,
+        startedAt: prev?.startedAt ?? now,
+      };
+    case 'complete':
+      return {
+        phase: event.result.verified ? 'verified' : 'timeout',
+        settleMs: prev?.settleMs ?? event.result.settleMs,
+        timeoutMs: event.result.timeoutMs,
+        attempt: event.result.attempts,
+        lastError: event.result.lastError,
+        startedAt: prev?.startedAt ?? now,
+      };
+  }
+}
+
+function fmtSeconds(ms: number): string {
+  return (ms / 1000).toFixed(1);
+}
+
+/**
+ * The apply-in-flight indicator itself: a phase label plus a real progress
+ * bar keyed to elapsed/ceiling (settle countdown while settling, nvram
+ * confirmation window while verifying) — never an indeterminate spinner.
+ * Ticks its own clock while a phase is time-bounded so the bar visibly moves
+ * between the (comparatively sparse) poll-attempt events.
+ */
+export function ApplyProgress({ state }: { state: ApplyProgressState }) {
+  const [now, setNow] = useState(() => Date.now());
+  const ticking = state.phase === 'settling' || state.phase === 'verifying';
+  useEffect(() => {
+    if (!ticking) return;
+    const t = setInterval(() => setNow(Date.now()), 100);
+    return () => clearInterval(t);
+  }, [ticking]);
+
+  let label: string;
+  let pct: number | null = null;
+  switch (state.phase) {
+    case 'submitting':
+      label = 'Submitting write…';
+      break;
+    case 'settling': {
+      // Clamped at 0: `now` (this component's own tick clock) and
+      // `state.startedAt` (stamped by applyProgressReducer on the
+      // 'settle-start' event) are two independent Date.now() calls a
+      // React tick apart, so elapsed can land a hair negative right on the
+      // first render — never worth surfacing as "-0.0s".
+      const elapsed = Math.max(0, Math.min(now - state.startedAt, state.settleMs));
+      label = `Settling (action_wait): ${fmtSeconds(elapsed)}s / ${fmtSeconds(state.settleMs)}s`;
+      pct = state.settleMs > 0 ? (elapsed / state.settleMs) * 100 : 100;
+      break;
+    }
+    case 'verifying': {
+      const elapsed = Math.max(0, Math.min(now - state.startedAt, state.timeoutMs));
+      label = `Verifying: nvram re-read attempt ${state.attempt}, elapsed ${fmtSeconds(elapsed)}s / ${fmtSeconds(state.timeoutMs)}s`;
+      pct = state.timeoutMs > 0 ? (elapsed / state.timeoutMs) * 100 : 100;
+      break;
+    }
+    case 'verified':
+      label = 'Verified';
+      pct = 100;
+      break;
+    case 'timeout':
+      label = 'Timed out — nvram did not confirm within the window';
+      pct = 100;
+      break;
+    case 'failed':
+      label = `Write failed: ${state.errorMessage ?? 'unknown error'}`;
+      pct = 100;
+      break;
+  }
+
+  return (
+    <div className={`mc-writeprogress mc-writeprogress--${state.phase}`}>
+      <div className="mc-writeprogress__label">{label}</div>
+      {pct !== null && (
+        <div className="mc-writeprogress__track">
+          <div className="mc-writeprogress__fill" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+        </div>
+      )}
+      {state.phase === 'verifying' && state.lastError && (
+        <div className="mc-writeprogress__note">last read error: {state.lastError}</div>
+      )}
     </div>
   );
 }

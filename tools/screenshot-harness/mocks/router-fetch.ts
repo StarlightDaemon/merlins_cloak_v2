@@ -37,10 +37,47 @@ const originalFetch = window.fetch.bind(window);
  */
 const CLASSIC_FIXTURE = new URLSearchParams(window.location.search).has('classic');
 
-/** Resolve one plain/ascii nvram fixture value, honoring the ?classic= override. */
+/**
+ * `?slowwrite=1` (same before-the-`#` rule as `?classic=1`) makes applyapp.cgi
+ * writes land in the fixture nvram table only after an artificial delay, so a
+ * write-capable settings page's Apply flow actually spends visible time in
+ * write-guard.ts's poll-and-verify loop instead of matching on the very first
+ * forced-fresh read — the only way to exercise (and screenshot) the
+ * settle/verify progress UI (SettingsPage.tsx's onWriteProgress) without a
+ * real router. Off by default so every other capture in this harness keeps
+ * its existing instant-apply behavior.
+ */
+const SLOW_WRITE = new URLSearchParams(window.location.search).has('slowwrite');
+/** Chosen so a page's ~5s settle wait plus 2-3 poll intervals (800ms each,
+ * see write-policy.ts POLL_INTERVAL_MS) elapse before the delayed value
+ * becomes visible — long enough to see multiple 'poll-attempt' events land. */
+const SLOW_WRITE_DELAY_MS = 7000;
+
+/** Fields written by a `?slowwrite=1` applyapp.cgi POST, not yet "visible" to reads. */
+const pendingWrites: Record<string, { value: string; availableAt: number }> = {};
+
+/** Resolve one plain/ascii nvram fixture value, honoring the ?classic= / ?slowwrite= overrides. */
 function nvramValue(key: string): string {
   if (key === 'rc_support' && CLASSIC_FIXTURE) return FIXTURE_RC_SUPPORT_CLASSIC;
+  const pending = pendingWrites[key];
+  if (pending && Date.now() >= pending.availableAt) return pending.value;
   return FIXTURE_NVRAM[key] ?? '';
+}
+
+/**
+ * `?slowwrite=1` only: read the submitted applyapp.cgi body and schedule its
+ * fields to become visible to nvram reads after SLOW_WRITE_DELAY_MS, instead
+ * of immediately. Non-nvram carrier fields (action_mode, rc_service, and
+ * WOL's SystemCmd) are not meaningful nvram keys and are skipped.
+ */
+function scheduleSlowWrite(body: BodyInit | null | undefined): void {
+  if (typeof body !== 'string') return;
+  const params = new URLSearchParams(body);
+  const availableAt = Date.now() + SLOW_WRITE_DELAY_MS;
+  for (const [k, v] of params.entries()) {
+    if (k === 'action_mode' || k === 'rc_service' || k === 'SystemCmd') continue;
+    pendingWrites[k] = { value: v, availableAt };
+  }
 }
 
 function textResponse(body: string, status = 200): Response {
@@ -139,8 +176,14 @@ async function mockFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
 
   // Write endpoints: never live in the harness (nothing real to write to),
   // but answered so read-only-off exploration doesn't hit a network error.
-  if (url.pathname.endsWith('/applyapp.cgi')) return jsonResponse({ modify: '1' });
-  if (url.pathname.endsWith('/start_apply.htm')) return textResponse('<html><body>OK</body></html>');
+  if (url.pathname.endsWith('/applyapp.cgi')) {
+    if (SLOW_WRITE) scheduleSlowWrite(init?.body);
+    return jsonResponse({ modify: '1' });
+  }
+  if (url.pathname.endsWith('/start_apply.htm')) {
+    if (SLOW_WRITE) scheduleSlowWrite(init?.body);
+    return textResponse('<html><body>OK</body></html>');
+  }
 
   return textResponse('', 404);
 }

@@ -368,7 +368,8 @@ ${varsToCssLines(buildThemeVars())}
   left: 236px; right: 0; bottom: 0;
   display: flex;
   align-items: center;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 6px 14px;
   padding: 12px 26px;
   background: var(--fujin-chrome-bg);
   border-top: 1px solid var(--fujin-border-subtle);
@@ -456,6 +457,43 @@ ${varsToCssLines(buildThemeVars())}
 /* ---- instance selector (band / VPN client N / …) ---- */
 .mc-instancebar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
 .mc-instancebar__label { color: var(--fujin-text-secondary); font-size: 12.5px; }
+
+/* ---- write progress (apply flow: submit -> settle -> verify) ---- */
+.mc-writeprogress {
+  flex-basis: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 0 2px;
+}
+.mc-writeprogress__label {
+  font-family: var(--fujin-font-family-mono);
+  font-size: 11.5px;
+  color: var(--fujin-text-secondary);
+}
+.mc-writeprogress--verified .mc-writeprogress__label { color: var(--fujin-status-success); }
+.mc-writeprogress--timeout .mc-writeprogress__label,
+.mc-writeprogress--failed .mc-writeprogress__label { color: var(--fujin-status-danger); }
+.mc-writeprogress__track {
+  width: 100%;
+  height: 6px;
+  background: var(--fujin-bg-overlay);
+  border: 1px solid var(--fujin-border-strong);
+  overflow: hidden;
+}
+.mc-writeprogress__fill {
+  height: 100%;
+  background: var(--fujin-interactive-active);
+  transition: width 0.1s linear;
+}
+.mc-writeprogress--verified .mc-writeprogress__fill { background: var(--fujin-status-success); }
+.mc-writeprogress--timeout .mc-writeprogress__fill,
+.mc-writeprogress--failed .mc-writeprogress__fill { background: var(--fujin-status-danger); }
+.mc-writeprogress__note {
+  font-family: var(--fujin-font-family-mono);
+  font-size: 11px;
+  color: var(--fujin-status-warning);
+}
 
 /* ---- misc ---- */
 .mc-loading { display: flex; align-items: center; gap: 10px; color: var(--fujin-text-secondary); padding: 30px 0; justify-content: center; }
