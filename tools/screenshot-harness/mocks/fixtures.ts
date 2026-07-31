@@ -317,6 +317,90 @@ export const FIXTURE_NVRAM: Record<string, string> = {
   apps_depend_do: '0',
   apps_depend_action: '',
   apps_depend_action_target: '',
+
+  // --- OpenVPN Server (pages/defs/vpn-server.ts openvpnServerPage, id
+  // 'openvpn-server') — a full '{p}'-templated field set for BOTH
+  // instances, made visibly different so a broken instance-selector switch
+  // would be obvious rather than silently identical: server 1 is enabled
+  // (TLS, TCP, port 1194, username/password auth on, client-specific config
+  // with 2 rows); server 2 is disabled (Static Key/'secret' mode, UDP, port
+  // 1195, no ccd rows). vpn_serverx_start's membership ("1,") is the derived
+  // per-instance enable flag (see the page's own ovpnStartTokens() comment).
+  // vpn_server{p}_ccd_val and vpn_serverx_clientlist are read via
+  // nvramCharToAscii (nvramAscii in the page def) — plain ASCII text here
+  // needs no percent-escaping to round-trip through that decode. Rule-list
+  // format confirmed against lib/rulelist.ts (recordSep '<', fieldSep '>',
+  // leading '<'): ccd_val records are `<1><CN>>>` (leading '1' + 4 columns,
+  // see ccdValFromStored/ccdValToStored); clientlist records are the plain
+  // 2-column `<user>pass` shape (no leading enable flag, no unit tag — it's
+  // a single unindexed key SHARED across both server instances, per the
+  // page's own intro/note).
+  vpn_serverx_start: '1,',
+  vpn_server1_if: 'tun',
+  vpn_server1_proto: 'tcp-server',
+  vpn_server1_port: '1194',
+  vpn_server1_crypt: 'tls',
+  vpn_server1_client_access: '2',
+  vpn_server1_userpass_auth: '1',
+  vpn_server1_igncrt: '0',
+  vpn_server1_tls_keysize: '1',
+  vpn_server1_hmac: '2',
+  vpn_server1_digest: 'default',
+  vpn_server1_cipher: 'AES-256-CBC',
+  vpn_server1_sn: '10.8.0.0',
+  vpn_server1_nm: '255.255.255.0',
+  vpn_server1_dhcp: '1',
+  vpn_server1_r1: '',
+  vpn_server1_r2: '',
+  vpn_server1_local: '',
+  vpn_server1_remote: '',
+  vpn_server1_pdns: '1',
+  vpn_server1_ncp_ciphers: 'AES-256-GCM:AES-128-GCM',
+  vpn_server1_comp: 'no',
+  vpn_server1_verb: '3',
+  vpn_server1_ccd: '1',
+  vpn_server1_c2c: '0',
+  vpn_server1_ccd_excl: '0',
+  vpn_server1_ip6: '0',
+  vpn_server1_nat6: '0',
+  vpn_server1_sn6: '',
+  vpn_server1_local6: '',
+  vpn_server1_remote6: '',
+  vpn_server1_ccd_val: '<1>demo-laptop>10.8.0.10>255.255.255.255>1<1>demo-phone>10.8.0.11>255.255.255.255>0',
+  vpn_server2_if: 'tun',
+  vpn_server2_proto: 'udp',
+  vpn_server2_port: '1195',
+  vpn_server2_crypt: 'secret',
+  vpn_server2_client_access: '0',
+  vpn_server2_userpass_auth: '0',
+  vpn_server2_igncrt: '0',
+  vpn_server2_tls_keysize: '1',
+  vpn_server2_hmac: '-1',
+  vpn_server2_digest: 'SHA256',
+  vpn_server2_cipher: 'AES-256-CBC',
+  vpn_server2_sn: '',
+  vpn_server2_nm: '',
+  vpn_server2_dhcp: '0',
+  vpn_server2_r1: '',
+  vpn_server2_r2: '',
+  vpn_server2_local: '10.9.0.1',
+  vpn_server2_remote: '10.9.0.2',
+  vpn_server2_pdns: '0',
+  vpn_server2_ncp_ciphers: '',
+  vpn_server2_comp: '-1',
+  vpn_server2_verb: '3',
+  vpn_server2_ccd: '0',
+  vpn_server2_c2c: '1',
+  vpn_server2_ccd_excl: '0',
+  vpn_server2_ip6: '0',
+  vpn_server2_nat6: '0',
+  vpn_server2_sn6: '',
+  vpn_server2_local6: '',
+  vpn_server2_remote6: '',
+  vpn_server2_ccd_val: '',
+  // Shared (unindexed, no unit tag) across both server instances — see the
+  // page's own intro comment. Passwords are obviously-fake placeholders.
+  vpn_serverx_clientlist: '<demo-vpnuser>FAKE-DEMO-NOT-A-PASSWORD<guest-vpnuser>FAKE-DEMO-NOT-A-PASSWORD-2',
 };
 
 /** uptime() ej hook — dashboard keeps only the "(... since boot)" fragment. */
@@ -550,6 +634,98 @@ export const FIXTURE_HTTPD_CERT_INFO = {
   CAfrom: '',
   CAexpire: '',
 };
+
+/**
+ * USB Share Accounts & Permissions (pages/defs/usb-accounts.tsx, id
+ * 'usb-accounts') — three hooks, none of them plain nvram:
+ *
+ *  - get_all_accounts() returns a JSON array of account name strings,
+ *    ASCII-encoded per the firmware's char_to_ascii convention (see the
+ *    page's own header comment). 'guest+user' below exercises
+ *    decodeAsciiEncodedName's '+' -> literal-space decode path (renders as
+ *    "guest user"); the other two names are already plain and round-trip
+ *    unchanged. 'nas-backup' deliberately has NO entry in
+ *    FIXTURE_USB_PERMISSIONS_SOURCE below, so it exercises the page's
+ *    "account with no resolvable shares" dash-row fallback within the SAME
+ *    (populated) variant as the other two accounts.
+ *  - get_usb_info() is read only for pool/mount-point discovery
+ *    (extractPools()) — modeled as a single mounted USB pool at
+ *    FIXTURE_USB_POOL_MOUNT.
+ *  - get_permissions_of_account() is UNIQUE among this project's hooks: per
+ *    the page's own header comment (citing RAW/merlin web.c:29290's
+ *    draw_permissions_of_pms()), the real firmware emits raw JS source — a
+ *    `function get_account_permissions_in_pool(account, pool) {...}`
+ *    definition plus a data assignment — not a JSON value, and the page
+ *    fetches it as raw text (fetchRouterText) rather than through appGet()'s
+ *    JSON-batching helper. buildAccountPermissionsJsSource() below
+ *    reproduces that literally; router-fetch.ts serves it UNWRAPPED (no
+ *    `{"hook":...}` JSON envelope) to mirror the real wire format faithfully
+ *    rather than "helpfully" serving clean JSON the real router wouldn't.
+ *
+ * PRIVACY CHECK FIXTURE: 'demo-user's node below carries a sibling "pwd"
+ * field ('FAKE-DEMO-NOT-A-PASSWORD') alongside its pool/folder tree, modeling
+ * plausible extra account metadata riding along in the same hook response.
+ * usb-accounts.tsx's collectShareLeaves() only treats an object as a
+ * permission "leaf" when EVERY key in it is a known protocol name — a mixed
+ * object containing "pwd" is never a leaf, and a bare string value like
+ * "pwd"'s is never recursed into (collectShareLeaves bails on non-objects) —
+ * so this value should never reach collectShareLeaves output or the
+ * rendered table. Verifying that is the point of including it.
+ */
+export const FIXTURE_USB_ACCOUNTS_RAW: string[] = ['demo-user', 'guest+user', 'nas-backup'];
+
+export const FIXTURE_USB_POOL_MOUNT = '/tmp/mnt/USB_DEMO';
+
+/** get_usb_info() payload — single mounted pool/partition, generic enough shape for extractPools()'s recursive mountPoint scan. */
+export function buildUsbInfoPayload(): Record<string, unknown> {
+  return {
+    usb_path1: [
+      {
+        port: '1',
+        deviceType: 'storage',
+        node: 'usb1',
+        partition: [{ mountPoint: FIXTURE_USB_POOL_MOUNT, partName: 'USB_DEMO', size: '512G', used: '128G' }],
+      },
+    ],
+  };
+}
+
+/** get_permissions_of_account() raw JS source — see the header comment above. */
+export function buildAccountPermissionsJsSource(): string {
+  return [
+    'function get_account_permissions_in_pool(account, pool) {',
+    '  return account_permissions[account] ? account_permissions[account][pool] : undefined;',
+    '}',
+    'account_permissions = {',
+    '  "demo-user": {',
+    '    "pwd": "FAKE-DEMO-NOT-A-PASSWORD",',
+    '    "USB_DEMO": {',
+    '      "Public": {"cifs":3,"ftp":1,"dms":0,"webdav":1},',
+    '      "Media": {"cifs":1,"ftp":0,"dms":3,"webdav":0}',
+    '    }',
+    '  },',
+    '  "guest+user": {',
+    '    "USB_DEMO": {',
+    '      "Public": {"cifs":1,"ftp":0,"dms":0,"webdav":1}',
+    '    }',
+    '  }',
+    '};',
+    '',
+  ].join('\n');
+}
+
+/**
+ * `?badaccounts=1` fixture variant (mocks/router-fetch.ts): an unrecognized,
+ * non-JS-assignment response for get_permissions_of_account(), modeling a
+ * firmware build whose emitted shape this project's defensive parser
+ * (extractJsAssignments) cannot recognize at all — no top-level
+ * `ident = {...}` assignment appears anywhere in this text, so
+ * extractJsAssignments() returns []  for every candidate hook call, and
+ * fetchAccountPermissions() (usb-accounts.tsx) degrades to null, surfacing
+ * the page's "Per-share permission data could not be read..." warn banner.
+ */
+export const FIXTURE_USB_BAD_PERMISSIONS_TEXT =
+  '// unexpected response for this hook on this firmware build\nERR_HOOK_NOT_FOUND\n';
 
 /**
  * /ajax_openvpn_server.asp (pages/defs/certificates.tsx VpnCertsPage,

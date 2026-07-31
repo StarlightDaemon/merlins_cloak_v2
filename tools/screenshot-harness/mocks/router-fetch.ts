@@ -26,10 +26,14 @@ import {
   FIXTURE_SYSINFO_SCALARS,
   FIXTURE_SYSINFO_TEXT,
   FIXTURE_UPTIME_RAW,
+  FIXTURE_USB_ACCOUNTS_RAW,
+  FIXTURE_USB_BAD_PERMISSIONS_TEXT,
   FIXTURE_WCLIENTLIST,
+  buildAccountPermissionsJsSource,
   buildAjaxOpenvpnServerText,
   buildLeaseArrayPayload,
   buildNtDbPayload,
+  buildUsbInfoPayload,
 } from './fixtures';
 
 const originalFetch = window.fetch.bind(window);
@@ -70,6 +74,31 @@ const DUALWAN_FIXTURE = new URLSearchParams(window.location.search).has('dualwan
  * its existing instant-apply behavior.
  */
 const SLOW_WRITE = new URLSearchParams(window.location.search).has('slowwrite');
+
+/**
+ * USB Share Accounts & Permissions (pages/defs/usb-accounts.tsx) fixture
+ * variants — same before-the-`#` URL-switch convention as `?classic=1` /
+ * `?dualwan=1` above. Independent of each other and of the switches above
+ * (each gates a different hook this page reads), so they can in principle be
+ * combined, though the harness only needs them one at a time to exercise
+ * each degradation branch in isolation:
+ *  - `?nodisk=1`: get_usb_info() answers with no mountPoint anywhere ->
+ *    extractPools() returns [] -> the page's "No USB disk currently
+ *    detected..." info banner.
+ *  - `?noaccounts=1`: get_all_accounts() answers with an empty array -> the
+ *    page's "No USB share accounts are configured on this router." empty
+ *    state.
+ *  - `?badaccounts=1`: get_permissions_of_account() answers with a response
+ *    that has no recognizable `ident = {...}` assignment anywhere (see
+ *    FIXTURE_USB_BAD_PERMISSIONS_TEXT in fixtures.ts) -> extractJsAssignments
+ *    finds nothing for any candidate call -> fetchAccountPermissions()
+ *    returns null -> the page's "Per-share permission data could not be
+ *    read in a recognized format..." warn banner, degrading to the account
+ *    list alone.
+ */
+const USB_NODISK_FIXTURE = new URLSearchParams(window.location.search).has('nodisk');
+const USB_NOACCOUNTS_FIXTURE = new URLSearchParams(window.location.search).has('noaccounts');
+const USB_BADACCOUNTS_FIXTURE = new URLSearchParams(window.location.search).has('badaccounts');
 /** Chosen so a page's ~5s settle wait plus 2-3 poll intervals (800ms each,
  * see write-policy.ts POLL_INTERVAL_MS) elapse before the delayed value
  * becomes visible — long enough to see multiple 'poll-attempt' events land. */
@@ -164,6 +193,15 @@ function buildJsonEnvelope(hooks: string[]): string {
       // Router HTTPS Certificate (pages/defs/certificates.tsx RouterCertPage)
       // — parsed metadata only, never raw PEM (see fixtures.ts's comment).
       out.httpd_cert_info = FIXTURE_HTTPD_CERT_INFO;
+    } else if (hook === 'get_all_accounts()') {
+      // USB Share Accounts & Permissions (pages/defs/usb-accounts.tsx) —
+      // plain JSON array of (possibly ascii-encoded) account name strings.
+      // `?noaccounts=1` answers an empty list (see USB_NOACCOUNTS_FIXTURE).
+      out.get_all_accounts = USB_NOACCOUNTS_FIXTURE ? [] : FIXTURE_USB_ACCOUNTS_RAW;
+    } else if (hook === 'get_usb_info()') {
+      // Same page — used only for pool/mount-point discovery. `?nodisk=1`
+      // answers with no mountPoint anywhere (see USB_NODISK_FIXTURE).
+      out.get_usb_info = USB_NODISK_FIXTURE ? {} : buildUsbInfoPayload();
     } else if ((m = /^sysinfo\("([^"]+)"\)$/.exec(hook))) {
       // Real firmware keys parenthesized sysinfo() scalar hooks as
       // "sysinfo-<arg>" (see pages/defs/nettools.tsx: s['sysinfo-cpu.model']
@@ -186,6 +224,17 @@ function buildJsonEnvelope(hooks: string[]): string {
 function handleAppGet(url: URL): Response {
   const hookParam = url.searchParams.get('hook') ?? '';
   const hooks = hookParam.split(';').map((h) => h.trim()).filter(Boolean);
+  if (hooks.length === 1 && /^get_permissions_of_account\(/.test(hooks[0])) {
+    // usb-accounts.tsx fetches this one hook as raw text directly
+    // (fetchRouterText), never through appGet()'s JSON-batching path — the
+    // real firmware emits raw JS source here (see fixtures.ts's
+    // buildAccountPermissionsJsSource header comment), so unlike every hook
+    // below this response must NOT be JSON-wrapped at all, not even via the
+    // RAW_HOOK_PAYLOADS `{"hook":...}` envelope (that's still JSON; this
+    // genuinely isn't). `?badaccounts=1` swaps in an unrecognized response
+    // instead — see USB_BADACCOUNTS_FIXTURE / FIXTURE_USB_BAD_PERMISSIONS_TEXT.
+    return textResponse(USB_BADACCOUNTS_FIXTURE ? FIXTURE_USB_BAD_PERMISSIONS_TEXT : buildAccountPermissionsJsSource());
+  }
   if (hooks.length === 1 && hooks[0] in RAW_HOOK_PAYLOADS) {
     return textResponse(buildRawEnvelope(hooks[0]));
   }

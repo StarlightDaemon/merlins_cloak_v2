@@ -47,6 +47,11 @@
       <li><a href="./content.html#/opmode">Content UI — Operation Mode</a> — <code>#/opmode</code>, read-only; fixture reads as Router mode.</li>
       <li><a href="./content.html#/router-cert">Content UI — Router HTTPS Certificate</a> — <code>#/router-cert</code>, httpd_cert_info() metadata, Let's Encrypt mode.</li>
       <li><a href="./content.html#/vpn-certs">Content UI — VPN Certificates &amp; Keys</a> — <code>#/vpn-certs</code>, OpenVPN/WireGuard cert-key presence badges (writes hard-blocked).</li>
+      <li><a href="./content.html#/openvpn-server">Content UI — OpenVPN Server</a> — <code>#/openvpn-server</code>, server 1 (TLS, enabled, username/password client list) vs. server 2 (Static Key, disabled) via the instance selector (writes hard-blocked).</li>
+      <li><a href="./content.html#/usb-accounts">Content UI — USB Share Accounts &amp; Permissions</a> — <code>#/usb-accounts</code>, 3 fictional accounts + per-account/pool/folder/protocol share grants (read-only).</li>
+      <li><a href="./content.html?nodisk=1#/usb-accounts">Content UI — USB Share Accounts &amp; Permissions (no USB disk)</a> — <code>?nodisk=1#/usb-accounts</code>, "no USB disk detected" degradation path.</li>
+      <li><a href="./content.html?noaccounts=1#/usb-accounts">Content UI — USB Share Accounts &amp; Permissions (no accounts)</a> — <code>?noaccounts=1#/usb-accounts</code>, zero-accounts empty state.</li>
+      <li><a href="./content.html?badaccounts=1#/usb-accounts">Content UI — USB Share Accounts &amp; Permissions (unrecognized permissions hook)</a> — <code>?badaccounts=1#/usb-accounts</code>, malformed/unrecognized get_permissions_of_account() response degradation path.</li>
     </ul>
     <p class="note">
       The content UI is one hash-routed app (<code>content.html#/&lt;page-id&gt;</code>); any page id from

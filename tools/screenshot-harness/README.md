@@ -52,6 +52,11 @@ disposable build artifact, not something to ship or commit.
 | `/content.html#/opmode` | Operation Mode | Read-only; `sw_mode`/`wlc_*` fixture values derive as plain "Router" (token `rt`) |
 | `/content.html#/router-cert` | Router HTTPS Certificate | `httpd_cert_info()` metadata (Let's Encrypt mode, `le_enable=1`) |
 | `/content.html#/vpn-certs` | VPN Certificates & Keys | OpenVPN cert/key presence via the `/ajax_openvpn_server.asp` side-channel (Server 1 + Client 1 populated, all else absent) and WireGuard private-key presence (`wgs_priv`/`wgc1_priv` present, `wgc2..5_priv` absent) |
+| `/content.html#/openvpn-server` | OpenVPN Server | A declarative `SettingsPageDef` with an `InstanceSelector`: server unit 1 populated (TLS, TCP, enabled, username/password client list with 2 rows, 2-row client-specific config) vs. unit 2 (Static Key, UDP, disabled, no ccd rows) — deliberately different so a broken instance switch would be obvious |
+| `/content.html#/usb-accounts` | USB Share Accounts & Permissions | Read-only; 3 fictional accounts (one with a decode-exercising `+`-encoded name, one with no resolvable shares) with per-account/pool/folder/protocol grants, via `get_all_accounts()`/`get_usb_info()`/`get_permissions_of_account()` |
+| `/content.html?nodisk=1#/usb-accounts` | USB Share Accounts & Permissions, no USB disk | `get_usb_info()` answers with no mount point — exercises the "No USB disk currently detected" info banner |
+| `/content.html?noaccounts=1#/usb-accounts` | USB Share Accounts & Permissions, zero accounts | `get_all_accounts()` answers `[]` — exercises the "No USB share accounts are configured" empty state |
+| `/content.html?badaccounts=1#/usb-accounts` | USB Share Accounts & Permissions, unrecognized permissions hook | `get_permissions_of_account()` answers text with no recognizable JS assignment — exercises the "Per-share permission data could not be read..." warn banner and account-list-only degradation |
 
 `content.html` is a single hash-routed entry point — it mounts the *whole*
 app shell (nav, header, capability chips), exactly like the real content
@@ -119,6 +124,20 @@ switches (both key off `nvramValue()`'s handling of the `rc_support` read,
 checked in that order); extend the same pattern in `router-fetch.ts` if a
 future page needs another URL-switchable variant.
 
+USB Share Accounts & Permissions (`#/usb-accounts`) has three more
+URL-switches, each independent of the ones above and of each other (they
+gate different hooks): `?nodisk=1` makes `get_usb_info()` answer with no
+mount point anywhere (`USB_NODISK_FIXTURE`); `?noaccounts=1` makes
+`get_all_accounts()` answer `[]` (`USB_NOACCOUNTS_FIXTURE`); `?badaccounts=1`
+makes `get_permissions_of_account()` answer text with no recognizable
+`ident = {...}` assignment (`USB_BADACCOUNTS_FIXTURE`,
+`FIXTURE_USB_BAD_PERMISSIONS_TEXT`). Unlike every other hook this project
+reads, `get_permissions_of_account()` is answered as raw, un-JSON-wrapped
+text — `handleAppGet` special-cases it ahead of the generic
+`RAW_HOOK_PAYLOADS`/`buildJsonEnvelope` paths, because the page fetches it
+via `fetchRouterText` directly and parses it as JS source, not JSON (see
+`mocks/fixtures.ts`'s `buildAccountPermissionsJsSource` header comment).
+
 `content-entry.tsx` reproduces only the *mounting* half of
 `src/entrypoints/content.tsx` (shadow root, `buildThemeCss()` injection,
 `registerAllPages()`, `<App/>`) — the rest of that file is router-page
@@ -178,6 +197,26 @@ See `mocks/fixtures.ts` for the full table. Everything is invented:
 - Time Machine / Download Master: `tm_device_name` `sda1`, a fictional
   `/tmp/mnt/DEMO_USB` mount path, and a handful of plausible `apps_state_*`
   status codes.
+- OpenVPN Server: full `vpn_server{1,2}_*` field sets, visibly different per
+  instance (unit 1 TLS/TCP/enabled/port 1194 with a 2-row client-specific
+  config; unit 2 Static Key/UDP/disabled/port 1195, no ccd rows) so a broken
+  instance-selector switch would be obvious. `vpn_serverx_start` = `"1,"`
+  (only unit 1 enabled). The shared (unindexed) `vpn_serverx_clientlist`
+  carries 2 fictional username/password records — passwords are obviously-
+  fake placeholders (`FAKE-DEMO-NOT-A-PASSWORD`), never real credentials.
+- USB Share Accounts & Permissions: 3 fictional accounts
+  (`FIXTURE_USB_ACCOUNTS_RAW`) — `demo-user` and `guest+user` (the `+`
+  exercises the page's ASCII-decode path, rendering as "guest user") both
+  resolve share rows from `get_permissions_of_account()`'s raw-JS-source
+  response (`buildAccountPermissionsJsSource()`); `nas-backup` has no entry
+  there, exercising the "account with no resolvable shares" dash row in the
+  same (populated) view. `demo-user`'s node also carries a sibling `pwd`
+  field (`FAKE-DEMO-NOT-A-PASSWORD`) that the page's leaf-detection logic
+  should never surface as a rendered row — see "Verification performed"
+  below for the privacy-check result. A single USB pool is modeled at
+  `/tmp/mnt/USB_DEMO` (`buildUsbInfoPayload()`). Three URL-switch variants
+  (`?nodisk=1`, `?noaccounts=1`, `?badaccounts=1`) exercise this page's three
+  degradation branches — see the variant-switch section above.
 
 ## Verification performed
 
