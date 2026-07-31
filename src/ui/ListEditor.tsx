@@ -4,7 +4,7 @@
  * serializes on every edit, so dirty-tracking and write construction in
  * SettingsPage see an ordinary string-valued field.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { parseRuleList, serializeRuleList } from '../lib/rulelist';
 import type { ListColumn, ListSpec } from '../pages/types';
 import { Button } from './components';
@@ -53,19 +53,55 @@ export function ListEditor({
   // Draft row under construction, not yet part of the serialized value.
   const [draft, setDraft] = useState<string[] | null>(null);
 
-  const commit = (next: string[][]) => onChange(serializeRuleList(next, spec));
+  // Latest committed raw value, updated synchronously by commit() below.
+  // Mutating handlers (cell edits, row deletes, draft commit) derive their
+  // next state from this ref at event time, never from the render-time
+  // `rows` snapshot: two handlers firing before an intervening React commit
+  // (e.g. rapid back-to-back deletes) would otherwise both compute against
+  // the same stale snapshot and the second would overwrite the first.
+  const valueRef = useRef(value);
+  valueRef.current = value; // re-synced every render so external updates win
 
-  const setCell = (ri: number, ci: number, v: string) => {
-    const next = rows.map((r) => [...r]);
-    next[ri][ci] = v;
+  const latestRows = () => parseRuleList(valueRef.current, spec);
+
+  const sameRow = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+  /**
+   * Index in `latest` of the row rendered at index `ri` with content `row`,
+   * or -1 if it no longer exists. Prefers the original index while content
+   * still matches there, so duplicate rows resolve to the one clicked;
+   * otherwise falls back to content identity (indices shift when an earlier
+   * same-tick operation removed a preceding row).
+   */
+  const locateRow = (latest: string[][], row: string[], ri: number) =>
+    latest[ri] && sameRow(latest[ri], row) ? ri : latest.findIndex((r) => sameRow(r, row));
+
+  const commit = (next: string[][]) => {
+    const raw = serializeRuleList(next, spec);
+    valueRef.current = raw;
+    onChange(raw);
+  };
+
+  const setCell = (row: string[], ri: number, ci: number, v: string) => {
+    const latest = latestRows();
+    const at = locateRow(latest, row, ri);
+    if (at === -1) return; // row vanished under us (e.g. deleted this tick)
+    const next = latest.map((r) => [...r]);
+    next[at][ci] = v;
     commit(next);
+  };
+
+  const deleteRow = (row: string[], ri: number) => {
+    const latest = latestRows();
+    const at = locateRow(latest, row, ri);
+    if (at !== -1) commit(latest.filter((_, i) => i !== at));
   };
 
   const addDraft = () => setDraft(spec.columns.map((c) => (c.control === 'select' ? (c.options?.[0]?.value ?? '') : '')));
 
   const commitDraft = () => {
     if (!draft) return;
-    commit([...rows, draft]);
+    commit([...latestRows(), draft]);
     setDraft(null);
   };
 
@@ -125,7 +161,7 @@ export function ListEditor({
           {rows.map((row, ri) => (
             <tr key={ri}>
               {spec.columns.map((col, ci) => (
-                <td key={col.id}>{cellControl(col, row[ci] ?? '', (nv) => setCell(ri, ci, nv))}</td>
+                <td key={col.id}>{cellControl(col, row[ci] ?? '', (nv) => setCell(row, ri, ci, nv))}</td>
               ))}
               <td>
                 <button
@@ -133,7 +169,7 @@ export function ListEditor({
                   className="mc-listedit__del"
                   title="Remove entry"
                   disabled={disabled}
-                  onClick={() => commit(rows.filter((_, i) => i !== ri))}
+                  onClick={() => deleteRow(row, ri)}
                 >
                   ✕
                 </button>

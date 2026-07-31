@@ -897,7 +897,7 @@ particular is confirmed-deliberate (see `qos.ts:45-49`'s own comment), not
 a defect.
 
 ### Instance-switch state corruption — CLOSED 2026-07-31
-- **Status: CLOSED 2026-07-31.** Fixed by a generation-counter supersedure
+- **Status: CLOSED 2026-07-31** (`381d442`). Fixed by a generation-counter supersedure
   guard in `load()` (a `loadGen` ref incremented per call; responses — and
   load errors — belonging to a superseded call are discarded before any
   `setBaseline`/`setValues`/`setEulaAccepted`/`setLoadError`), plus
@@ -937,8 +937,20 @@ a defect.
 - **Where:** `src/ui/SettingsPage.tsx:120-123` (`expand`), `:125-158`
   (`load`), `:194-261` (`apply`), `:277-284` (instance `RadioGroup`).
 
-### `ListEditor` rapid-deletion stale-closure loss — CONFIRMED, reproduced live
-- **Status:** Open, required fix, solo-completable.
+### `ListEditor` rapid-deletion stale-closure loss — CLOSED 2026-07-31
+- **Status: CLOSED 2026-07-31.** Fixed: the mutating handlers (`setCell`,
+  the per-row delete, `commitDraft`) now derive their next state from a
+  `valueRef` mirroring the latest committed raw value (updated
+  synchronously inside `commit()`, re-synced from the `value` prop every
+  render so external updates win) instead of the render-time `rows`
+  snapshot. Row-targeted operations locate their row by the render-time
+  index while its content still matches there, falling back to content
+  identity — so an earlier same-tick deletion can neither redirect nor
+  swallow a later operation, and a vanished row makes the operation a
+  no-op rather than a wrong-row edit. Re-verified against the
+  verification report's §3 repro: both same-tick deletes now land (0 rows
+  remain; pre-fix 1 remained), and normal harness usage (add a row, edit
+  a cell, single delete) was manually re-tested intact.
 - **What:** each row's delete button closes over that render's `rows`
   (`useMemo` off the `value` prop, `ListEditor.tsx:52-62`). Two delete
   clicks landing before an intervening React commit both compute their
