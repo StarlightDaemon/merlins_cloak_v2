@@ -471,7 +471,7 @@ ${varsToCssLines(buildThemeVars())}
 }
 @keyframes mc-spin { to { transform: rotate(360deg); } }
 .mc-empty { color: var(--fujin-text-muted); text-align: center; padding: 26px 0; font-size: 12.5px; }
-.mc-kv { display: grid; grid-template-columns: minmax(180px, 260px) 1fr; gap: 4px 16px; font-size: 12.5px; }
+.mc-kv { display: grid; grid-template-columns: minmax(180px, max-content) minmax(0, 1fr); gap: 4px 16px; font-size: 12.5px; }
 .mc-kv dt { color: var(--fujin-text-secondary); }
 .mc-kv dd { margin: 0; font-family: var(--fujin-font-family-mono); font-size: 12px; word-break: break-all; }
 .mc-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
