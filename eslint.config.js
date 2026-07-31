@@ -1,6 +1,5 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
-import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 
@@ -10,7 +9,6 @@ export default tseslint.config(
     {
         files: ['**/*.{ts,tsx}'],
         plugins: {
-            react: reactPlugin,
             'react-hooks': reactHooksPlugin,
         },
         languageOptions: {
@@ -27,14 +25,7 @@ export default tseslint.config(
                 },
             },
         },
-        settings: {
-            react: {
-                version: 'detect',
-            },
-        },
         rules: {
-            // React 17+ - no need to import React
-            'react/react-in-jsx-scope': 'off',
             // Allow unused vars prefixed with _
             '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_' }],
             // Prefer const
@@ -52,6 +43,7 @@ export default tseslint.config(
             '.output/',
             '.wxt/',
             'dist/',
+            'RAW/',
             '*.config.js',
             '*.config.ts',
         ],
