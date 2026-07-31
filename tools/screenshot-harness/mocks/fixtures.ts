@@ -49,8 +49,45 @@ export const FIXTURE_STATIC_LEASES: { mac: string; ip: string; dns: string; host
  * switches to FIXTURE_RC_SUPPORT_CLASSIC so the plain wl0/1/2_ssid fallback
  * table can still be exercised, e.g. `content.html?classic=1#/dashboard`.
  */
-export const FIXTURE_RC_SUPPORT_SDN = 'band6g appbase mtlancfg';
+export const FIXTURE_RC_SUPPORT_SDN =
+  'band6g appbase mtlancfg nt_center nt_center_ui amas timemachine wireguard openvpnd usb';
 export const FIXTURE_RC_SUPPORT_CLASSIC = 'band6g appbase';
+/**
+ * `?dualwan=1` (same before-the-`#` convention as `?classic=1`, see
+ * router-fetch.ts) adds the `dualwan` token on top of the normal SDN flag set
+ * — hasFlag(caps, 'dualwan_support')'s rc_support fallback strips the
+ * `_support` suffix and looks for the bare `dualwan` token — plus switches
+ * wan1_ (its various nvram fields), wans_dualwan, wans_mode, wans_lb_ratio
+ * and wan{0,1}_primary to populated dual-WAN values (see
+ * FIXTURE_DUALWAN_NVRAM below). Every other flag from
+ * FIXTURE_RC_SUPPORT_SDN is preserved so the rest of the app (SDN dashboard
+ * table, notification center, AiMesh, etc.) keeps rendering normally on this
+ * variant too. The single-WAN default (FIXTURE_RC_SUPPORT_SDN, no `dualwan`
+ * token) is untouched — dashboard.tsx's dual-WAN branch only activates when
+ * this flag is present AND wans_dualwan's tokens exclude "none".
+ */
+export const FIXTURE_RC_SUPPORT_DUALWAN = `${FIXTURE_RC_SUPPORT_SDN} dualwan`;
+
+/**
+ * Dual-WAN nvram overrides, applied only under `?dualwan=1` (see
+ * router-fetch.ts's nvramValue()). wans_mode 'fo' (Failover) exercises the
+ * dashboard's Primary/Standby role labels via wan0_primary/wan1_primary;
+ * wans_lb_ratio is populated anyway (harmless — only rendered in 'lb' mode).
+ * wan1 address space uses a second RFC 5737 TEST-NET block (198.51.100.0/24)
+ * so it's visibly distinct from wan0's 203.0.113.0/24 in a screenshot.
+ */
+export const FIXTURE_DUALWAN_NVRAM: Record<string, string> = {
+  wan1_state_t: '2', // Connected
+  wan1_ipaddr: '198.51.100.77',
+  wan1_gateway: '198.51.100.1',
+  wan1_dns: '198.51.100.53',
+  wan1_proto: 'dhcp',
+  wans_dualwan: 'wan usb',
+  wans_mode: 'fo',
+  wans_lb_ratio: '3:1',
+  wan0_primary: '1',
+  wan1_primary: '0',
+};
 
 /** Plain nvram_get / nvram_char_to_ascii key → value fixture table. */
 export const FIXTURE_NVRAM: Record<string, string> = {
@@ -154,6 +191,132 @@ export const FIXTURE_NVRAM: Record<string, string> = {
   // Rule-list encoding (lib/rulelist.ts): '<' record sep, '>' field sep,
   // columns [mac, ip, dns, hostname] — see pages/defs/lan.ts dhcpPage.
   dhcp_staticlist: FIXTURE_STATIC_LEASES.map((r) => `<${r.mac}>${r.ip}>${r.dns}>${r.hostname}`).join(''),
+
+  // --- QoS: Priority Bandwidth Allocation (pages/defs/qos.ts qosUserPrioPage,
+  // id 'qos-userprio') — qos_orates/qos_irates joined strings (5 priority
+  // bands + a 5-slot trailer each, see the page's own header comment for the
+  // exact format) plus the ACK/SYN/FIN/RST/ICMP boost flags, which are plain
+  // on/off scalars (not '1'/'0'). ---
+  qos_orates: '80-100,10-100,5-100,3-100,2-95,0-0,0-0,0-0,0-0,0-0',
+  qos_irates: '100,100,100,100,100,0,0,0,0,0',
+  qos_ack: 'on',
+  qos_syn: 'on',
+  qos_fin: 'off',
+  qos_rst: 'off',
+  qos_icmp: 'on',
+
+  // --- Notification Center (pages/defs/notification.tsx, id
+  // 'notification-center') — nc_web_app_enable/nc_mail_enable read-only
+  // channel-settings display. The event list itself (get_nt_db()) is a raw
+  // appGet hook, not plain nvram — see FIXTURE_NT_EVENTS/buildNtDbPayload
+  // below, wired through router-fetch.ts's RAW_HOOK_PAYLOADS map. ---
+  nc_web_app_enable: '1',
+  nc_mail_enable: '0',
+
+  // --- AiMesh Node Management (pages/defs/aimesh.tsx, id 'aimesh') gating
+  // flag only; the node/onboarding data itself comes from three appGet hooks
+  // (get_cfg_clientlist/get_onboardinglist/get_onboardingstatus) — see
+  // FIXTURE_AIMESH_* below. ---
+
+  // --- Operation Mode (pages/defs/opmode.ts, id 'opmode') — sw_mode/wlc_*
+  // set so deriveOpMode() falls through to the plain-Router case: swMode==1,
+  // every psta/express/mlo flag off, wlc_band empty (a non-empty wlc_band
+  // alongside sw_mode=1 would read as WISP instead — see opmode.ts header). ---
+  sw_mode: '1',
+  wlc_psta: '0',
+  wlc_dpsta: '0',
+  wlc_express: '0',
+  wlc_band: '',
+  mlo_rp: '0',
+  mlo_mb: '0',
+
+  // --- Router HTTPS Certificate (pages/defs/certificates.tsx, id
+  // 'router-cert') — le_enable=1 selects the "Let's Encrypt" status badge;
+  // httpd_cert_info() itself is a hook, not nvram — see
+  // FIXTURE_HTTPD_CERT_INFO below. ---
+  le_enable: '1',
+  le_state: '2',
+
+  // --- WireGuard Server (pages/defs/vpn-server.ts, id 'wireguard-server')
+  // — real per-instance keys (wgs1_*), read directly since this router only
+  // ever has one native-reachable instance (see the page's own header
+  // comment on the wgs_/wgs1_ working-copy redirect). Key material is an
+  // obviously-fake placeholder, never real PEM/base64. ---
+  wgs1_enable: '1',
+  wgs1_dns: '1',
+  wgs1_nat6: '0',
+  wgs1_psk: '1',
+  wgs1_alive: '25',
+  wgs1_addr: '10.6.0.1/24',
+  wgs1_port: '51820',
+  wgs1_priv: 'FAKE-DEMO-WGS-SERVER-PRIVATE-KEY-NOT-REAL',
+  wgs1_pub: 'FAKE-DEMO-WGS-SERVER-PUBLIC-KEY-NOT-REAL==',
+
+  // --- WireGuard Server Peers (pages/defs/vpn-server.ts, id
+  // 'wireguard-server-peers') — three fictional peers on server unit 1: two
+  // enabled, one disabled, to exercise the enable badge. Keys/PSKs are
+  // obviously-fake placeholders. ---
+  wgs1_c1_name: 'laptop-wg',
+  wgs1_c1_enable: '1',
+  wgs1_c1_addr: '10.6.0.2/32',
+  wgs1_c1_aips: '10.6.0.2/32',
+  wgs1_c1_caips: '0.0.0.0/0',
+  wgs1_c1_psk: 'FAKE-DEMO-PEER1-PSK-NOT-REAL',
+  wgs1_c1_pub: 'FAKE-DEMO-PEER1-PUBLIC-KEY-NOT-REAL==',
+  wgs1_c1_priv: '',
+  wgs1_c2_name: 'phone-wg',
+  wgs1_c2_enable: '1',
+  wgs1_c2_addr: '10.6.0.3/32',
+  wgs1_c2_aips: '10.6.0.3/32',
+  wgs1_c2_caips: '0.0.0.0/0',
+  wgs1_c2_psk: 'FAKE-DEMO-PEER2-PSK-NOT-REAL',
+  wgs1_c2_pub: 'FAKE-DEMO-PEER2-PUBLIC-KEY-NOT-REAL==',
+  wgs1_c2_priv: '',
+  wgs1_c3_name: 'nas-wg-backup',
+  wgs1_c3_enable: '0',
+  wgs1_c3_addr: '10.6.0.4/32',
+  wgs1_c3_aips: '10.6.0.4/32',
+  wgs1_c3_caips: '10.6.0.4/32',
+  wgs1_c3_psk: '',
+  wgs1_c3_pub: 'FAKE-DEMO-PEER3-PUBLIC-KEY-NOT-REAL==',
+  wgs1_c3_priv: '',
+
+  // --- VPN Certificates & Keys (pages/defs/certificates.tsx, id
+  // 'vpn-certs') — WireGuard private-key PRESENCE fields, read unindexed
+  // (wgs_priv/wgc{n}_priv, a separate working-copy family from wgs1_* above
+  // — see the page's own header comment). Server + client 1 present, clients
+  // 2-5 deliberately absent (left unset) to exercise both presence badges.
+  // Obviously-fake placeholder, never real key material. ---
+  wgs_priv: 'FAKE-DEMO-WORKING-COPY-PRIVATE-KEY-NOT-REAL',
+  wgc1_priv: 'FAKE-DEMO-CLIENT1-PRIVATE-KEY-NOT-REAL',
+
+  // --- Time Machine (pages/defs/usb.ts timemachinePage, id 'timemachine')
+  // — tm_device_name is a raw partition device leaf name, not a mount path
+  // (see the page's own header comment). ---
+  timemachine_enable: '1',
+  tm_device_name: 'sda1',
+  tm_vol_size: '512000',
+  tm_ui_setting: '1',
+
+  // --- Download Master / USB Apps status (pages/defs/usb.ts
+  // downloadMasterPage, id 'download-master') — read-only status fields,
+  // every one a literal defaults.c entry per the page's own header comment.
+  // ---
+  apps_dev: 'sda1',
+  apps_mounted_path: '/tmp/mnt/DEMO_USB',
+  apps_state_install: '2',
+  apps_state_upgrade: '0',
+  apps_state_update: '0',
+  apps_state_remove: '0',
+  apps_state_enable: '2',
+  apps_state_switch: '0',
+  apps_state_autorun: '1',
+  apps_state_error: '0',
+  apps_download_file: 'downloadmaster_3.0.0.5_demo.ipk',
+  apps_download_percent: '100',
+  apps_depend_do: '0',
+  apps_depend_action: '',
+  apps_depend_action_target: '',
 };
 
 /** uptime() ej hook — dashboard keeps only the "(... since boot)" fragment. */
@@ -230,3 +393,189 @@ conn_stats_arr = [842,210];
 mem_stats_arr = [993.76,286.27,18.42,71.23,0,0,164548,15616,393216,311.39];
 cpu_stats_arr = [8,11,14];
 `;
+
+/**
+ * Notification Center (pages/defs/notification.tsx, id 'notification-center')
+ * — get_nt_db() row shape per the page's own header comment:
+ * {tstamp, event_id, group_type, msg, eName, status, event_type}. event_id
+ * is the firmware's "%8X" space-left-padded uppercase hex field — reproduced
+ * literally (untrimmed) here since the page itself is responsible for
+ * trimming it. status uses the page's own narrow "== 1" read test (bit 0 /
+ * web-GUI channel only).
+ *
+ * Three rows, deliberately covering all three rendering paths:
+ *  - '10003': status 1 (read) — resolves its title from FIXTURE_NT_CONTENT.
+ *  - '2001': status 0 (unread) — also resolves from FIXTURE_NT_CONTENT.
+ *  - 'A1B2C': status 0 (unread), eName intentionally blank AND no
+ *    FIXTURE_NT_CONTENT entry — exercises eventTitle()'s final fallback,
+ *    "Event 0x<hex>" (the raw-hex path), and eventBody()'s matching
+ *    "raw event id ... status flags ..." fallback.
+ */
+export interface FixtureNtEvent {
+  tstamp: string;
+  event_id: string;
+  group_type: string;
+  /** Optional — omitted (not merely '') for the raw-hex-fallback row so eventBody()'s typeof-string short-circuit doesn't swallow the raw-hex fallback text. */
+  msg?: string;
+  eName: string;
+  status: string;
+  event_type: string;
+}
+
+export const FIXTURE_NT_EVENTS: FixtureNtEvent[] = [
+  {
+    tstamp: '1785500000',
+    event_id: '   10003',
+    group_type: '1',
+    msg: 'demo-user joined MerlinNet-Demo (5 GHz)',
+    eName: 'New wireless client',
+    status: '1',
+    event_type: '1',
+  },
+  {
+    tstamp: '1785580000',
+    event_id: '    2001',
+    group_type: '1',
+    msg: 'A new firmware build is available for RT-DEMO88U',
+    eName: 'Firmware update available',
+    status: '0',
+    event_type: '2',
+  },
+  {
+    tstamp: '1785590000',
+    event_id: '   A1B2C',
+    group_type: '9',
+    eName: '',
+    status: '0',
+    event_type: '9',
+  },
+];
+
+/** appGet.cgi RAW_HOOK_PAYLOADS entry for 'get_nt_db()' — see router-fetch.ts. */
+export function buildNtDbPayload(): string {
+  return JSON.stringify(FIXTURE_NT_EVENTS);
+}
+
+/**
+ * /nt_content.json — plain same-origin GET, not an appGet hook (see
+ * router-fetch.ts). Keyed by the TRIMMED event_id hex string. 'A1B2C'
+ * deliberately has no entry here — see FIXTURE_NT_EVENTS above.
+ */
+export const FIXTURE_NT_CONTENT: Record<string, { item: string; contents: string; icon?: string; group?: string }> = {
+  '10003': { item: 'New wireless client', contents: 'demo-user joined MerlinNet-Demo (5 GHz)', group: '1' },
+  '2001': { item: 'Firmware update available', contents: 'fixture_demo build 9999 is ready to install', group: '1' },
+};
+
+/**
+ * AiMesh Node Management (pages/defs/aimesh.tsx, id 'aimesh') —
+ * get_cfg_clientlist() row shape per the page's own header comment. Index 0
+ * is always the local/CAP router (rendered as the master row regardless of
+ * its own 'online' value); indices 1+ are RE nodes. Three nodes modeled:
+ * the CAP itself, an online 2.4 GHz-backhauled node, and an offline node
+ * (re_path 0 / 'Unknown' backhaul, online '0'). All MACs use the 02:
+ * locally-administered prefix.
+ */
+export const FIXTURE_AIMESH_NODES: Record<string, unknown>[] = [
+  {
+    mac: '02:1A:2B:00:30:01',
+    alias: 'Living Room Router',
+    ui_model_name: 'RT-DEMO88U',
+    model_name: 'RT-DEMO88U',
+    fwver: '3.0.0.6',
+    newfwver: '',
+    ip: '192.168.50.1',
+    online: '1',
+    level: '0',
+    re_path: '0',
+    config: { cfg_alias: 'Living Room Router', ctrl_led: '1' },
+  },
+  {
+    mac: '02:1A:2B:00:30:02',
+    alias: 'Bedroom Node',
+    ui_model_name: 'RT-DEMO68U',
+    model_name: 'RT-DEMO68U',
+    fwver: '3.0.0.6',
+    newfwver: '3.0.0.6',
+    ip: '192.168.50.201',
+    online: '1',
+    level: '1',
+    re_path: '2', // bit 1 -> 2.4 GHz backhaul (decodeBackhaul)
+    rssi2g: '-52',
+    config: { cfg_alias: 'Bedroom Node', ctrl_led: '1' },
+  },
+  {
+    mac: '02:1A:2B:00:30:03',
+    alias: 'Garage Node',
+    ui_model_name: 'RT-DEMO68U',
+    model_name: 'RT-DEMO68U',
+    fwver: '3.0.0.5',
+    newfwver: '',
+    ip: '192.168.50.202',
+    online: '0',
+    level: '2',
+    re_path: '0', // 'Unknown' backhaul while offline
+    config: { cfg_alias: 'Garage Node', ctrl_led: '0' },
+  },
+];
+
+/** get_onboardinglist() — one fictional unconfigured candidate seen via the CAP. */
+export const FIXTURE_AIMESH_ONBOARDING: Record<string, Record<string, unknown>> = {
+  '02:1A:2B:00:30:01': {
+    '02:1A:2B:00:30:99': { rssi: '-61', model_name: 'RT-DEMO68U', source: '1' },
+  },
+};
+
+/** get_onboardingstatus() — plain nvram_safe_get fields, read-only display. */
+export const FIXTURE_AIMESH_STATUS: Record<string, string> = {
+  cfg_recount: '2',
+  cfg_re_maxnum: '6',
+  cfg_ready: '1',
+  cfg_obstatus: '1',
+};
+
+/**
+ * httpd_cert_info() ej hook (pages/defs/certificates.tsx RouterCertPage) —
+ * parsed metadata only, matching the real firmware's field set exactly
+ * (never raw PEM — see the page's own privacy-rules header comment). Empty
+ * CA fields (no uploaded chain) since le_enable=1 (Let's Encrypt) in this
+ * fixture, matching FIXTURE_NVRAM.le_enable.
+ */
+export const FIXTURE_HTTPD_CERT_INFO = {
+  issueTo: 'router.merlinnet-demo.example',
+  issueBy: "Let's Encrypt Demo CA",
+  from: 'Jun  1 00:00:00 2026 GMT',
+  expire: 'Aug 30 00:00:00 2026 GMT',
+  CAissueTo: '',
+  CAissueBy: '',
+  CAfrom: '',
+  CAexpire: '',
+};
+
+/**
+ * /ajax_openvpn_server.asp (pages/defs/certificates.tsx VpnCertsPage,
+ * fetchOpenvpnCrtPresence) — the real endpoint emits one
+ * `var vpn_crt_<kind><unit>_<field> = ['...'];` JS literal per slot x field;
+ * presenceOfVar() only checks whether the first character after the opening
+ * quote is itself the closing quote (empty sentinel) or real content. Only
+ * server 1 and client 1 get a few populated fields here — every other
+ * slot x field combination is simply absent from the text, which
+ * presenceOfVar() also correctly reads as "absent" (regex no-match), so
+ * there is no need to emit all 42 combinations. Content is an obviously-fake
+ * placeholder, never real PEM.
+ */
+export function buildAjaxOpenvpnServerText(): string {
+  const FAKE_PEM = '-----BEGIN FAKE DEMO CERTIFICATE-----\\nFAKE-DEMO-NOT-REAL\\n-----END FAKE DEMO CERTIFICATE-----';
+  const FAKE_KEY = '-----BEGIN FAKE DEMO KEY-----\\nFAKE-DEMO-NOT-REAL\\n-----END FAKE DEMO KEY-----';
+  const FAKE_DH = '-----BEGIN FAKE DEMO DH PARAMETERS-----\\nFAKE-DEMO-NOT-REAL\\n-----END FAKE DEMO DH PARAMETERS-----';
+  return [
+    `var vpn_crt_server1_ca = ['${FAKE_PEM}'];`,
+    `var vpn_crt_server1_crt = ['${FAKE_PEM}'];`,
+    `var vpn_crt_server1_key = ['${FAKE_KEY}'];`,
+    `var vpn_crt_server1_dh = ['${FAKE_DH}'];`,
+    `var vpn_crt_server1_crl = [''];`,
+    `var vpn_crt_server1_extra = [''];`,
+    `var vpn_crt_client1_ca = ['${FAKE_PEM}'];`,
+    `var vpn_crt_client1_crt = ['${FAKE_PEM}'];`,
+    `var vpn_crt_client1_key = ['${FAKE_KEY}'];`,
+  ].join('\n');
+}

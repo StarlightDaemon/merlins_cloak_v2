@@ -33,12 +33,24 @@
       <li><a href="./popup.html">Popup</a> — the toolbar popup (router address + read-only toggle).</li>
       <li><a href="./content.html#/dashboard">Content UI — Dashboard</a> — <code>#/dashboard</code>, the Network Map replacement (SDN fixture: network-centric wireless table).</li>
       <li><a href="./content.html?classic=1#/dashboard">Content UI — Dashboard (classic fallback)</a> — <code>?classic=1#/dashboard</code>, same page with the SDN capability flag off: the original plain per-band wl0/1/2_ssid table.</li>
+      <li><a href="./content.html?dualwan=1#/dashboard">Content UI — Dashboard (dual-WAN)</a> — <code>?dualwan=1#/dashboard</code>, same page with a second WAN unit active (Failover mode, Primary/Standby cards).</li>
       <li><a href="./content.html#/clients">Content UI — Connected Devices</a> — <code>#/clients</code>, DHCP leases + live wireless stations.</li>
       <li><a href="./content.html#/dhcp">Content UI — DHCP settings</a> — <code>#/dhcp</code>, a representative declarative settings page.</li>
+      <li><a href="./content.html#/sdn">Content UI — Separate Networks &amp; Guest Wi-Fi</a> — <code>#/sdn</code>, SDN profile create/edit/delete affordances (writes hard-blocked, preview only).</li>
+      <li><a href="./content.html#/qos-userprio">Content UI — QoS Priority Bandwidth Allocation</a> — <code>#/qos-userprio</code>, qos_orates/qos_irates per-band allocation + ACK/SYN/FIN/RST/ICMP boost flags.</li>
+      <li><a href="./content.html#/notification-center">Content UI — Notification Center</a> — <code>#/notification-center</code>, get_nt_db() event list incl. a read, an unread, and a raw-hex-fallback event.</li>
+      <li><a href="./content.html#/aimesh">Content UI — AiMesh Node Management</a> — <code>#/aimesh</code>, CAP + two RE nodes (one offline), plus a read-only onboarding candidate.</li>
+      <li><a href="./content.html#/timemachine">Content UI — Time Machine</a> — <code>#/timemachine</code>.</li>
+      <li><a href="./content.html#/download-master">Content UI — Download Master / USB Apps (status)</a> — <code>#/download-master</code>, read-only.</li>
+      <li><a href="./content.html#/wireguard-server">Content UI — WireGuard Server</a> — <code>#/wireguard-server</code>, server unit 1.</li>
+      <li><a href="./content.html#/wireguard-server-peers">Content UI — WireGuard Server Peers</a> — <code>#/wireguard-server-peers</code>, peer slot 1 of 3 fictional peers.</li>
+      <li><a href="./content.html#/opmode">Content UI — Operation Mode</a> — <code>#/opmode</code>, read-only; fixture reads as Router mode.</li>
+      <li><a href="./content.html#/router-cert">Content UI — Router HTTPS Certificate</a> — <code>#/router-cert</code>, httpd_cert_info() metadata, Let's Encrypt mode.</li>
+      <li><a href="./content.html#/vpn-certs">Content UI — VPN Certificates &amp; Keys</a> — <code>#/vpn-certs</code>, OpenVPN/WireGuard cert-key presence badges (writes hard-blocked).</li>
     </ul>
     <p class="note">
       The content UI is one hash-routed app (<code>content.html#/&lt;page-id&gt;</code>); any page id from
-      <code>src/pages/registry.ts</code> can be loaded the same way, though only dashboard, clients and dhcp have
+      <code>src/pages/registry.ts</code> can be loaded the same way, though only the routes listed above have
       fixture data tailored to them — other pages will render with blank fields rather than fixture values.
     </p>
   </body>

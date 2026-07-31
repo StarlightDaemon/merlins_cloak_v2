@@ -14,13 +14,22 @@
  * can happen — see content-entry.tsx.
  */
 import {
+  FIXTURE_AIMESH_NODES,
+  FIXTURE_AIMESH_ONBOARDING,
+  FIXTURE_AIMESH_STATUS,
+  FIXTURE_DUALWAN_NVRAM,
+  FIXTURE_HTTPD_CERT_INFO,
+  FIXTURE_NT_CONTENT,
   FIXTURE_NVRAM,
   FIXTURE_RC_SUPPORT_CLASSIC,
+  FIXTURE_RC_SUPPORT_DUALWAN,
   FIXTURE_SYSINFO_SCALARS,
   FIXTURE_SYSINFO_TEXT,
   FIXTURE_UPTIME_RAW,
   FIXTURE_WCLIENTLIST,
+  buildAjaxOpenvpnServerText,
   buildLeaseArrayPayload,
+  buildNtDbPayload,
 } from './fixtures';
 
 const originalFetch = window.fetch.bind(window);
@@ -36,6 +45,19 @@ const originalFetch = window.fetch.bind(window);
  * the real extension gates them (hasFlag(caps, 'mtlancfg_support')).
  */
 const CLASSIC_FIXTURE = new URLSearchParams(window.location.search).has('classic');
+
+/**
+ * `?dualwan=1` (same before-the-`#` rule as `?classic=1`) switches the
+ * rc_support fixture to FIXTURE_RC_SUPPORT_DUALWAN (adds the `dualwan`
+ * token on top of the normal SDN flag set) and makes wan1_ (its various
+ * nvram fields), wans_dualwan, wans_mode, wans_lb_ratio and wan{0,1}_primary
+ * answer with
+ * FIXTURE_DUALWAN_NVRAM's populated values instead of the (absent/empty)
+ * defaults — see dashboard.tsx's dual-WAN active predicate and
+ * fixtures.ts's FIXTURE_RC_SUPPORT_DUALWAN/FIXTURE_DUALWAN_NVRAM doc
+ * comments. The single-WAN default is unaffected either way.
+ */
+const DUALWAN_FIXTURE = new URLSearchParams(window.location.search).has('dualwan');
 
 /**
  * `?slowwrite=1` (same before-the-`#` rule as `?classic=1`) makes applyapp.cgi
@@ -58,7 +80,11 @@ const pendingWrites: Record<string, { value: string; availableAt: number }> = {}
 
 /** Resolve one plain/ascii nvram fixture value, honoring the ?classic= / ?slowwrite= overrides. */
 function nvramValue(key: string): string {
-  if (key === 'rc_support' && CLASSIC_FIXTURE) return FIXTURE_RC_SUPPORT_CLASSIC;
+  if (key === 'rc_support') {
+    if (CLASSIC_FIXTURE) return FIXTURE_RC_SUPPORT_CLASSIC;
+    if (DUALWAN_FIXTURE) return FIXTURE_RC_SUPPORT_DUALWAN;
+  }
+  if (DUALWAN_FIXTURE && key in FIXTURE_DUALWAN_NVRAM) return FIXTURE_DUALWAN_NVRAM[key];
   const pending = pendingWrites[key];
   if (pending && Date.now() >= pending.availableAt) return pending.value;
   return FIXTURE_NVRAM[key] ?? '';
@@ -96,6 +122,12 @@ function jsonResponse(obj: unknown, status = 200): Response {
  */
 const RAW_HOOK_PAYLOADS: Record<string, () => string> = {
   'get_leases_array()': buildLeaseArrayPayload,
+  // get_nt_db() is fetched by notification.tsx as a single raw hook (its own
+  // fetchNtDb(), not through appGet()'s batched helper) and JSON.parse()d
+  // directly — a plain JSON array payload (not a JS-assignment string like
+  // buildLeaseArrayPayload) is exactly what it expects to find wrapped in
+  // the `{"get_nt_db": ...}` envelope.
+  'get_nt_db()': buildNtDbPayload,
   // Unfixtured array hooks (routes, connections, port forwards, upnp, ipv6,
   // wl_status) fall through to the generic JSON-mode handler below, which
   // answers with an empty envelope — the reading pages already treat "no
@@ -120,6 +152,18 @@ function buildJsonEnvelope(hooks: string[]): string {
       out.uptime = FIXTURE_UPTIME_RAW;
     } else if (hook === 'get_wclientlist()') {
       out.get_wclientlist = FIXTURE_WCLIENTLIST;
+    } else if (hook === 'get_cfg_clientlist()') {
+      // AiMesh Node Management (pages/defs/aimesh.tsx) — array of node
+      // records, index 0 is always the local/CAP router.
+      out.get_cfg_clientlist = FIXTURE_AIMESH_NODES;
+    } else if (hook === 'get_onboardinglist()') {
+      out.get_onboardinglist = FIXTURE_AIMESH_ONBOARDING;
+    } else if (hook === 'get_onboardingstatus()') {
+      out.get_onboardingstatus = FIXTURE_AIMESH_STATUS;
+    } else if (hook === 'httpd_cert_info()') {
+      // Router HTTPS Certificate (pages/defs/certificates.tsx RouterCertPage)
+      // — parsed metadata only, never raw PEM (see fixtures.ts's comment).
+      out.httpd_cert_info = FIXTURE_HTTPD_CERT_INFO;
     } else if ((m = /^sysinfo\("([^"]+)"\)$/.exec(hook))) {
       // Real firmware keys parenthesized sysinfo() scalar hooks as
       // "sysinfo-<arg>" (see pages/defs/nettools.tsx: s['sysinfo-cpu.model']
@@ -154,7 +198,13 @@ function isRouterPath(pathname: string): boolean {
     pathname.endsWith('/appGet.cgi') ||
     pathname.endsWith('/ajax_sysinfo.asp') ||
     pathname.endsWith('/applyapp.cgi') ||
-    pathname.endsWith('/start_apply.htm')
+    pathname.endsWith('/start_apply.htm') ||
+    // Notification Center's static display-template file (plain same-origin
+    // GET, not an appGet/ej hook — see notification.tsx's fetchNtContent()).
+    pathname.endsWith('/nt_content.json') ||
+    // VPN Certificates & Keys' OpenVPN cert/key presence side-channel (plain
+    // same-origin GET — see certificates.tsx's fetchOpenvpnCrtPresence()).
+    pathname.endsWith('/ajax_openvpn_server.asp')
   );
 }
 
@@ -173,6 +223,8 @@ async function mockFetch(input: RequestInfo | URL, init?: RequestInit): Promise<
 
   if (url.pathname.endsWith('/appGet.cgi')) return handleAppGet(url);
   if (url.pathname.endsWith('/ajax_sysinfo.asp')) return textResponse(FIXTURE_SYSINFO_TEXT);
+  if (url.pathname.endsWith('/nt_content.json')) return jsonResponse(FIXTURE_NT_CONTENT);
+  if (url.pathname.endsWith('/ajax_openvpn_server.asp')) return textResponse(buildAjaxOpenvpnServerText());
 
   // Write endpoints: never live in the harness (nothing real to write to),
   // but answered so read-only-off exploration doesn't hit a network error.
