@@ -762,3 +762,54 @@
   cosmetic `-0.0s` glitch on the very first settle tick (two
   independent `Date.now()` calls a React tick apart) was found and
   fixed during that same verification pass, not left for later.
+
+## D-025
+
+- Date: 2026-07-31
+- Status: Closed (selection recorded; implementation handoff built separately)
+- Decision: Presented the operator a grouped, multi-select questionnaire
+  covering all 13 items in OPEN_LOOPS.md's "Missing features" (deferred
+  scope) list, each option carrying a value case and a deferral/risk
+  rationale. The operator selected all 13: SDN profile creation/editing,
+  per-user Samba/FTP permissions, OpenVPN server client list, WireGuard
+  server peers, certificate/key BLOB handling, Operation Mode switching,
+  Time Machine, Download Master, AiMesh node management, notification
+  center, Advanced_QOSUserPrio, Dashboard dual-WAN aggregation, and a
+  second WireGuard server instance. Operation Mode switching was
+  explicitly flagged in its questionnaire option as the highest-risk
+  item (real lockout potential — a mode switch can change how the
+  router behaves on the very network the browser is talking through)
+  and selected anyway, with that framing visible at selection time.
+- Rationale: this is post-1.0 feature-development scope, not
+  release-closing work, and was kept as a separate decision/handoff
+  from the solo-completable-remainder pass (D-024 and prior) precisely
+  because the two have different risk/reward shapes and timelines.
+  Given the size (13 substantial features, several introducing new
+  write-capable surfaces and at least one new interaction pattern this
+  codebase has never needed before — file/BLOB upload for certs and
+  keys), the implementation handoff
+  (`.raiden/local/prompts/deferred-features-handoff.md`) is structured
+  as four risk-ordered waves rather than one pass, so a future session
+  can run one wave without committing to all 13 at once. Every new
+  write path this work produces must inherit the project's existing
+  write-safety posture from day one (`writeExclusion` set,
+  `confidence.write: 'unverified-write'`) — new features are not
+  exempt from the discipline every existing write path already follows.
+
+- **Addendum (2026-07-31, same day):** the operator's follow-up
+  instruction superseded this decision's original framing before the
+  implementation handoff was written. Requested instead: one continuous
+  Fable-orchestrated pass working through all 13 features to
+  completion, with explicit emphasis on sub-delegating to whichever
+  subagent types fit each piece of work, pausing only for a genuine
+  critical security issue rather than for routine check-ins between
+  features. `.raiden/local/prompts/deferred-features-handoff.md` was
+  written to that framing directly — internal risk-ordering is kept as
+  a sequencing suggestion within the single pass, not as gates between
+  separately-run sessions. Absolute hard boundaries (no live router
+  write ever, no writeExclusion ever lifted/weakened, no live-hardware
+  verification, no store submission, no push to origin) are unchanged
+  and are explicitly framed in that document as structural constraints
+  on the action space, distinct from the narrower "stop the whole pass"
+  condition, so the two are never conflated by a future agent reading
+  it.

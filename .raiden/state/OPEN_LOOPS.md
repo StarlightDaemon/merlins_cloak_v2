@@ -650,6 +650,14 @@ actionable.
 
 ## Missing features (deferred scope)
 
+**Status: all 13 selected for implementation 2026-07-31** (operator
+questionnaire, `DECISIONS.md` D-025) — a fully-scoped, single-pass
+Fable-orchestrator handoff exists at
+`.raiden/local/prompts/deferred-features-handoff.md`. Not yet run as of
+this writing. The list below is retained as the authoritative
+per-feature description that handoff references; do not duplicate or
+drift it — update in place if scope changes.
+
 Each of these is a genuinely new feature — nothing currently reads or
 writes for them, this isn't a bug fix. Pure implementation work; no live
 router needed until final verification. Listed roughly in the order
