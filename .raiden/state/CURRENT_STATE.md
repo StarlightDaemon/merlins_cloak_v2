@@ -59,6 +59,46 @@ All work committed locally on `main`; **nothing pushed** (operator step).
 - Note: the repo's commit-msg hook rejects Co-Authored-By trailers; all
   session commits carry the operator identity only.
 
+## This Session (2026-07-31, continued) — interactive live test + 2 UI features
+
+Direct continuation of the pass above, operator-driven and interactive
+rather than orchestrated. All work committed locally on `main`; **nothing
+pushed**. `tsc`/lint/`npm audit`/both builds re-verified clean after each
+commit.
+
+- **First wireless write-path live verification** (D-022): `wps_enable`
+  submitted both directions by the operator's own click against the
+  RT-BE92U, each confirmed by live nvram re-read; confirms the
+  `applyapp.cgi` delta-write + write-guard + `verifyNvram` mechanism end
+  to end against real hardware, not just the original Tweaks session.
+  `wps_band_x` and every other wireless page remain untested and
+  excluded — this was one field on one page, not a category-wide
+  unlock.
+- **WPS band picker fixed** (D-023): operator asked why WPS doesn't show
+  a per-band toggle; checked native firmware first rather than building
+  blind — WPS genuinely has no per-band enable, confirmed from source.
+  Relabeled the field with an explanatory hint instead, and fixed a real
+  gap the source-check surfaced: a missing "5 GHz-2" option for
+  dual-5GHz tri-band hardware (untested, structural only). Added a
+  reusable per-option capability gate (`FieldOption.gate`) generalizing
+  the pattern the band-instance selector already used.
+- **Mechanical write-progress indicator shipped** (D-024): replaced the
+  indeterminate spinner during a write's wait with a phase-labeled,
+  real progress bar (elapsed/ceiling numbers), per explicit operator
+  request for something "technically mechanical," not a copy of native
+  ASUS's loading circle. Purely additive to `verifyNvram`/`guardedWrite`
+  (optional progress hook, defaults to no-op); live-verified in the
+  fixture harness with a new `?slowwrite=1` mode, including a found-and-
+  fixed cosmetic timing glitch.
+- Mid-session git hygiene note: two features landed in the same shared
+  files (`SettingsPage.tsx`, `types.ts`) from concurrent work in the
+  same tree (no worktree isolation for this interactive stretch, unlike
+  the orchestrated pass). Split cleanly into two atomic commits via a
+  reconstruct-and-diff maneuver (apply one feature's edits onto the
+  HEAD baseline in isolation, stage that, then restore the full working
+  file) rather than committing them tangled together — no work lost,
+  no hunks misattributed.
+
 ---
 
 ## Prior Session (2026-07-29)

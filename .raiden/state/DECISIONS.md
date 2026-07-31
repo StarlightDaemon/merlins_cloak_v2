@@ -692,3 +692,73 @@
   coverage. Every other wireless page keeps its exclusion; this is not a
   precedent for lifting them without the same live, supervised process
   per page.
+
+## D-023
+
+- Date: 2026-07-31
+- Status: Closed
+- Decision: Operator asked why the WPS page doesn't show a toggle per
+  wireless band. Checked native firmware first rather than redesigning
+  blind: `Advanced_WWPS_Content.asp`'s `get_band_str()`/`SelectBand()`/
+  `initial()` confirm WPS has no per-band enable state anywhere — one
+  global `wps_enable` flag plus one `wps_band_x` "which band pairs
+  next" picker. WSC pairing is a single state machine targeting one
+  radio at a time; per-band toggles would misrepresent hardware that
+  cannot run simultaneous per-band pairing sessions. Implemented instead:
+  relabeled the field "WPS target band" with a hint explaining the
+  single-band model (addresses the actual confusion behind the
+  request), and fixed a real, independently-discovered gap while
+  reading the source — native offers a third "5 GHz-2" option on
+  tri-band hardware with two 5 GHz radios and no 6 GHz radio
+  (`wl_info.band5g_2_support`, e.g. RT-AC3200-class), mutually exclusive
+  with the `band6g_support` units (like the operator's RT-BE92U) this
+  project has actually tested. `FieldOption` gained an optional
+  `gate?: (caps) => boolean` predicate, mirroring the one
+  `InstanceSelector` options already had; `SettingsPage.tsx` threads
+  `caps` into `FieldControl` and filters both `radio` and `select`
+  options by it — a general mechanism, not a WPS-specific hack, so any
+  future field with hardware-conditional options can reuse it.
+- Rationale: the request, taken literally, would have shipped a UI that
+  implied a capability the hardware doesn't have. Reading the native
+  source first caught that before any code was written. The band5g_2
+  fix is structural only — no unit with that flag has been live-tested
+  — and the "5 GHz" vs "5 GHz-1" label distinction native makes on that
+  hardware is deliberately not replicated (no per-option conditional
+  label mechanism existed or was worth building for this one cosmetic
+  case); documented inline as an accepted, low-cost imprecision, not a
+  value/write-path bug.
+
+## D-024
+
+- Date: 2026-07-31
+- Status: Closed
+- Decision: Replaced the indeterminate spinner shown during a write's
+  settle+verify wait with a mechanical progress indicator, per explicit
+  operator request ("not a copy of the native ASUS loading circle...
+  something a technical user would appreciate — phase, numbers, an
+  actually moving bar"). `verifyNvram()` gained an optional `onProgress`
+  hook (`settle-start` / `poll-attempt` / `complete` events);
+  `guardedWrite()` threads it through and adds its own `submitting`
+  event. Both default to a no-op, preserving the two existing two-arg
+  call sites (`wol.tsx`, `site-survey.tsx`) unchanged — confirmed by
+  `tsc`. A pure reducer (`applyProgressReducer`) folds the event stream
+  into phase/attempt/elapsed state for a new `<ApplyProgress>`
+  component: phase label plus a real bar keyed to elapsed/ceiling,
+  Fujin-token-styled, no spinner. `SettingsPage.tsx` covers the one
+  case `guardedWrite` can't signal through the normal event stream —
+  `submitBuiltWrite` throwing before `verifyNvram` ever runs — by
+  synthesizing a `failed` state directly from `entry.error`.
+- Rationale: purely additive, UI-only, no write-path/safety-mechanism
+  change of any kind — the underlying settle/poll/verify logic in
+  `verifyNvram` is untouched except for event emission at existing
+  control-flow points (every prior `return result(...)` now routes
+  through a `finish()` wrapper that also fires exactly one `complete`
+  event; verified by grep that no call site bypasses it). Live-verified
+  in the fixture harness via a new opt-in `?slowwrite=1` mode (delays
+  mock `applyapp.cgi` writes so the poll loop is actually observable,
+  not just theorized): settle countdown ticked `0.0s→5.0s` with a
+  matching fill percentage, verify attempts advanced `1→8` with
+  elapsed/ceiling numbers, both resolved to `VERIFIED APPLIED`; a
+  cosmetic `-0.0s` glitch on the very first settle tick (two
+  independent `Date.now()` calls a React tick apart) was found and
+  fixed during that same verification pass, not left for later.

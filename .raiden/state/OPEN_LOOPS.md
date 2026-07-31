@@ -621,6 +621,33 @@ actionable.
   dedicated step (checkout `gh-pages`, mirror the stored-data list,
   push is operator-authorized).
 
+### `wps_band_x` — untested field on an otherwise live-verified page
+- **Status:** Open. `wpsPage`'s `wps_enable` field is now live-verified
+  bidirectionally (D-022); `wps_band_x` (the WPS target-band picker,
+  relabeled and gated in D-023) has never been submitted. Low risk —
+  the field only selects which radio accepts the next WPS pairing
+  request, doesn't touch SSID/security/channel — but unverified is
+  unverified. A natural next low-risk supervised test if more wireless
+  write-path coverage is wanted.
+- **Where:** `src/pages/defs/wireless.ts` `wpsPage`.
+
+### `band5g_2_support` hardware — WPS "5 GHz-2" option untested
+- **Status:** Open, structural only. D-023 added a third WPS band
+  option ("5 GHz-2") gated on `band5g_2_support`, sourced from native
+  firmware JS (`get_band_str()`) for tri-band hardware with two 5 GHz
+  radios and no 6 GHz radio (e.g. RT-AC3200-class) — mutually exclusive
+  with the operator's own `band6g_support` RT-BE92U, so this gate has
+  never fired against live capability data, only against a synthetic
+  harness fixture confirming the negative case (option correctly
+  absent when the flag is unset). Also: native relabels the "5 GHz"
+  option to "5 GHz-1" on this hardware class; this project's
+  `FieldOption` has no conditional-label mechanism, so that option
+  keeps displaying "5 GHz" there — a documented, deliberately-accepted
+  cosmetic imprecision (D-023), not a value/write-path bug.
+- **Where:** `src/pages/defs/wireless.ts` `wpsPage`'s `wps_band_x`
+  options; gate mechanism in `src/pages/types.ts` (`FieldOption.gate`)
+  and `src/ui/SettingsPage.tsx` (`FieldControl`).
+
 ## Missing features (deferred scope)
 
 Each of these is a genuinely new feature — nothing currently reads or

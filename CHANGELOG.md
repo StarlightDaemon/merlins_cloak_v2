@@ -15,8 +15,10 @@ previous release. Dates are the commit dates in this repository.
 
 Work since `0.9.0-beta.1`, across the sessions of 2026-07-27 through
 2026-07-31. The 1.0-readiness pass of 2026-07-31 closed every remaining
-solo-completable item; what stays open is operator-gated live verification
-(see "Known open" under 0.9.0-beta.1, plus `.raiden/state/OPEN_LOOPS.md`).
+solo-completable item; an interactive continuation the same day added the
+project's first operator-supervised live write-path test plus two UI
+features. What stays open is operator-gated live verification (see "Known
+open" under 0.9.0-beta.1, plus `.raiden/state/OPEN_LOOPS.md`).
 
 ### Added (2026-07-28 – 2026-07-31)
 
@@ -62,6 +64,34 @@ solo-completable item; what stays open is operator-gated live verification
   container queries (`75a1c18`, `34423f5`).
 - Firefox sources ZIP no longer bundles local `RAW/` firmware dumps
   (`1c2705f`).
+
+### Added — interactive continuation, live write-path test (2026-07-31)
+
+- **First wireless write-path live verification.** `wpsPage`'s
+  `wps_enable` field submitted both directions (1→0, 0→1) by the
+  operator's own click against the RT-BE92U, each independently
+  confirmed by a forced-fresh nvram re-read; the expected
+  `restart_wireless` client-reassociation blip matched native behavior.
+  Confirms the `applyapp.cgi` delta-write architecture, the write
+  guard, and `verifyNvram` end to end against real hardware for the
+  first time outside the original Tweaks session (`037a2f9`; full
+  record `docs/WRITE_PATH_CHARACTERIZATION.md` §4, `DECISIONS.md`
+  D-022). `wps_band_x` and every other wireless page remain untested.
+- Per-option capability gating: `FieldOption` gained an optional
+  `gate?: (caps) => boolean`, mirroring the existing `InstanceSelector`
+  mechanism; used to relabel the WPS band picker ("WPS target band",
+  with a hint explaining WPS pairs one band at a time — there is no
+  per-band enable to expose) and to add the "5 GHz-2" option that
+  applies only on dual-5GHz tri-band hardware, structurally correct but
+  untested (`aaf6d3d`, D-023).
+- Mechanical write-progress indicator, replacing the indeterminate
+  spinner during a write's settle/verify wait: phase label plus a real
+  progress bar keyed to elapsed/ceiling (`Submitting…` →
+  `Settling (action_wait): 2.1s / 3.0s` → `Verifying: nvram re-read
+  attempt 3, elapsed 4.2s / 30.0s` → `Verified`/`Timed out`/`Write
+  failed`), Fujin-token-styled. `verifyNvram`/`guardedWrite` gained an
+  optional progress-event hook, defaulting to a no-op so existing
+  callers are unaffected (`dac2b78`, D-024).
 
 ### Security / dependencies (2026-07-27 – 2026-07-31)
 

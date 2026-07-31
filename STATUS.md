@@ -100,9 +100,48 @@ write-cautious category (SSID/security/channel risk). Full record:
   remains exactly as conservative as before.
 
 tsc clean, lint clean (`npm run lint`), Chrome MV3 rebuilt and reloaded
-by the operator for this test. Not yet re-verified against the
-Definition-of-Done full suite as of this addendum — see commit history
-for the closing verification pass.
+by the operator for this test.
+
+## Session of 2026-07-31 (continued) — WPS band picker fix, write-progress UI
+
+Two further operator-driven items in the same interactive stretch, both
+now fully verified and committed. Final state: `tsc` clean, lint clean,
+`npm audit` 0 vulnerabilities, both Chrome MV3 and Firefox MV3 builds
+current in `.output/`.
+
+- **WPS band picker fixed** (`aaf6d3d`, D-023). Operator asked why WPS
+  doesn't show a toggle per band. Checked `Advanced_WWPS_Content.asp`
+  first: WPS genuinely has no per-band enable anywhere in native
+  firmware — one global toggle, one "which band pairs next" picker.
+  Relabeled the field "WPS target band" with a hint explaining the
+  single-band model, and fixed a real gap the source-check surfaced —
+  a missing "5 GHz-2" option for dual-5GHz tri-band hardware (untested,
+  structural only; mutually exclusive with the operator's own
+  `band6g_support` unit). Added a reusable `FieldOption.gate` predicate,
+  generalizing the pattern the band-instance selector already used, so
+  future fields with hardware-conditional options don't need one-off
+  logic. Verified in the fixture harness: label/hint render correctly,
+  gated option correctly absent under BE92U-like capabilities.
+- **Mechanical write-progress indicator shipped** (`dac2b78`, D-024).
+  Replaced the indeterminate spinner during a write's settle/verify
+  wait with a phase-labeled, real progress bar (concrete elapsed/
+  ceiling numbers, attempt counts) — explicit operator request for
+  something "technically mechanical," not a copy of native ASUS's
+  loading circle. `verifyNvram`/`guardedWrite` gained an optional
+  progress-event hook, defaulting to a no-op so the two existing
+  two-arg call sites (`wol.tsx`, `site-survey.tsx`) are unaffected —
+  confirmed by `tsc`. Live-verified in the fixture harness via a new
+  `?slowwrite=1` mode that makes the poll loop actually observable:
+  settle countdown and verify-attempt numbers both confirmed advancing
+  correctly against real timers, not just theorized; a cosmetic `-0.0s`
+  glitch on the first settle tick was found and fixed in the same pass.
+- Mid-session note: both features initially landed in the same shared
+  files from concurrent work in the untracked main tree (this
+  interactive stretch had no worktree isolation, unlike the earlier
+  orchestrated pass). Split into two clean, atomic commits via a
+  reconstruct-and-diff maneuver rather than committing them tangled —
+  no work lost, no hunks misattributed. Consider worktree isolation for
+  any future concurrent interactive work touching shared UI files.
 
 ## Session of 2026-07-25 — licensing, disclosure, versioning, end-user docs
 
