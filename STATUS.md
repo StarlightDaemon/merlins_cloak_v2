@@ -4,6 +4,57 @@ Session of 2026-07-24 (resumed once after a mid-session usage-limit
 interruption; no disk work lost). This document is the resumable state of
 record. See git log for the commit trail.
 
+## Session of 2026-07-31 — deferred-features pass (orchestrated, all 13 items)
+
+The single-pass implementation of every deferred feature selected in D-025,
+run per `.raiden/local/prompts/deferred-features-handoff.md`. Nine
+firmware-source research agents fed nine implementation agents plus a
+dedicated harness-verification agent; the orchestrator reviewed every brief,
+made the scoping calls (D-026), integrated the page registry itself, and
+re-verified the merged tree. Verification at the final commit:
+`npx tsc --noEmit` clean, `npm run lint` clean, `npm audit` 0
+vulnerabilities, Chrome MV3 + Firefox MV3 builds both pass and are current
+in `.output/`. All commits local, nothing pushed.
+
+- **Shipped in full (read + structurally-excluded write, harness-verified):**
+  QOSUserPrio (`0ad7090`), Notification Center incl. guarded mark-read
+  (`eede3f3`), SDN guest-profile create/edit/delete under the 'wireless'
+  hard block with apm-family structural refusals (`c788744`), Time Machine
+  (`7551915`), AiMesh node management — reboot/LED/alias per node, whole-mesh
+  empty-target variants unconstructible (`f76cb6c`), OpenVPN
+  username/password client list (settled: genuinely shared across both
+  units), WireGuard server peers (peer-slot instance selector over the
+  wgsc_* redirect), second WireGuard server instance (`0000512`), VPN + 
+  router-HTTPS certificate pages — presence/metadata reads, OpenVPN
+  paste-replace write, never any key material rendered or logged
+  (`6060d5f`).
+- **Shipped read-only, by design:** dual-WAN Dashboard aggregation
+  (`c125776`); Download Master status (write path is a closed-source-gated
+  dedicated CGI; `7551915`); USB share accounts & permissions viewer
+  (`97f1d5f`); Operation Mode (`697367d`) — current-mode derivation incl.
+  the WISP sw_mode nuance, with the full mode→key write matrix and
+  reachability-risk record documented for a future supervised session
+  instead of a possibly-incomplete write block (deliberate; see D-026).
+- **Privacy fix, operator-directed mid-pass (`b155fa0`, D-027):** secrets
+  (passwords, PSKs, pasted key material) are now redacted at request
+  construction and never enter the console log, the diagnostics write
+  inspector, or retained verify detail — including on dry-runs. Submitted
+  requests are unchanged. Also re-verified: no remote endpoints anywhere in
+  `src/` (all traffic is same-origin against the configured router).
+- **Write-safety audit (explicit, §Definition-of-Done):** every new write
+  path carries `writeExclusion` (incl. deliberate, documented `null`s) and
+  `confidence.write: 'unverified-write'`. No existing exclusion touched. No
+  write submitted to any router by any agent at any point.
+- **Harness:** all 12 new/changed surfaces rendered against fictional
+  fixtures and screenshot-verified (`e2a4e1e`); single-WAN dashboard default
+  confirmed byte-identical.
+- Surface count: ten new views registered (qos-userprio,
+  notification-center, aimesh, timemachine, download-master, usb-accounts,
+  wireguard-server-peers, opmode, router-cert, vpn-certs), four existing
+  views extended (dashboard, sdn, openvpn-server, wireguard-server) —
+  73 → 83 views. The Diagnostics confidence table remains the authoritative
+  per-page verification state.
+
 ## Session of 2026-07-31 — 1.0-readiness pass (orchestrated, multi-agent)
 
 Every solo-completable 1.0 item closed; what remains is operator-gated

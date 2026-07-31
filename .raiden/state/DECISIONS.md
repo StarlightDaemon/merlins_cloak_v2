@@ -798,7 +798,7 @@
 
 - **Addendum (2026-07-31, same day):** the operator's follow-up
   instruction superseded this decision's original framing before the
-  implementation handoff was written. Requested instead: one continuous
+  implementation handoff was written. See D-026 for the pass itself. Requested instead: one continuous
   Fable-orchestrated pass working through all 13 features to
   completion, with explicit emphasis on sub-delegating to whichever
   subagent types fit each piece of work, pausing only for a genuine
@@ -813,3 +813,131 @@
   on the action space, distinct from the narrower "stop the whole pass"
   condition, so the two are never conflated by a future agent reading
   it.
+
+## D-026
+
+- Date: 2026-07-31
+- Status: Closed (implementation pass complete; live verification of every
+  new write path remains operator-gated, as for every other write path in
+  this project)
+- Decision: Ran the single-pass, Fable-orchestrated implementation of all 13
+  deferred features selected in D-025, per
+  `.raiden/local/prompts/deferred-features-handoff.md`. Nine research
+  subagents (one per feature domain, firmware-source only, no network) fed
+  nine implementation subagents; the orchestrator reviewed every brief,
+  resolved the scoping calls below, integrated the registry itself to avoid
+  the shared-file tangle D-018/CURRENT_STATE record from a prior session,
+  and re-ran the full verification suite against the merged tree rather
+  than trusting any subagent's self-report.
+- **Write-safety outcome (the load-bearing one):** every new write path
+  ships with a `writeExclusion` tag and `confidence.write:
+  'unverified-write'` from the moment it exists. Audited explicitly across
+  every new and modified page def before the pass was called done, not
+  assumed. No existing exclusion was lifted, weakened, or questioned. No
+  write of any kind was submitted to any router by the orchestrator or any
+  subagent, in any category, at any point.
+- Scoping calls made by the orchestrator, each a judgment the handoff
+  delegated rather than a boundary crossing:
+  - **SDN profile CRUD → `writeExclusion: 'wireless'`** (hard-blocked).
+    Native's Apply is a whole-table rewrite of five rule lists, and the
+    main network's real broadcast SSID/passphrase live in the sibling
+    `apm{idx}_*` family that a misrouted write could clobber. Beyond the
+    hard block, the implementation carries two independent structural
+    refusals: guest-class assertion before any mutation is computed, and a
+    payload-level throw if an `apm` key ever appears. Guest/IoT profiles
+    only; VLAN-trunk/port-binding excluded specifically to avoid native's
+    `restart_net_and_phy` escalation path.
+  - **Operation Mode → `'wan'`, and NO write block at all.** The mode→key
+    matrix is documented in full with citations, but native routes most
+    transitions through the QIS wizard, which posts a chip-family- and
+    runtime-conditional key superset not fully derivable from the vendored
+    source. On the one page whose failure mode is losing contact with the
+    device, a probably-complete write is the wrong trade — the matrix is
+    recorded for a future supervised session instead of half-implemented.
+    The page still carries the tag and confidence tier so diagnostics
+    bucket it with the hard-excluded WAN-role surface. AiMesh-node mode is
+    absent entirely: no nvram write path for it exists in source; native
+    reaches it via a confirm-gated restore-to-defaults + re-onboard flow.
+  - **AiMesh → `'firmware-reboot-reset'`.** The research recommended
+    inventing a new `aimesh-topology` category; overruled in favor of the
+    closest existing one, since the shipped actions are node reboot and the
+    deferred ones are factory-reset class, and a new category would carry
+    identical interlock semantics. Flagged for operator review as a
+    taxonomy question. The empty-target variants of `device_reboot` and
+    `config_changed` — which reboot or reconfigure the ENTIRE mesh — are
+    structurally unconstructible from this UI, not merely unexposed.
+  - **Notification mark-read → `null`.** `action_mode=nt_apply`'s `write`
+    and `readall` branches touch only the closed-source event-log DB and
+    issue no `notify_rc` (web.c:13989-14082) — same risk tier as a UI
+    preference toggle. `delete`/`delete_all` (the latter unlinks the whole
+    DB, with no native UI behind it) and `nc_setting_conf` editing are not
+    built. The notification "Block device" shortcut was identified as a
+    wireless ACL write in a notification-center costume and excluded on
+    those grounds.
+  - **QoS/USB/Time Machine → `null`,** matching their existing sibling
+    defs' reviewed convention rather than inventing per-page policy.
+- Two features closed short of their full scope, both for specific
+  documented reasons rather than scope exhaustion:
+  - **Certificate/key BLOB upload not built.** Discovered while
+    implementing: the write chokepoint's request body is typed `string` and
+    is echoed to both the console and the Diagnostics write inspector on
+    every submit. Routing real cert/key uploads through it as it stands
+    would place private key material into the write log. Widening it
+    requires redaction at construction time — a change to shared
+    write-path infrastructure that deserves its own reviewed pass, not a
+    ride-along in a feature commit. Read surfaces (presence/metadata only,
+    never key content) and OpenVPN paste-replace editing did ship. See
+    OPEN_LOOPS for the follow-up.
+  - **Per-user Samba/FTP permissions shipped read-only.** The six
+    `/aidisk/*.asp` account endpoints are dedicated CGI POSTs outside the
+    extension's `WriteEndpoint` vocabulary (`applyapp` | `start_apply`);
+    building them means extending the same shared write chokepoint as
+    above, and the create/modify params carry account passwords, which
+    compounds the logging concern. Separately worth recording: the
+    orchestrator's attempt to delegate that chokepoint extension was
+    refused by the environment's own permission classifier. That refusal
+    was not worked around — the feature was narrowed to a viewer instead.
+- Rationale: the pass was authorized to run to completion without check-ins,
+  pausing only for a genuine critical security issue. None occurred. The
+  chokepoint-logging finding above is a real privacy sharp edge worth
+  fixing, but it is pre-existing, deliberate, session-scoped behavior on a
+  write path that has always carried non-secret nvram scalars — not an
+  exploitable vulnerability, and specifically not the "credential exposed
+  where it shouldn't be" trigger, since no cert/key upload path was ever
+  built to feed it. Logged as an open loop rather than treated as a halt
+  condition.
+
+## D-027
+
+- Date: 2026-07-31
+- Status: Closed (fix shipped, `b155fa0`)
+- Decision: Mid-pass, the operator directed that the extension be
+  privacy-first from the ground up — no remote services, code open and clear
+  about what it does, and any latent privacy issue fixed immediately rather
+  than carried. This superseded D-026's original disposition of the
+  write-log finding (which had deferred the fix to a separate reviewed
+  pass). The fix shipped the same session, implemented by the orchestrator
+  directly rather than delegated, since it touches the write chokepoint:
+  redaction at construction time. `WriteSpec.sensitiveKeys` names
+  secret-bearing posted fields; `buildWriteRequest` derives a redacted body
+  from the same parameter walk as the real one; `guardedWrite` retains ONLY
+  the redacted view in its log entry (the real body exists solely inside
+  the submit call frame); verify detail gets the same treatment both in the
+  retained entry and in `verifyNvram`'s own console warning, which was
+  found to also leak expected/actual values during this fix and closed in
+  the same commit. Sources of truth: `control: 'password'` fields are
+  collected automatically; composite carriers (OpenVPN/PPTP clientlists,
+  both IPSec client-list shards and both profile strings, SDN's
+  `apg{idx}_security`, the certificate pages' pasted material) are marked
+  per def. Nothing about what is SUBMITTED changed — this is entirely about
+  what is recorded and displayed.
+- Also re-verified as part of the same directive: the shipped source
+  contains no remote endpoint of any kind — the only absolute URLs in
+  `src/` are the content-script match patterns for `router.asus.com`, the
+  router's own local hostname alias. Every fetch is same-origin against the
+  configured router address, consistent with docs/privacy-policy.md.
+- Follow-up left open (OPEN_LOOPS): the WireGuard pages display private-key
+  values on screen as readonly fields, matching native behavior — on-screen
+  display is native parity and arguably necessary UX (peer setup requires
+  copying them), but a masked-with-reveal treatment would be strictly
+  better; flagged for an operator UX decision, not silently changed.

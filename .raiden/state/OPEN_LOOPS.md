@@ -650,13 +650,24 @@ actionable.
 
 ## Missing features (deferred scope)
 
-**Status: all 13 selected for implementation 2026-07-31** (operator
-questionnaire, `DECISIONS.md` D-025) — a fully-scoped, single-pass
-Fable-orchestrator handoff exists at
-`.raiden/local/prompts/deferred-features-handoff.md`. Not yet run as of
-this writing. The list below is retained as the authoritative
-per-feature description that handoff references; do not duplicate or
-drift it — update in place if scope changes.
+**Status: CLOSED 2026-07-31 — the single-pass implementation ran the same
+day** (D-026; commits `c125776`..`e2a4e1e`). Per-feature outcomes:
+1 SDN profile CRUD → shipped, 'wireless' hard-blocked (`c788744`).
+2 Samba/FTP per-user permissions → read-only viewer shipped (`97f1d5f`);
+  write side is a follow-up loop (guarded dedicated-CGI extension, below).
+3 OpenVPN client list → shipped (`0000512`). 4 WireGuard peers → shipped
+(`0000512`). 5 Cert/key BLOBs → read + paste-replace shipped (`6060d5f`);
+uploads are a follow-up loop (below). 6 Operation Mode → read + full
+write-path record shipped, no write block by design (`697367d`, D-026).
+7 Time Machine → shipped (`7551915`). 8 Download Master → read-only status
+(`7551915`; write is closed-source-gated, documented in the def).
+9 AiMesh → shipped, three per-node actions (`f76cb6c`). 10 Notification
+center → shipped incl. mark-read (`eede3f3`). 11 QOSUserPrio → shipped
+(`0ad7090`). 12 Dual-WAN dashboard → shipped (`c125776`). 13 Second WG
+server instance → shipped (`0000512`). Every new write path is
+`unverified-write` and none has ever been live-submitted — live
+verification folds into the standing operator-gated goal in GOALS.md.
+The original list below is retained for its per-feature descriptions.
 
 Each of these is a genuinely new feature — nothing currently reads or
 writes for them, this isn't a bug fix. Pure implementation work; no live
@@ -696,6 +707,44 @@ picking this up should feel free to resequence.
     second instance's settings, plus posting with `wgs_unit` set to two instead
     of the currently hardcoded one. Not currently planned; source confirms it
     is architecturally possible, not that it is required.
+
+## Deferred-features pass, new items (2026-07-31)
+
+### Guarded dedicated-CGI write extension — operator-reviewed pass wanted
+- **Status:** Open, deliberately reserved. Three shipped-read-only surfaces
+  share one blocker: their native writes are dedicated CGI endpoints
+  outside the write chokepoint's endpoint vocabulary
+  (`'applyapp' | 'start_apply'`): the six `/aidisk/*.asp` account/permission
+  endpoints (usb-accounts), the cert/key upload endpoints
+  (`upload_cert_key.cgi`, `upload_wgc_config.cgi` — multipart), and
+  Download Master's `apps_action`. Extending the chokepoint is safe in
+  principle (same interlock, same exclusion check, and redaction now
+  exists for the password/key params these would carry — `b155fa0`), but
+  it is a change to load-bearing safety architecture and is reserved for a
+  pass the operator reviews. Full endpoint/param citations live in the
+  research briefs' findings as recorded in each def's header comment.
+- **Where:** `src/lib/router-io.ts` (WriteEndpoint), `src/lib/write-guard.ts`;
+  consumers `usb-accounts.tsx`, `certificates.tsx`, `usb.ts` (DM).
+
+### WireGuard private-key on-screen display — operator UX decision
+- **Status:** Open, small. The WireGuard server and peers pages render
+  private-key values as readonly fields, matching native. Native parity
+  and copyable-by-design, but a masked-with-reveal treatment would be
+  strictly better against shoulder-surfing. Flagged rather than changed
+  unilaterally (D-027). Note the values are never logged (redaction covers
+  writes; readonly fields are never posted).
+- **Where:** `src/pages/defs/vpn-server.ts` (wgs{p}_priv, wgs1_c{p}_priv/psk).
+
+### Operation Mode write construction — needs a supervised session
+- **Status:** Open by design (D-026). The full mode→nvram matrix, the QIS
+  wizard's chip-conditional superset problem, and the post-switch
+  reachability risks are recorded in `opmode.ts`'s header for whoever
+  builds the write under supervision. Do not build it unattended.
+
+### SDN captive-portal keys — unclassified write mechanism
+- **Status:** Open, informational. `cp{idx}_*` keys could not be classified
+  against the table-driven write path (possible silent drop); SDN editor
+  excludes them entirely. Recorded in `sdn.ts`/`sdn.tsx` headers.
 
 ## Cross-reference: pre-existing, operator-gated loops
 

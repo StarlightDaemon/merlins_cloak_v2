@@ -20,6 +20,55 @@ project's first operator-supervised live write-path test plus two UI
 features. What stays open is operator-gated live verification (see "Known
 open" under 0.9.0-beta.1, plus `.raiden/state/OPEN_LOOPS.md`).
 
+### Added — deferred-features pass (2026-07-31, all 13 D-025 items)
+
+Every feature below ships with `writeExclusion` set and `confidence.write:
+'unverified-write'` where a write path exists — no new write path has ever
+been live-submitted. All new surfaces render-verified in the fixture
+harness against fictional data (`e2a4e1e`).
+
+- Dashboard dual-WAN aggregation: both WAN units with primary/standby or
+  load-balance framing; single-WAN render unchanged (`c125776`). Read-only.
+- Per-priority QoS bandwidth allocation (`Advanced_QOSUserPrio`,
+  `qos_orates`/`qos_irates` decomposed per band) (`0ad7090`).
+- Notification Center: NC v2 event list via `get_nt_db()` with
+  `/nt_content.json` template resolution and graceful fallbacks; guarded
+  mark-read via `action_mode=nt_apply`; destructive delete actions and the
+  disguised-wireless-ACL "block device" shortcut deliberately excluded
+  (`eede3f3`).
+- SDN (Guest Network Pro) profile create/edit/delete for guest-class
+  profiles, reproducing native's whole-table write shape; MAINFH/MAINBH and
+  the `apm{idx}_*` family structurally untouchable; hard-blocked under
+  'wireless' (`c788744`).
+- Time Machine settings page; Download Master read-only status
+  (`7551915`).
+- USB share accounts & per-share permission viewer, read-only; account
+  write endpoints documented and reserved for an operator-reviewed
+  chokepoint extension (`97f1d5f`).
+- AiMesh node management: node/onboarding tables plus guarded per-node
+  reboot, LED, and alias — empty-target whole-mesh variants cannot be
+  constructed (`f76cb6c`).
+- OpenVPN server username/password client list (shared across both server
+  units — settled from source); WireGuard server peer editor (peer slots
+  1-10 via the `wgsc_*` redirect); second WireGuard server instance,
+  labeled unexposed-by-native (`0000512`).
+- Certificate pages: router HTTPS cert status, VPN cert/key presence table,
+  OpenVPN paste-replace editing; no key material ever rendered, stored, or
+  logged; file-upload endpoints documented but deliberately unbuilt
+  (`6060d5f`).
+- Operation Mode: current-mode derivation (incl. the WISP `sw_mode`
+  nuance) with the full mode→nvram write matrix and post-switch
+  reachability risks documented for a future supervised session; no write
+  block by design (`697367d`).
+
+### Fixed — deferred-features pass (2026-07-31)
+
+- Secrets (passwords, pre-shared keys, pasted key material) are redacted at
+  write-request construction and never reach the console log, the
+  diagnostics write inspector, or retained verify detail — previously the
+  full body was recorded verbatim, including on dry-runs. Submitted
+  requests unchanged (`b155fa0`, D-027, operator-directed).
+
 ### Added (2026-07-28 – 2026-07-31)
 
 - Chrome Web Store listing draft: privacy policy (live via GitHub Pages),

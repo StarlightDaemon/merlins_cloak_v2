@@ -24,6 +24,29 @@ Full detail: [README.md](../../README.md), [STATUS.md](../../STATUS.md),
 
 ---
 
+## This Session (2026-07-31, later) — deferred-features pass (all 13)
+
+Orchestrated single pass per the D-025 handoff: 9 research + 10
+implementation/verification subagents, orchestrator-integrated. All 13
+features shipped or precisely scoped (D-026); tsc/lint/audit/builds all
+clean at the final commit; everything local, nothing pushed. Headlines:
+
+- Ten new views, four extended (73 → 83). Every new write path born with
+  `writeExclusion` + `confidence.write: 'unverified-write'` — audited
+  explicitly, none ever live-submitted.
+- Highest-stakes calls: SDN CRUD under 'wireless' hard block with
+  structural apm/MAINFH refusals; Operation Mode read-only with the full
+  write matrix documented instead of a possibly-incomplete write block;
+  AiMesh whole-mesh empty-target actions made unconstructible.
+- **Privacy fix mid-pass (operator-directed, D-027, `b155fa0`):** secrets
+  are redacted at write-request construction; nothing secret can reach the
+  console log, diagnostics write inspector, or retained verify detail.
+  Re-verified zero remote endpoints in `src/`.
+- Fixture harness covers all 12 new/changed surfaces, screenshot-verified.
+- New follow-up loops in OPEN_LOOPS: guarded dedicated-CGI chokepoint
+  extension (reserved for operator review), WG key display UX, opmode
+  write construction (supervised only), SDN cp{idx} classification.
+
 ## This Session (2026-07-31) — 1.0-readiness pass
 
 Orchestrated multi-agent pass; every solo-completable 1.0 item closed.
