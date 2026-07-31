@@ -31,6 +31,7 @@ import { qosPages } from './qos';
 import { vpnStatusPages } from './vpn-status';
 import { sdnPages } from './sdn';
 import { clientsPages } from './clients';
+import { notificationPages } from './notification';
 
 export function registerAllPages(): void {
   registerPages([
@@ -46,6 +47,7 @@ export function registerAllPages(): void {
     },
   ]);
   registerPages(clientsPages);
+  registerPages(notificationPages);
   registerPages(sdnPages);
   registerPages(aiprotectionPages);
   registerPages(parentalPages);
