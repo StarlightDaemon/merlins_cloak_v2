@@ -41,10 +41,12 @@ function FieldControl({
   field,
   value,
   onChange,
+  caps,
 }: {
   field: FieldDef;
   value: string;
   onChange: (v: string) => void;
+  caps: Capabilities;
 }) {
   switch (field.control) {
     case 'toggle': {
@@ -52,9 +54,21 @@ function FieldControl({
       return <Toggle on={on} onChange={(next) => onChange(field.invert ? (next ? '0' : '1') : next ? '1' : '0')} />;
     }
     case 'radio':
-      return <RadioGroup value={value} onChange={onChange} options={field.options ?? []} />;
+      return (
+        <RadioGroup
+          value={value}
+          onChange={onChange}
+          options={(field.options ?? []).filter((o) => !o.gate || o.gate(caps))}
+        />
+      );
     case 'select':
-      return <Select value={value} onChange={onChange} options={field.options ?? []} />;
+      return (
+        <Select
+          value={value}
+          onChange={onChange}
+          options={(field.options ?? []).filter((o) => !o.gate || o.gate(caps))}
+        />
+      );
     case 'textarea':
       return (
         <textarea className="mc-textarea" value={value} spellCheck={false} onChange={(e) => onChange(e.target.value)} />
@@ -263,7 +277,12 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
                         {f.label}
                         {f.hint && <span className="hint">{f.hint}</span>}
                       </div>
-                      <FieldControl field={f} value={values[f.key] ?? ''} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
+                      <FieldControl
+                        field={f}
+                        value={values[f.key] ?? ''}
+                        onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
+                        caps={caps}
+                      />
                       {errors[f.key] && <span className="mc-row__error">{errors[f.key]}</span>}
                     </div>
                   ) : (
@@ -274,7 +293,12 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
                       error={errors[f.key]}
                       dirty={dirty[f.key] !== undefined}
                     >
-                      <FieldControl field={f} value={values[f.key] ?? ''} onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))} />
+                      <FieldControl
+                        field={f}
+                        value={values[f.key] ?? ''}
+                        onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
+                        caps={caps}
+                      />
                     </Row>
                   ),
                 )}

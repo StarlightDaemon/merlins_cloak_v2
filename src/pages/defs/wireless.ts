@@ -285,12 +285,24 @@ export const wpsPage: SettingsPageDef = {
         { key: 'wps_enable', label: 'Enable WPS', control: 'radio', options: enableDisable },
         {
           key: 'wps_band_x',
-          label: 'Current band',
-          hint: '6 GHz is not offered here — the native page removes that option when band6g_support is set, since 6 GHz is SAE/WPA3-only and WPS requires an Open/PSK-compatible band.',
+          label: 'WPS target band',
+          hint: 'WPS pairs one band at a time, not all of them — this picks which radio currently accepts a pairing request when you enable WPS. There is no per-band WPS toggle to expose; the native page has the same single toggle + single band picker (Advanced_WWPS_Content.asp, get_band_str()/SelectBand()). 6 GHz is never offered: it requires WPA3/SAE, which the WPS PSK-only handshake can\'t use.',
           control: 'select',
+          // Value '2' ('5 GHz-2') only applies to tri-band hardware with a
+          // second 5 GHz radio and NO 6 GHz radio (e.g. RT-AC3200-class) —
+          // confirmed via get_band_str()/initial()'s wl_info.band5g_2_support
+          // branch, which is mutually exclusive with band6g_support in every
+          // model this project has encountered. Structural only: no unit with
+          // band5g_2_support has been live-tested. On that hardware the '1'
+          // option should read "5 GHz-1", not "5 GHz" (native relabels it);
+          // FieldOption has no conditional-label mechanism today, so this is
+          // a known, deliberately-accepted cosmetic imprecision on that one
+          // hardware class, not a value/write-path bug — the posted value
+          // ('1') is still correct regardless of its displayed text.
           options: [
             { value: '0', label: '2.4 GHz' },
             { value: '1', label: '5 GHz' },
+            { value: '2', label: '5 GHz-2', gate: (c) => hasFlag(c, 'band5g_2_support') },
           ],
         },
       ],

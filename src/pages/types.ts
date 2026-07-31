@@ -33,6 +33,8 @@ export type { WriteExclusionCategory };
 export interface FieldOption {
   value: string;
   label: string;
+  /** Omit this option unless the predicate holds — mirrors InstanceSelector's gate. */
+  gate?: (caps: Capabilities) => boolean;
 }
 
 export interface FieldValidation {
