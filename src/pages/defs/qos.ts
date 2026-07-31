@@ -49,12 +49,15 @@
  * rule configuration. confidence.write stays 'unverified-write' regardless
  * (no write in this category has been live-submitted).
  *
- * Out of scope: Advanced_QOSUserPrio_Content.asp (per-priority upload/
- * download bandwidth percentage allocation — qos_orates/qos_irates — and the
- * ACK/SYN/FIN/RST/ICMP prioritization checkboxes qos_ack/qos_syn/qos_fin/
- * qos_rst/qos_icmp) and the Adaptive QoS quick-setup category presets
+ * Advanced_QOSUserPrio_Content.asp (per-priority upload/download bandwidth
+ * percentage allocation, qos_orates/qos_irates, and the ACK/SYN/FIN/RST/ICMP
+ * prioritization checkboxes qos_ack/qos_syn/qos_fin/qos_rst/qos_icmp) is
+ * implemented below as qosUserPrioPage — see its own header comment for the
+ * decompose/recompose details.
+ *
+ * Out of scope: the Adaptive QoS quick-setup category presets
  * (bwdpi_app_rulelist, the Game/Media/Web/eLearning/videoConference/Customize
- * tiles) — neither was called for in scope and both are deferred.
+ * tiles) — not called for in scope, deferred.
  */
 import type { SettingsPageDef } from '../types';
 import { hasFlag } from '../../lib/capabilities';
@@ -464,4 +467,226 @@ export const bandwidthLimiterPage: SettingsPageDef = {
   },
 };
 
-export const qosPages: SettingsPageDef[] = [qosPage, qosRulesPage, bandwidthLimiterPage];
+// ---------------------------------------------------------------------------
+// 4. Priority Bandwidth Allocation — Advanced_QOSUserPrio_Content.asp
+// ---------------------------------------------------------------------------
+
+/**
+ * qos_orates / qos_irates: comma-joined, 10-slot nvram strings, one slot per
+ * traffic priority band (0=Highest..4=Lowest, PRIORITY_OPTIONS order) followed
+ * by 5 fixed trailer slots that the native page's own JS always re-appends
+ * literally on every save and never lets the user edit
+ * (save_options(), Advanced_QOSUserPrio_Content.asp:88-106):
+ *
+ *   qos_orates: "<min>-<max>" per band (upload %), e.g. default
+ *     "80-100,10-100,5-100,3-100,2-95,0-0,0-0,0-0,0-0,0-0" (defaults.c:3051)
+ *   qos_irates: "<max>" per band (download %, no min column), e.g. default
+ *     "100,100,100,100,100,0,0,0,0,0" (defaults.c:3052)
+ *
+ * Read: asp:21 (qos_orates), asp:22 (qos_irates), both plain nvram_get — no
+ * nvram_char_to_ascii on this page, so read.nvram (not nvramAscii) is used.
+ *
+ * Decomposed here into per-band virtual fields (qos_orates_min_N/
+ * qos_orates_max_N/qos_irates_N, N=0..4, form control ids
+ * upload_bw_min_N/upload_bw_max_N/download_bw_max_N natively, asp:307-376)
+ * for editing, plus two non-rendered virtual trailer fields
+ * (qos_orates_trailer/qos_irates_trailer) that carry slots 5-9 through
+ * derive() -> values -> buildFields()/buildVerify() untouched. The trailer is
+ * reconstructed from whatever was actually read, not hardcoded to the
+ * "0-0"x5 / "0"x5 default literal — defensive in case a router ever has a
+ * non-default tail. Only a read that comes back with 5 or fewer slots
+ * (malformed/short) falls back to the literal defaults.c tail, so the write
+ * is always a well-formed 10-slot string.
+ *
+ * Bounds: every band's min/max (qos_orates) and max (qos_irates) is a
+ * `<select>` populated 0-100 by gen_options()/add_options_value()
+ * (asp:156-196, asp:167 `for(var i=0; i<101; i++)`) — modeled as
+ * validate: { min: 0, max: 100 }. The native page also enforces, client-side
+ * only, upload min <= upload max per band (save_options(), asp:94-98) before
+ * allowing submit; this SettingsPageDef framework has no cross-field
+ * validation mechanism (FieldValidation in types.ts is per-field only), so
+ * that ordering constraint is deliberately NOT reproduced here — do not
+ * invent one. Rely on the per-field 0-100 bounds only; a min > max value can
+ * be submitted by this page as entered.
+ *
+ * qos_ack/qos_syn/qos_fin/qos_rst/qos_icmp: plain on/off nvram scalars
+ * (asp:471-489, defaults.c:3061-3065), NOT '1'/'0' — modeled with control:
+ * 'radio' and explicit 'on'/'off' option values rather than control:
+ * 'toggle' (whose nvram-boolean contract in types.ts is specifically
+ * '1'/'0').
+ *
+ * Write mechanism: all nine posted keys (qos_orates, qos_irates, qos_ack,
+ * qos_syn, qos_fin, qos_rst, qos_icmp) are literal `router_defaults[]` table
+ * entries (defaults.c:3051-3052, 3061-3065) reached through the generic
+ * table-driven validate_apply path (web.c:4276/3271) — same classification
+ * as every other field in this file, no dedicated do_*_cgi involved.
+ * action_mode/action_wait/action_script are static hidden fields on this
+ * page (asp:218-220: apply / 5 / "restart_qos;restart_firewall"), matching
+ * qosRulesPage's write block exactly.
+ *
+ * qos_obw/qos_ibw are read and echoed back unchanged by the native page (its
+ * WAN-bandwidth manual-entry block is permanently display:none on this page,
+ * asp:503-533) — deliberately NOT modeled as editable fields here and never
+ * posted, per the research brief (they always round-trip identical on the
+ * real page, so omitting them changes nothing observable).
+ *
+ * qos_type gating: nothing in Advanced_QOSUserPrio_Content.asp branches on
+ * qos_type — no redirect, no showIf-equivalent, and this page is reachable
+ * from the nav regardless of the router's current QoS Type. It only *takes
+ * effect* when QoS Type (on the main QoS page) is Traditional (qos_type=0) —
+ * a documentation-level constraint, not a code gate. Mirrors qosRulesPage
+ * exactly: no showIf/gate keyed on qos_type, just an `intro` note.
+ *
+ * writeExclusion: null, deliberately, matching all three existing QoS defs
+ * above (see the file header comment) — this page's action_script is the
+ * identical restart_qos;restart_firewall pair already accepted there, and
+ * QoS pages are not what this build's 'firewall' hard-exclusion category is
+ * reserved for. This is a reviewed decision, not an omission.
+ *
+ * confidence: { read: 'structural', write: 'unverified-write' } — sourced
+ * from firmware source analysis only; this write path has never been
+ * live-submitted against real hardware.
+ */
+const ORATES_DEFAULT_TRAILER = '0-0,0-0,0-0,0-0,0-0';
+const IRATES_DEFAULT_TRAILER = '0,0,0,0,0';
+
+function decomposeOrates(joined: string): Record<string, string> {
+  const slots = (joined ?? '').split(',');
+  const out: Record<string, string> = {};
+  for (let i = 0; i < 5; i++) {
+    const [min, max] = (slots[i] ?? '').split('-');
+    out[`qos_orates_min_${i}`] = min ?? '';
+    out[`qos_orates_max_${i}`] = max ?? '';
+  }
+  out.qos_orates_trailer = slots.length > 5 ? slots.slice(5).join(',') : ORATES_DEFAULT_TRAILER;
+  return out;
+}
+
+function decomposeIrates(joined: string): Record<string, string> {
+  const slots = (joined ?? '').split(',');
+  const out: Record<string, string> = {};
+  for (let i = 0; i < 5; i++) {
+    out[`qos_irates_${i}`] = slots[i] ?? '';
+  }
+  out.qos_irates_trailer = slots.length > 5 ? slots.slice(5).join(',') : IRATES_DEFAULT_TRAILER;
+  return out;
+}
+
+function joinOrates(all: Record<string, string>): string {
+  const bands = Array.from(
+    { length: 5 },
+    (_, i) => `${all[`qos_orates_min_${i}`] || '0'}-${all[`qos_orates_max_${i}`] || '0'}`,
+  );
+  return `${bands.join(',')},${all.qos_orates_trailer || ORATES_DEFAULT_TRAILER}`;
+}
+
+function joinIrates(all: Record<string, string>): string {
+  const bands = Array.from({ length: 5 }, (_, i) => all[`qos_irates_${i}`] || '0');
+  return `${bands.join(',')},${all.qos_irates_trailer || IRATES_DEFAULT_TRAILER}`;
+}
+
+const onOff = [
+  { value: 'on', label: 'Yes' },
+  { value: 'off', label: 'No' },
+];
+
+function orateFields() {
+  return PRIORITY_OPTIONS.flatMap((p, i) => [
+    {
+      key: `qos_orates_min_${i}`,
+      label: `${p.label} priority: upload min %`,
+      control: 'number' as const,
+      validate: { min: 0, max: 100, required: true },
+    },
+    {
+      key: `qos_orates_max_${i}`,
+      label: `${p.label} priority: upload max %`,
+      control: 'number' as const,
+      validate: { min: 0, max: 100, required: true },
+    },
+  ]);
+}
+
+function irateFields() {
+  return PRIORITY_OPTIONS.map((p, i) => ({
+    key: `qos_irates_${i}`,
+    label: `${p.label} priority: download max %`,
+    control: 'number' as const,
+    validate: { min: 0, max: 100, required: true },
+  }));
+}
+
+export const qosUserPrioPage: SettingsPageDef = {
+  kind: 'settings',
+  id: 'qos-userprio',
+  aspPage: 'Advanced_QOSUserPrio_Content.asp',
+  title: 'Priority Bandwidth Allocation',
+  navGroup: 'traffic',
+  navSub: 'prioritization',
+  navOrder: 50,
+  confidence: { read: 'structural', write: 'unverified-write' },
+  writeExclusion: null,
+  intro:
+    'Only takes effect when QoS Type on the main QoS page is set to Traditional QoS. Sets the upload/download bandwidth percentage each priority band may use; there is no constraint that the five bands sum to 100%.',
+  read: {
+    nvram: ['qos_orates', 'qos_irates'],
+    derive: (raw) => ({
+      ...decomposeOrates(raw.qos_orates ?? ''),
+      ...decomposeIrates(raw.qos_irates ?? ''),
+    }),
+  },
+  sections: [
+    {
+      title: 'Upload allocation (qos_orates)',
+      note: 'Min <= max is enforced natively client-side but not reproduced here (see header comment) — only the 0-100 per-field bound is checked.',
+      fields: orateFields(),
+    },
+    {
+      title: 'Download allocation (qos_irates)',
+      fields: irateFields(),
+    },
+    {
+      title: 'TCP control-packet priority boost',
+      fields: [
+        { key: 'qos_ack', label: 'Prioritize ACK packets', control: 'radio', options: onOff },
+        { key: 'qos_syn', label: 'Prioritize SYN packets', control: 'radio', options: onOff },
+        { key: 'qos_fin', label: 'Prioritize FIN packets', control: 'radio', options: onOff },
+        { key: 'qos_rst', label: 'Prioritize RST packets', control: 'radio', options: onOff },
+        { key: 'qos_icmp', label: 'Prioritize ICMP packets', control: 'radio', options: onOff },
+      ],
+    },
+  ],
+  write: {
+    endpoint: 'applyapp',
+    rcService: 'restart_qos;restart_firewall',
+    actionWait: 5,
+    buildFields: (changed, all) => {
+      const fields: Record<string, string> = {};
+      let oratesTouched = false;
+      let iratesTouched = false;
+      for (const key of Object.keys(changed)) {
+        if (key.startsWith('qos_orates_')) oratesTouched = true;
+        else if (key.startsWith('qos_irates_')) iratesTouched = true;
+        else fields[key] = changed[key];
+      }
+      if (oratesTouched) fields.qos_orates = joinOrates(all);
+      if (iratesTouched) fields.qos_irates = joinIrates(all);
+      return fields;
+    },
+    buildVerify: (changed, all) => {
+      const expect: Record<string, string> = {};
+      let oratesTouched = false;
+      let iratesTouched = false;
+      for (const key of Object.keys(changed)) {
+        if (key.startsWith('qos_orates_')) oratesTouched = true;
+        else if (key.startsWith('qos_irates_')) iratesTouched = true;
+        else expect[key] = changed[key];
+      }
+      if (oratesTouched) expect.qos_orates = joinOrates(all);
+      if (iratesTouched) expect.qos_irates = joinIrates(all);
+      return expect;
+    },
+  },
+};
+
+export const qosPages: SettingsPageDef[] = [qosPage, qosRulesPage, bandwidthLimiterPage, qosUserPrioPage];
