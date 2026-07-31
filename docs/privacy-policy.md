@@ -34,11 +34,13 @@ server of its own, contacts no third party, and does not know you exist.
 
 ## What the extension stores
 
-Two settings, in the browser's local extension storage (`chrome.storage`),
+Three settings, in the browser's local extension storage (`chrome.storage`),
 and nothing else:
 
-- the router address you've configured, and
-- whether read-only mode is on (it defaults to on).
+- the router address you've configured,
+- whether read-only mode is on (it defaults to on), and
+- whether the extension is enabled (it defaults to on; turning it off
+  restores the router's native web UI).
 
 Nothing else persists. There is no history, no cache of values you've
 viewed, no record of past writes beyond what the browser's own Diagnostics
@@ -59,7 +61,7 @@ disappears on close).
 
 ## Permissions, and why each one exists
 
-- **`storage`** — holds the two settings listed above.
+- **`storage`** — holds the three settings listed above.
 - **`scripting`** — used only against the router origin you've configured,
   for two purposes: registering the extension's interface on a custom
   (non-default) router address after you've explicitly granted it, and

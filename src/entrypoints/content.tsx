@@ -30,6 +30,15 @@ export default defineContentScript({
   runAt: 'document_idle',
   async main() {
     const settings = await getSettings();
+
+    // Master switch: when the operator has disabled the extension, leave the
+    // native router UI completely untouched. Checked before every other
+    // guard — there is no cheaper or more decisive bailout than this one.
+    if (!settings.enabled) {
+      log.info('extension disabled in settings; leaving native UI untouched');
+      return;
+    }
+
     const configuredHost = settings.routerAddress.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
     const KNOWN_HOSTS = new Set(['router.asus.com', 'www.asusrouter.com', configuredHost]);
     if (!KNOWN_HOSTS.has(window.location.host)) {

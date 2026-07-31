@@ -14,11 +14,19 @@ export interface ExtensionSettings {
   routerAddress: string;
   /** When true, no write request is ever sent; Apply shows a payload preview. */
   readOnlyMode: boolean;
+  /**
+   * Master switch for the whole DOM takeover. When false, the content script
+   * leaves the native router UI untouched — this is a kill switch, not a
+   * write-safety interlock (that's `readOnlyMode`). Ships default-ON: the
+   * extension is expected to be active immediately after install.
+   */
+  enabled: boolean;
 }
 
 export const DEFAULT_SETTINGS: ExtensionSettings = {
   routerAddress: '192.168.1.1',
   readOnlyMode: true,
+  enabled: true,
 };
 
 const KEY = 'mc2-settings';

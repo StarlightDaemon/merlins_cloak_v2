@@ -11,7 +11,8 @@
  *    to reject, so capability collection falls through to the main-world /
  *    rc_support fallback path, which the fetch mock's `rc_support` nvram
  *    value drives instead)
- *  - tabs.create, permissions.request (src/entrypoints/popup/App.tsx)
+ *  - tabs.create, tabs.query, tabs.reload, permissions.request
+ *    (src/entrypoints/popup/App.tsx)
  */
 
 type StorageChanges = Record<string, { newValue?: unknown; oldValue?: unknown }>;
@@ -22,7 +23,7 @@ const listeners = new Set<ChangeListener>();
 
 // Seed the settings the extension reads on first paint so popup and content
 // views agree on the same fictional router address out of the box.
-store.set('mc2-settings', { routerAddress: '192.168.50.1', readOnlyMode: true });
+store.set('mc2-settings', { routerAddress: '192.168.50.1', readOnlyMode: true, enabled: true });
 
 function clone<T>(value: T): T {
   return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
@@ -80,6 +81,15 @@ export const browser = {
        
       console.info('[screenshot-harness] browser.tabs.create (no-op):', url);
       return { id: -1, url };
+    },
+    async query(): Promise<Array<{ id: number; url: string }>> {
+      // No real browser tabs exist in the harness; reporting none makes the
+      // popup's reload-affected-tabs flow (App.tsx reloadRouterTabs) a silent
+      // no-op, same as the "router UI isn't open anywhere" case in the wild.
+      return [];
+    },
+    async reload(): Promise<void> {
+      console.info('[screenshot-harness] browser.tabs.reload (no-op)');
     },
   },
   permissions: {

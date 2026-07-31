@@ -97,10 +97,10 @@ One box per requested permission in the dashboard's Permissions tab.
 **`storage`**
 
 ```
-Stores exactly two values locally via chrome.storage: the router address
-the user has configured, and whether the read-only write-interlock is on
-(defaults to on). Nothing else is stored — no history, no cache, no
-credentials.
+Stores exactly three values locally via chrome.storage: the router address
+the user has configured, whether the read-only write-interlock is on
+(defaults to on), and whether the extension's takeover is enabled (defaults
+to on). Nothing else is stored — no history, no cache, no credentials.
 ```
 
 **`scripting`**

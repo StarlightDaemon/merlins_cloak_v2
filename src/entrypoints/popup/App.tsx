@@ -53,6 +53,24 @@ function isPrivateRouterHost(host: string): boolean {
   );
 }
 
+/**
+ * Reload every open tab on the configured router origin so an enable/disable
+ * flip takes effect immediately, instead of silently on next navigation.
+ * Scoped strictly to that one origin — never touches unrelated tabs. Finding
+ * no matching tab (router UI not currently open anywhere) is a normal,
+ * silent no-op, not an error.
+ */
+async function reloadRouterTabs(routerAddress: string): Promise<void> {
+  const host = routerAddress.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  if (!host) return;
+  const tabs = await browser.tabs.query({ url: [`http://${host}/*`, `https://${host}/*`] }).catch(() => []);
+  await Promise.all(
+    tabs
+      .filter((t): t is typeof t & { id: number } => t.id !== undefined)
+      .map((t) => browser.tabs.reload(t.id).catch(() => undefined)),
+  );
+}
+
 function App() {
   const [settings, setSettings] = useState<ExtensionSettings | null>(null);
   const [address, setAddress] = useState('');
@@ -97,6 +115,23 @@ function App() {
   };
 
   /**
+   * Master switch for the whole DOM takeover. Unlike read-only mode this
+   * needs no confirmation to turn off — disabling only restores the native
+   * router UI, it does not arm anything. The affected router tab(s) are
+   * reloaded immediately so the flip is visible without a manual refresh.
+   */
+  const toggleEnabled = async () => {
+    const next = await updateSettings({ enabled: !settings.enabled });
+    setSettings(next);
+    setStatus(
+      next.enabled
+        ? 'Extension enabled — reloading the router tab.'
+        : 'Extension disabled — restoring the native router UI.',
+    );
+    await reloadRouterTabs(next.routerAddress);
+  };
+
+  /**
    * Disabling read-only mode arms every non-excluded write path at once, so it
    * requires an explicit confirmation. Re-enabling it is strictly safer and
    * needs none. (The five hard-excluded categories stay blocked either way —
@@ -119,6 +154,16 @@ function App() {
       <h1>
         Merlin's <em>Cloak</em>
       </h1>
+      <label
+        className="field checkbox"
+        style={{ borderBottom: '1px solid var(--fujin-border-strong)', paddingBottom: 10 }}
+      >
+        <input type="checkbox" checked={settings.enabled} onChange={() => void toggleEnabled()} />
+        <span>
+          <b>Extension enabled</b>{' '}
+          <small>(master switch — turning this off restores the native router UI)</small>
+        </span>
+      </label>
       <label className="field">
         <span>Router address</span>
         <div className="row">

@@ -79,6 +79,15 @@ export function App() {
       setReadOnlyMode(s.readOnlyMode);
     })();
     return onSettingsChanged((s) => {
+      // The DOM takeover is destructive (native page hidden, shadow root
+      // mounted in its place); unmounting in place would leave the hidden
+      // native page in a stale, half-initialized state. A reload re-runs the
+      // content script's mount guard, which now sees `enabled: false` and
+      // leaves the native UI alone — that's the only safe way to reverse it.
+      if (!s.enabled) {
+        window.location.reload();
+        return;
+      }
       setSettings(s);
       setReadOnlyMode(s.readOnlyMode);
     });

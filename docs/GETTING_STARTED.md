@@ -220,9 +220,10 @@ off, and know how to do a factory reset on your model.
 - **What it writes:** only settings you explicitly apply, and only while the
   read-only interlock is off. Nothing is written in the background, on a timer,
   or at startup.
-- **What it stores on your computer:** two things — the router address and
-  whether read-only mode is on. That is the entire contents of its storage. No
-  router data is cached or persisted.
+- **What it stores on your computer:** three things — the router address,
+  whether read-only mode is on, and whether the extension itself is enabled.
+  That is the entire contents of its storage. No router data is cached or
+  persisted.
 - **What it shows you:** your own router's data, in your own browser. Your
   SSIDs, client MAC addresses, connection lists and VPN keys are visible in the
   interface because they are visible in the router's own UI. They stay there.
@@ -236,6 +237,17 @@ manifest, which is Mozilla's formal way of stating the same thing.
 
 The extension replaces the router's pages only while it is installed and
 enabled. Nothing is changed on the router itself.
+
+For a quick, temporary switch back to the native router UI, you don't need to
+touch `chrome://extensions` at all: open the extension's toolbar popup and
+turn off **Extension enabled** at the top. It's a master switch — turning it
+off leaves the native page untouched (and reloads the router tab immediately
+so you see the native UI right away); turning it back on resumes the
+takeover. This is separate from read-only mode (section 7): read-only mode
+controls whether *writes* go through while the extension's UI is showing,
+this controls whether the extension's UI shows at all.
+
+For a permanent removal instead:
 
 - **Chrome:** remove it from `chrome://extensions`, or toggle it off.
 - **Firefox:** remove it from `about:debugging`, or just restart Firefox.
