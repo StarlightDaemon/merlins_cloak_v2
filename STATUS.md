@@ -4,6 +4,65 @@ Session of 2026-07-24 (resumed once after a mid-session usage-limit
 interruption; no disk work lost). This document is the resumable state of
 record. See git log for the commit trail.
 
+## Session of 2026-07-31 — 1.0-readiness pass (orchestrated, multi-agent)
+
+Every solo-completable 1.0 item closed; what remains is operator-gated
+live verification only. All commits local, unpushed. Verification state
+at the final commit: `npx tsc --noEmit` clean, `npx eslint .` clean,
+`npm audit` **0 vulnerabilities**, Chrome MV3 and Firefox MV3 builds both
+pass and are current in `.output/`.
+
+- **Dependencies:** eslint 9→10, wxt 0.20→0.21, typescript-eslint 8.65;
+  `eslint-plugin-react` removed entirely — it contributed zero active
+  rules and its nested minimatch chain had no safe override (D-019).
+  wxt 0.21 knock-on: `noUncheckedIndexedAccess` explicitly set false in
+  the root tsconfig. `RAW/` added to eslint ignores.
+- **Popup on real Fujin tokens** (`4c5447b`): shared resolution in
+  `src/theme/vars.ts`; dark-only, blue accent, 0px radii. Verified in
+  the fixture harness and confirmed live by the operator.
+- **Screenshot fixture harness** (`tools/screenshot-harness/`) + four
+  1280×800 store screenshots (`docs/store-assets/`), fictional data
+  only, captured via headless Chrome. Store listing asset-complete;
+  promo tiles/account/submission remain operator-only.
+- **Secret scan closed:** gitleaks 8.30.1 full-history (88 commits, 6
+  false positives — nvram key-name literals) + trufflehog regex (0).
+- **VPN write-path correctness (code-level, live verification pending):**
+  `ipsec_profile_2` regenerated in lockstep with profile_1 (`d8ca9ff`,
+  template byte-verified against .asp and both web.c skeletons;
+  profile_2 confirmed a router_defaults entry at defaults.c:4628);
+  OpenVPN/PPTP/IPSec rc actions branch by enable/disable direction as
+  native does (`1b92640`), mooting the rc stop-vs-restart empirical
+  question for this codebase. VPN writes remain hard-excluded.
+- **Operator live session** (read-only, operator-authorized, driven via
+  the operator's own authenticated browser; zero writes, interlock
+  untouched): IPSec operator-fact resolved — no IPSec accounts
+  configured, `ipsec_profile_2` staleness cosmetic for this deployment
+  (D-020); extension mount, identity (227 flags), and popup restyle
+  confirmed live; two UI defect classes surfaced (below).
+- **Narrow-window layout fixed** (`75a1c18`, `34423f5`): fit-content
+  label track, no mid-token wraps (operator's acceptance criterion:
+  atomic values — IPs, versions, identifiers — never split; no stranded
+  fragments), content-width container queries replace the
+  viewport-width breakpoint that never fired.
+- **Popup master enable/disable switch** (`a553f5f`): persisted
+  `enabled` flag (default on), content script bails before takeover when
+  off, router-origin-scoped tab reloads. Store listing + privacy policy
+  updated to three stored values; gh-pages policy duplicate needs its
+  manual sync (OPEN_LOOPS).
+- **Dashboard SSID defect fixed network-centrically** (`0df9636`,
+  D-021): on SDN firmware, one row per enabled network (Main/Guest/IoT)
+  with its own `apg{idx}_ssid` and dut_list-decoded band badges; radio
+  state kept; classic fallback preserved; parsing shared via
+  `src/lib/sdn.ts`. Wireless-general's SDN SSID semantics (write path)
+  explicitly deferred — OPEN_LOOPS "Wireless-general SSID semantics".
+- Repo hook note: the commit-msg hook rejects Co-Authored-By trailers;
+  all session commits carry the operator identity only.
+
+Remaining open, all operator-gated: live write-path verification (48/49
+never submitted), Firefox live verification, live confirmation of the
+WireGuard/IPSec/rc-branching fixes and the SDN dashboard view, Chrome
+Web Store submission, push to origin, gh-pages policy sync.
+
 ## Session of 2026-07-25 — licensing, disclosure, versioning, end-user docs
 
 Documentation/legal/metadata pass. No read or write logic was touched;

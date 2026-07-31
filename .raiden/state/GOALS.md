@@ -52,6 +52,14 @@
   mid-registration: non-trader, publisher name `StarlightDaemon`, contact
   email routed via a new `starlightdaemon.dev` Proton custom-domain address
   (handled in a separate session, not this repo). Screenshots remain open.
+  2026-07-31 — screenshots captured and committed (`docs/store-assets/`,
+  four 1280×800 PNGs from the fixture harness, fictional data only;
+  `72983d9`, re-captured `34423f5`/`0df9636`); storage-permission
+  justification updated for the new popup master switch's third stored
+  value (`a553f5f`). The listing is now **asset-complete**; everything
+  left is operator-only: optional promo tiles, the developer account, the
+  dashboard submission itself, and a manual gh-pages sync of the updated
+  privacy policy (see OPEN_LOOPS).
 
 ---
 

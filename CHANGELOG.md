@@ -11,6 +11,68 @@ previous release. Dates are the commit dates in this repository.
 
 ---
 
+## [Unreleased]
+
+Work since `0.9.0-beta.1`, across the sessions of 2026-07-27 through
+2026-07-31. The 1.0-readiness pass of 2026-07-31 closed every remaining
+solo-completable item; what stays open is operator-gated live verification
+(see "Known open" under 0.9.0-beta.1, plus `.raiden/state/OPEN_LOOPS.md`).
+
+### Added (2026-07-28 – 2026-07-31)
+
+- Chrome Web Store listing draft: privacy policy (live via GitHub Pages),
+  store copy, permissions justification, data-disclosure answers
+  (`2d29065`); four 1280×800 store screenshots captured from a new
+  fixture-data harness — fictional data only (`72983d9`, re-captured in
+  `34423f5`/`0df9636` after layout changes).
+- `tools/screenshot-harness/`: standalone vite harness rendering the popup
+  and content-script views against mock router data, with headless-Chrome
+  capture commands documented (`1cba5f2`).
+- Popup master enable/disable switch: persisted `enabled` setting
+  (default on); disabling leaves the native router UI untouched and
+  reloads only tabs on the configured router origin (`a553f5f`,
+  narrowing fix `18dfe50`).
+
+### Changed (2026-07-27 – 2026-07-31)
+
+- Theme layer migrated from a hand-copied token snapshot to a real
+  `@fujin/ui` dependency (`bac6965`).
+- Popup UI migrated onto the same Fujin tokens as the content-script
+  panel — shared resolution in `src/theme/vars.ts`, dark-only, blue
+  accent, 0px radii (`4c5447b`).
+- Dashboard wireless card is network-centric on SDN firmware: one row per
+  enabled network (Main/Guest/IoT…) with its own SSID and band badges
+  decoded from `apg{idx}_dut_list`, per-band radio state kept as a strip;
+  classic non-SDN units keep the per-band table (`0df9636`).
+
+### Fixed (2026-07-29 – 2026-07-31)
+
+- WireGuard server writes were silently dropped by the firmware
+  (directly-indexed `wgs1_*` keys never read by `validate_apply`); saves
+  now post the unindexed `wgs_*`+`wgs_unit` form the firmware redirects
+  (`ae842e5`, mechanism record `089d237`).
+- `ipsec_profile_2` now regenerated in lockstep with `ipsec_profile_1` on
+  enabled saves, byte-matching the native template (`d8ca9ff`).
+- OpenVPN/PPTP/IPSec rc actions branch by enable/disable direction as
+  native does (`stop_*` on disable) instead of always restarting
+  (`1b92640`).
+- Narrow-window layout: `.mc-kv` label track no longer starves values,
+  atomic values (IPs, versions, identifiers) never split mid-token, and
+  the 2-column card layout collapses on actual content width via
+  container queries (`75a1c18`, `34423f5`).
+- Firefox sources ZIP no longer bundles local `RAW/` firmware dumps
+  (`1c2705f`).
+
+### Security / dependencies (2026-07-27 – 2026-07-31)
+
+- Dev-dependency vulnerability chain fully cleared: pinned shell-quote,
+  adm-zip (`7853eea`), uuid, tmp, esbuild (`99b7a92`); then eslint 9→10,
+  wxt 0.20→0.21 (`3f4e5c5`) and removal of eslint-plugin-react, which
+  contributed zero active rules (`ec717ca`). `npm audit`: 0
+  vulnerabilities.
+- Full-history secret scans clean: gitleaks 8.30.1 (88 commits, 6 false
+  positives — all nvram key names) and trufflehog regex scan (0 findings).
+
 ## [0.9.0-beta.1] — 2026-07-25
 
 First versioned pre-release. The feature surface intended for 1.0 is

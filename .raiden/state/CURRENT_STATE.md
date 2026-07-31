@@ -1,8 +1,10 @@
 # Current State
 
 **Branch:** main
-**Push status:** local `main` and `origin/main` are identical (both at
-`2d29065`). Fully pushed as of 2026-07-28 — see `GOALS.md` Achieved goals.
+**Push status:** local `main` is AHEAD of `origin/main` — the 2026-07-29
+research/docs commits and the whole 2026-07-31 1.0-readiness pass are
+local-only, held for operator review; pushing is an operator-authorized
+step. (`origin/main` was last synced at `2d29065`, 2026-07-28.)
 
 ---
 
@@ -22,7 +24,44 @@ Full detail: [README.md](../../README.md), [STATUS.md](../../STATUS.md),
 
 ---
 
-## This Session (2026-07-29)
+## This Session (2026-07-31) — 1.0-readiness pass
+
+Orchestrated multi-agent pass; every solo-completable 1.0 item closed.
+All work committed locally on `main`; **nothing pushed** (operator step).
+
+- Dependency chain cleared: eslint 10, wxt 0.21, eslint-plugin-react
+  removed (zero active rules) — `npm audit` 0 vulnerabilities (D-019).
+- Popup migrated onto real Fujin tokens, shared resolution in
+  `src/theme/vars.ts` (open loop closed).
+- Screenshot fixture harness built (`tools/screenshot-harness/`); four
+  1280×800 store screenshots captured, fictional data only — store
+  listing asset-complete.
+- Full-history secret scan closed: gitleaks 8.30.1 (88 commits, 6 false
+  positives, all nvram key names) + trufflehog regex (0 findings).
+- VPN write-path correctness: `ipsec_profile_2` lockstep regeneration
+  shipped; OpenVPN/PPTP/IPSec rc actions now branch enable/disable like
+  native (moots the rc stop-vs-restart question for this codebase).
+  Live verification still operator-gated.
+- Operator live session (read-only, operator-authorized, no writes):
+  resolved the IPSec operator-fact question — zero IPSec accounts
+  configured, `ipsec_profile_2` staleness cosmetic for this deployment
+  (D-020); confirmed extension mount + popup restyle live; surfaced
+  narrow-window layout defects and the Dashboard single-SSID defect.
+- Narrow-window layout fixed (content-width container queries,
+  fit-content label track, atomic values never split mid-token — the
+  operator's acceptance criterion).
+- Popup master enable/disable switch added (persisted `enabled` flag,
+  router-origin-scoped tab reloads); store listing + privacy policy
+  updated to three stored values (gh-pages duplicate needs manual sync).
+- Dashboard SSID defect fixed network-centrically (one row per SDN
+  network with band badges; classic fallback preserved) after a
+  dedicated investigation (D-021).
+- Note: the repo's commit-msg hook rejects Co-Authored-By trailers; all
+  session commits carry the operator identity only.
+
+---
+
+## Prior Session (2026-07-29)
 
 - The WireGuard server write path was found critically broken: saves
   posted directly-indexed `wgs1` prefixed nvram keys that the firmware's
@@ -88,9 +127,11 @@ Full detail: [README.md](../../README.md), [STATUS.md](../../STATUS.md),
 - Full Firefox live verification (structural/build-verified only per
   STATUS.md).
 - Broader write-path live verification across additional hardware.
-- Four source-research-completable write-path correctness questions
-  (wireless band-token naming, WireGuard server `wgs1_*` writes,
-  `ipsec_profile_2` regeneration, `rcService` restart/stop branching) — see
+- The four write-path correctness questions are now all resolved or
+  code-fixed at the source level (wireless band-token naming closed
+  no-risk; WireGuard `wgs1_*` fixed `ae842e5`; `ipsec_profile_2`
+  lockstep fixed `d8ca9ff`; rc restart/stop branching fixed `1b92640`) —
+  what remains for each is live verification only, operator-gated. See
   `OPEN_LOOPS.md`.
 - Twelve deferred features (SDN profile CRUD, WireGuard server peers,
   cert/key BLOBs, Operation Mode switching, and others) — full list in

@@ -7,8 +7,18 @@ roughly by how self-contained the work is, not by priority.
 ## Chrome Web Store readiness
 
 ### Store listing screenshots
-- **What:** Capture real screenshots of the extension UI for the Chrome Web
-  Store listing. At least one (1280×800 or 640×400) is required;
+- **Status: CLOSED 2026-07-31.** Four 1280×800 screenshots captured under
+  `docs/store-assets/` (dashboard, clients, DHCP, popup) via headless
+  Chrome against the new fixture harness (`tools/screenshot-harness/`,
+  capture commands in its README) — fictional data only, dimensions
+  verified from PNG headers, committed `72983d9` and re-captured in
+  `34423f5`/`0df9636` after layout changes. The popup shot is a
+  placeholder (content fills only its natural popup-sized region on a
+  full-page canvas) — flagged in the listing doc; dashboard/clients/dhcp
+  are store-ready. Remaining store items are operator-only: optional
+  promo tiles, developer account, submission.
+- **What (original):** Capture real screenshots of the extension UI for the
+  Chrome Web Store listing. At least one (1280×800 or 640×400) is required;
   `docs/CHROME_STORE_LISTING.md` has the rest of the listing copy already
   drafted and notes this as the one missing asset.
 - **Approach:** Build a small fixture-data harness (mock nvram/status
@@ -38,7 +48,14 @@ roughly by how self-contained the work is, not by priority.
   only relevant branch in this repository.
 
 ### Popup UI does not use Fujin tokens, unlike the content-script panel
-- **Status:** open, not yet scheduled.
+- **Status: CLOSED 2026-07-31** (`4c5447b`). Token resolution factored
+  into `src/theme/vars.ts`, shared by the shadow-root panel (`css.ts`,
+  output unchanged) and a new popup `:root` injector
+  (`src/theme/popup-theme.ts`); every popup color now maps to a semantic
+  Fujin role, every radius to a Fujin radius token (0px per D-005).
+  Visually verified in the fixture harness (computed vars resolve,
+  radii 0px) and confirmed live by the operator on the RT-BE92U.
+- **Status (original):** open, not yet scheduled.
 - **What:** this project's content-script panel is genuinely themed via
   Fujin's design tokens, imported and resolved live. The popup UI,
   `src/entrypoints/popup/style.css` and `App.css`, is separately
@@ -161,9 +178,24 @@ closed above.
   now a Track D live-testing item, not further code or research work.
 
 ### `ipsec_profile_2` regeneration
-- **Status:** Confirmed open, **High** severity, conditional risk (severity
-  confirmed by external audit cross-check, 2026-07-29 — see below; the
-  conditional framing itself is unchanged and still open).
+- **Status: code fix SHIPPED 2026-07-31** (`d8ca9ff`) — `ipsec.ts` now
+  regenerates `ipsec_profile_2` in lockstep with `ipsec_profile_1` on
+  enabled saves, reproducing the native 43-field template byte-for-byte
+  (verified against Advanced_VPN_IPSec.asp:654 and both web.c snprintf
+  skeletons); `ipsec_profile_2` confirmed a literal `router_defaults`
+  entry (shared/defaults.c:4628), so the applyapp write path lands it in
+  nvram. Remaining: live verification only (VPN writes stay
+  hard-excluded pending a supervised session). Separately, the
+  operator-deployment question below resolved 2026-07-31: **zero IPSec
+  client accounts configured, server off** — the staleness risk was
+  cosmetic for this deployment all along; it re-arms only if IKEv2
+  accounts are ever configured. Two native-side caveats documented
+  inline in ipsec.ts (native's own two write paths disagree on the
+  cert_address formula; the profile rebuild rides profile_1's existing
+  narrower-than-native `profileTouched` trigger).
+- **Status (pre-fix):** Confirmed open, **High** severity, conditional risk
+  (severity confirmed by external audit cross-check, 2026-07-29 — see
+  below; the conditional framing itself was unchanged and still open).
 - **Finding:** Native firmware keeps ipsec_profile_1 and ipsec_profile_2 in
   lockstep, rebuilding both on every IPSec page Apply click via client side
   JS, confirmed at Advanced_VPN_IPSec.asp around line 641 through 654, and
@@ -227,7 +259,19 @@ without a materially different method.
   operator deployment fact" later in this file.
 
 ### `rcService` restart vs. stop branching
-- **Status:** Confirmed open, split verdict by service, partially unresolved.
+- **Status: code fix SHIPPED 2026-07-31** (`1b92640`) —
+  `WriteDef.rcService` now accepts a direction resolver, and the OpenVPN
+  server, PPTP, and IPSec defs branch on the resulting enable state
+  exactly as native's inline JS does (`restart_chpass;restart_vpnserver{p}`
+  / `stop_vpnserver{p}`, `restart_pptpd`/`stop_pptpd`,
+  `ipsec_start`/`ipsec_stop`; WireGuard stays static, matching native).
+  This makes the UI match native semantics regardless of what the rc
+  scripts internally do with a restart-while-disabled — the empirical
+  question below is **mooted for this codebase** (it now only matters to
+  native's own behavior). PPTP's conditional `;restart_samba` append is
+  deliberately not reproduced (documented inline). Remaining: live
+  verification only (VPN writes stay hard-excluded).
+- **Status (pre-fix):** Confirmed open, split verdict by service, partially unresolved.
 - **Finding:** This project always issues a single static rcService or action_script value
   regardless of enable or disable direction, for every service family.
 
@@ -317,7 +361,14 @@ question without a materially different method.
   source unavailable" later in this file.
 
 ### rc daemon stop-vs-restart behavior — blocked, source unavailable
-- **Status:** Open, blocked. Logged as its own entry (2026-07-29) per the
+- **Status: mooted for this codebase 2026-07-31** — since `1b92640` this
+  UI issues the same direction-branched actions native does, so whatever
+  the rc scripts do with a restart-while-disabled no longer affects this
+  project's correctness. The underlying empirical question (below) is
+  unchanged and still unanswerable from the source in `RAW/`, but it is
+  no longer load-bearing for any of this project's write paths; it stays
+  recorded only as background.
+- **Status (pre-fix):** Open, blocked. Logged as its own entry (2026-07-29) per the
   audit-verification pass's finding that this specific sub-question was
   previously only reachable as a paragraph inside the `rcService` entry
   above, not as a locatable item on its own.
@@ -354,7 +405,16 @@ question without a materially different method.
   `rc` package, not present in `RAW/`.
 
 ### IPSec `ipsec_profile_2` prioritization — needs an operator deployment fact
-- **Status:** Open, blocked on a fact about the operator's own deployment,
+- **Status: RESOLVED 2026-07-31.** The operator fact was obtained during
+  a live, read-only, operator-authorized session against the RT-BE92U:
+  the IPSec VPN server is off, no pre-shared key is set, and the client
+  account table is empty — **zero IPSec accounts configured**, so no
+  account is IKEv2-capable and nothing on this deployment consumes
+  `ipsec_profile_2`. Priority verdict: cosmetic for this deployment;
+  re-arms if IPSec accounts (especially `ver` 2/3) are ever configured.
+  The code gap itself was separately fixed the same day — see the
+  `ipsec_profile_2` regeneration entry above.
+- **Status (pre-resolution):** Open, blocked on a fact about the operator's own deployment,
   not on further research. Logged as its own entry (2026-07-29) per the
   audit-verification pass's finding that this specific sub-question was
   previously only reachable as a paragraph inside the `ipsec_profile_2`
@@ -416,7 +476,17 @@ report was written, added in a prior commit. This recommendation was
 already stale at the moment it was made. No action needed; noted only as a
 provenance observation about this source report's own thoroughness.
 
-### Full-history secret scan — partial, open, actionable
+### Full-history secret scan — CLOSED 2026-07-31
+Closed by two independent dedicated-scanner runs: gitleaks 8.30.1
+(located via winget's install; full default ruleset including entropy
+rules) scanned all 88 commits — 6 findings, every one a false positive
+(the `generic-api-key` rule matching nvram parameter-name string
+literals such as `ipv6_dnsenable` in page defs; each verified in place
+as a key name, not a value). trufflehog v2.2.1 (pip) regex scan across
+the same history: zero findings. No real secret exists in tracked
+history. Original entry preserved below for context.
+
+### Full-history secret scan — partial, open, actionable (original entry)
 This session's own new commits have been independently, fully diff-read
 for secrets by two separate pre-push commit reviews and confirmed clean;
 this item does not concern those. Separately, and distinctly: the broader
@@ -432,7 +502,22 @@ dedicated scanner and running a proper full-history scan remains open and
 actionable.
 
 ### `brace-expansion` / minimatch High-severity chain (9 findings)
-- **Status:** Confirmed open, High severity, not yet fixed. Not subject to
+- **Status: CLOSED 2026-07-31** (`3f4e5c5`, `ec717ca`). eslint 9→10
+  (+@eslint/js 10, typescript-eslint 8.65, eslint-plugin-react-hooks
+  7.1.1), wxt 0.20→0.21 (+@wxt-dev/module-react 1.2.2) cleared six of
+  the nine; the last three lived in eslint-plugin-react's own nested
+  minimatch with no safe override (patched minimatch/brace-expansion
+  changed their CJS entry points and would break the plugin — verified
+  empirically), so eslint-plugin-react was removed instead: it
+  contributed zero active rules (only `react/react-in-jsx-scope: 'off'`,
+  disabling a rule that was never on; no preset extended). `npm audit`:
+  **0 vulnerabilities**. One knock-on: wxt 0.21's generated tsconfig
+  newly defaults `noUncheckedIndexedAccess: true`; explicitly set false
+  in the root tsconfig (50+ pre-existing strict-null sites, config-level
+  resolution chosen over code churn). `RAW/` also added to eslint
+  ignores (flat config doesn't honor .gitignore; bare `npx eslint .`
+  previously failed on vendored firmware JS in the primary checkout).
+- **Status (original):** Confirmed open, High severity, not yet fixed. Not subject to
   the VPN/firewall write-path hard-exclusion policy — fully implementable
   and testable (build + lint + typecheck) without any router or live-
   hardware involvement, unlike the write-path items above.
@@ -493,6 +578,48 @@ actionable.
 - **Where:** `wxt.config.ts:50`; `src/entrypoints/popup/App.tsx`
   (`isPrivateRouterHost`); `docs/CHROME_STORE_LISTING.md`; tracked goal in
   `GOALS.md` ("Chrome Web Store submission readiness").
+
+## 1.0-readiness pass, new items (2026-07-31)
+
+### Dashboard network-centric SSID view — live confirmation pending
+- **Status:** Code shipped and harness-verified (`0df9636`); three
+  specific facts could not be verified without live hardware and belong
+  in the operator's next live pass:
+  1. Whether multiple MAINFH-tagged `sdn_rl` records actually occur with
+     Smart Connect off on this firmware (the code enumerates all matches
+     defensively; never exercised against real multi-MAINFH data).
+  2. Real-world `apg{idx}_dut_list` band-bitwise values (decode logic
+     sourced from native SDN.asp JS + `amas_apg_shared.h`, not a live
+     capture).
+  3. Whether MAINBH records carry a nonzero `apg_idx` in practice (both
+     cases handled; only the synthetic fixture exercises the name-based
+     filter path).
+- **Where:** `src/pages/defs/dashboard.tsx`, `src/lib/sdn.ts` (shared
+  parser, also consumed by `sdn.tsx`).
+
+### Wireless-general SSID semantics on SDN units — deferred, write-path
+- **Status:** Open, deliberately deferred (the SSID investigation's
+  "Option C"). `wireless.ts` reads/writes `wl{p}_ssid`, which on
+  SDN-managed ASUSWRT 5.0 holds a placeholder, not the broadcast SSID;
+  the page has no per-SDN-network concept. Which nvram family SSID
+  *writes* should target on SDN units (`wl{p}_`, `apg{idx}_`, or
+  band-role-token keys per asus.js `wlBandSeq`) is genuinely unresolved
+  from source. Currently inert: `writeExclusion: 'wireless'` blocks
+  submission and read confidence is `structural`. Do not touch without a
+  dedicated supervised session — this is a write surface with a real
+  risk of targeting the wrong key family.
+- **Where:** `src/pages/defs/wireless.ts` (header comment already flags
+  the ambiguity); investigation record in this file's history and
+  D-021.
+
+### gh-pages privacy policy duplicate — manual sync pending
+- **Status:** Open, small, operator-adjacent. `docs/privacy-policy.md`
+  on `main` was updated 2026-07-31 (third stored value: the popup master
+  switch's `enabled` flag, `a553f5f`); the manually-maintained duplicate
+  `privacy-policy.html` on the `gh-pages` branch has NOT been synced.
+  Per D-018, avoid concurrent-session branch operations — sync it in a
+  dedicated step (checkout `gh-pages`, mirror the stored-data list,
+  push is operator-authorized).
 
 ## Missing features (deferred scope)
 

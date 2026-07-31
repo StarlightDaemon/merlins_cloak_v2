@@ -592,3 +592,70 @@
   before: avoid running more than one active Claude Code session against
   this repository's working tree at the same time, particularly during
   any git branch operation.
+
+## D-019
+
+- Date: 2026-07-31
+- Status: Closed
+- Decision: Removed `eslint-plugin-react` entirely (`ec717ca`) instead of
+  overriding its vulnerable nested `minimatch`/`brace-expansion` chain, as
+  the final step of clearing the 9-High `npm audit` chain D-013 confirmed
+  (the first step being the coordinated eslint 9→10 / wxt 0.20→0.21 major
+  bumps, `3f4e5c5`). Basis: the plugin contributed zero active rules —
+  `eslint.config.js` extended no preset of it and its only rule reference
+  was `react/react-in-jsx-scope: 'off'`, which disables a rule that was
+  never enabled; and the override path was verified broken empirically
+  (patched minimatch ≥10 / brace-expansion ≥5.0.8 changed their CommonJS
+  entry points from callable default exports to named-export objects,
+  which would throw "is not a function" inside the plugin's own rule
+  files the moment any of them was enabled). Removing an inert dependency
+  beat shipping a landmine override. `eslint-plugin-react-hooks` and its
+  two active rules are untouched. `npm audit` reports 0 vulnerabilities.
+- Consequence: if react-specific lint rules are ever wanted, re-adding
+  the plugin requires an eslint-10-compatible release (none existed as of
+  2026-07-31; 7.37.5 was latest, peer-capped at eslint ^9.7).
+
+## D-020
+
+- Date: 2026-07-31
+- Status: Closed
+- Decision: The `ipsec_profile_2` prioritization question (D-009's
+  conditional; OPEN_LOOPS' standalone entry) was resolved by an
+  operator-authorized, strictly read-only live session against the
+  RT-BE92U driven through the operator's own authenticated browser: the
+  IPSec VPN server is disabled, no pre-shared key is set, and the client
+  account table is empty — zero IPSec accounts exist, so no account is
+  IKEv2-capable. Verdict: the staleness gap was cosmetic for this
+  deployment; it re-arms only if IPSec accounts are ever configured. The
+  session made no writes of any kind and never touched the read-only
+  interlock; the only actions were navigation clicks and screenshots.
+  The same session also live-confirmed the extension's mount, identity
+  detection (227 flags), and surfaced the narrow-window layout defects
+  fixed later the same day (`75a1c18`, `34423f5`).
+- Note: the code-level lockstep fix (`d8ca9ff`) was implemented the same
+  day independently of this verdict — correct for any deployment, not
+  just this one. See D-021's sibling records in OPEN_LOOPS for what
+  remains live-verification-only.
+
+## D-021
+
+- Date: 2026-07-31
+- Status: Closed (implementation shipped; Option C deferred)
+- Decision: For the operator-reported "one SSID shown everywhere" defect,
+  adopted the investigation's Option B — the Dashboard's wireless card is
+  network-centric on SDN firmware (one row per enabled non-backhaul
+  `sdn_rl` record, its own `apg{idx}_ssid`, band badges decoded from
+  `apg{idx}_dut_list`, per-band `wl{N}_radio` state kept as a strip;
+  classic non-SDN fallback preserved unchanged) — implemented in
+  `0df9636` with parsing shared between dashboard and the SDN overview
+  via new `src/lib/sdn.ts`. Option A (relabel-only) was subsumed; Option
+  C (fixing `wireless.ts`'s SSID read/edit semantics on SDN units) was
+  explicitly deferred as a write-path change with an unresolved
+  nvram-key-family question — tracked in OPEN_LOOPS ("Wireless-general
+  SSID semantics on SDN units"), not to be attempted without a
+  supervised session.
+- Rationale: the defect was a data-model mismatch (band→SSID table shape
+  vs. the SDN many-to-many model), not a lookup bug; the native UI's own
+  information architecture (one section per network with band icons,
+  confirmed live in docs/LIVE_PROBE_RT-BE92U.md) is the correct shape,
+  and sdn.tsx already proved the data path.
