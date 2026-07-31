@@ -45,9 +45,13 @@ in `.output/`. All commits local, nothing pushed.
   path carries `writeExclusion` (incl. deliberate, documented `null`s) and
   `confidence.write: 'unverified-write'`. No existing exclusion touched. No
   write submitted to any router by any agent at any point.
-- **Harness:** all 12 new/changed surfaces rendered against fictional
-  fixtures and screenshot-verified (`e2a4e1e`); single-WAN dashboard default
-  confirmed byte-identical.
+- **Harness:** all new/changed surfaces rendered against fictional fixtures
+  and screenshot-verified — 12 in `e2a4e1e` (single-WAN dashboard default
+  confirmed byte-identical), plus the final two in `116455b`
+  (`usb-accounts` with three degradation variants, and `openvpn-server`
+  with both instances). Those two were built concurrently with the first
+  harness round and so had been missed by it; a completeness sweep against
+  the page registry caught them.
 - Surface count: ten new views registered (qos-userprio,
   notification-center, aimesh, timemachine, download-master, usb-accounts,
   wireguard-server-peers, opmode, router-cert, vpn-certs), four existing

@@ -763,14 +763,33 @@ picking this up should feel free to resequence.
 - **Where:** `src/lib/router-io.ts` (WriteEndpoint), `src/lib/write-guard.ts`;
   consumers `usb-accounts.tsx`, `certificates.tsx`, `usb.ts` (DM).
 
-### WireGuard private-key on-screen display — operator UX decision
-- **Status:** Open, small. The WireGuard server and peers pages render
-  private-key values as readonly fields, matching native. Native parity
-  and copyable-by-design, but a masked-with-reveal treatment would be
-  strictly better against shoulder-surfing. Flagged rather than changed
-  unilaterally (D-027). Note the values are never logged (redaction covers
-  writes; readonly fields are never posted).
-- **Where:** `src/pages/defs/vpn-server.ts` (wgs{p}_priv, wgs1_c{p}_priv/psk).
+### On-screen credential display — operator UX decision
+- **Status:** Open, small. Broadened 2026-07-31 from the original
+  WireGuard-only framing after harness verification observed the same
+  pattern on a second surface. Two cases, both native-parity, both
+  deliberate-not-accidental:
+  1. WireGuard server/peers render private-key and PSK values as readonly
+     fields (`vpn-server.ts`: `wgs{p}_priv`, `wgs1_c{p}_priv/psk`).
+  2. The OpenVPN `vpn_serverx_clientlist` and the pre-existing
+     `pptpd_clientlist` render their password column in **plain text, in an
+     unmasked text input** (`type="text"`, not `type="password"`) — observed
+     directly in the fixture harness, `116455b`. The PPTP case predates this
+     work; the OpenVPN one arrived with the client-list feature (`0000512`)
+     and simply inherited the rule-list editor's generic column rendering.
+- **The question for the operator:** whether to keep native parity
+  (values visible and copyable, which is what the router's own UI does) or
+  add a masked-with-reveal treatment. A `ListColumn` variant that renders a
+  password-type input, plus the same treatment for the readonly key fields,
+  would be a contained change — but it is a deliberate divergence from
+  native, so it is not being made unilaterally.
+- **Not a logging/leak issue:** none of these values reach the console, the
+  diagnostics write inspector, or retained verify detail — redaction at
+  request construction covers that (D-027, `b155fa0`), and readonly fields
+  are never posted at all. This is strictly about what a person standing
+  behind the operator can read off the screen.
+- **Where:** `src/pages/defs/vpn-server.ts` (WG key fields; OpenVPN and PPTP
+  client lists), `src/ui/ListEditor.tsx` + `ListColumn` in
+  `src/pages/types.ts` (where a masked column type would live).
 
 ### Operation Mode write construction — needs a supervised session
 - **Status:** Open by design (D-026). The full mode→nvram matrix, the QIS
