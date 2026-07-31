@@ -13,7 +13,17 @@
  *    (web.c ~4047) that scans CGI-posted keys for every unit prefix
  *    (vpn_server1_*, vpn_server2_*) independent of any vpn_server_unit field
  *    — i.e. fully-prefixed vpn_server{p}_xxx keys write directly, matching
- *    the wl0_/vpn_client1_ convention this project already relies on.
+ *    the wl0_/vpn_client1_ convention this project already relies on. The
+ *    one exception is vpn_serverx_clientlist (username/password client
+ *    list): it's a literal unindexed defaults.c entry (defaults.c:4048), and
+ *    that scan only matches an exact "vpn_server_" (11-char, trailing
+ *    underscore) prefix — "vpn_serverx_clientlist"'s 11th character is 'x',
+ *    not '_', so the scan never matches it. validate_apply's direct-write
+ *    branch (web.c ~4316-4347) picks it up instead and writes the flat key
+ *    verbatim, unmodified by whichever unit is selected. Net effect: the
+ *    clientlist is genuinely shared across both server instances, not
+ *    per-unit — see openvpnServerPage.intro and the field's own comment
+ *    below for the full citation.
  *  - WireGuard server: no equivalent per-unit scan branch was found for
  *    wgs_/wgsc_ inside validate_instance(); the native page instead relies on
  *    an unindexed "working copy" (wgs_enable etc, copied to/from wgs1_* by a
@@ -30,6 +40,26 @@
  *    reached nvram. Fixed: the write path now posts the unindexed wgs_*
  *    fields plus a leading wgs_unit=1, matching native's actual posting
  *    pattern (wireguardServerPage.write.buildFields below).
+ *      A second server instance (wgs2_*) has NO defaults.c literal entries
+ *    at all (only the unindexed wgs_/wgsc_ working-copy families exist —
+ *    confirmed by exhaustive grep of shared/defaults.c). The wgs_ redirect
+ *    branch itself (web.c ~4746) only checks unit > 0, no upper bound, so a
+ *    POST with wgs_unit=2 is accepted and writes real wgs2_* nvram — but
+ *    native's own render hook (ej_get_wgs_parameter, web.c ~40336-40351)
+ *    clamps wgs_unit back to 1 on every page load, and the native unit
+ *    selector offers only a single hardcoded <option value="1">, so unit 2
+ *    is unreachable through native's own UI. Whether the rc-level
+ *    restart_wgs script honors unit 2 at all is UNCONFIRMED — no rc/ tree is
+ *    vendored in the source checkout this research used. Modeled below
+ *    behind an explicit instance selector that says so; see
+ *    wireguardServerPage.intro for the full citation.
+ *      Per-peer settings (wgs1_c{p}_*, up to WG_SERVER_CLIENT_MAX=10 peers)
+ *    are a second, parallel instance of this exact redirect pattern, keyed
+ *    off an unindexed "wgsc_" working copy plus a companion wgsc_unit field
+ *    (web.c ~4756-4770) — modeled as wireguardServerPeersPage below, its own
+ *    instance selector over the peer slot (peers for server unit 2 are out
+ *    of scope: two-dimensional instance selection isn't supported by this
+ *    project's InstanceSelector).
  */
 import type { SettingsPageDef } from '../types';
 import { hasFlag } from '../../lib/capabilities';
@@ -120,7 +150,7 @@ export const openvpnServerPage: SettingsPageDef = {
     ],
   },
   intro:
-    'The username/password client list (nvram vpn_serverx_clientlist) is a single flat key shared across BOTH server instances rather than per-instance — its true per-unit write behavior could not be confirmed from source, so it is left out of this pass. Custom Configuration (vpn_server_custom3) is read/written through a dedicated get_ovpn_custom/set_ovpn_custom path rather than plain nvram, and certificate/key material (vpn_crt_server*) is BLOB storage — both out of scope here, same as other cert material project-wide.',
+    "The username/password client list (nvram vpn_serverx_clientlist, below) is a single flat key SHARED across BOTH server instances, not per-instance — settled from source: it's a literal unindexed defaults.c entry (defaults.c:4048) whose 2-field <user>pass record format carries no unit tag at all, and validate_apply's per-unit prefix scan only matches an exact 11-char 'vpn_server_' prefix, which 'vpn_serverx_clientlist' misses (11th char is 'x', not '_') — so it always writes straight to the flat key regardless of which unit is selected (web.c ~4316-4347). Editing it from either instance edits the same underlying list. Custom Configuration (vpn_server_custom3) is read/written through a dedicated get_ovpn_custom/set_ovpn_custom path rather than plain nvram, and certificate/key material (vpn_crt_server*) is BLOB storage — both out of scope here, same as other cert material project-wide.",
   read: {
     nvram: [
       'vpn_serverx_start',
@@ -155,7 +185,7 @@ export const openvpnServerPage: SettingsPageDef = {
       'vpn_server{p}_local6',
       'vpn_server{p}_remote6',
     ],
-    nvramAscii: ['vpn_server{p}_ccd_val'],
+    nvramAscii: ['vpn_server{p}_ccd_val', 'vpn_serverx_clientlist'],
     derive: (raw, instance) => ({
       vpn_server_enable: instance && ovpnStartTokens(raw.vpn_serverx_start ?? '').has(instance) ? '1' : '0',
       __unit: instance ?? '',
@@ -441,6 +471,41 @@ export const openvpnServerPage: SettingsPageDef = {
       ],
     },
     {
+      title: 'Username/password client list',
+      note:
+        "Stored in nvram vpn_serverx_clientlist (username>password records, no per-record enable flag or unit tag). SHARED across both server units — this is not a '{p}'-templated field; editing it from Server 1 or Server 2 edits the same list (defaults.c:4048; see this page's intro for the write-path citation). Row order/content applies regardless of which server unit's tab is currently open.",
+      showIf: (v) => v['vpn_server{p}_crypt'] === 'tls' && v['vpn_server{p}_userpass_auth'] === '1',
+      fields: [
+        {
+          key: 'vpn_serverx_clientlist',
+          label: 'Username/password clients (shared, applies to both server units)',
+          control: 'list',
+          ascii: true,
+          list: {
+            // No native row cap was found for this list (unlike ccd_val's
+            // 128 or PPTP's 32) — the only bound is the 2048-byte
+            // CKN_STR2048 nvram cap on the whole serialized value.
+            columns: [
+              {
+                id: 'username',
+                label: 'Username',
+                validate: {
+                  required: true,
+                  pattern: '^[^ @*+|:?<>,./;\\[\\]\\\\="&#]+$',
+                  patternHint: 'Must not contain space @ * + | : ? < > , . / ; [ ] \\ = " & #',
+                },
+              },
+              {
+                id: 'password',
+                label: 'Password',
+                validate: { required: true, pattern: '^[^<>&]+$', patternHint: 'Must not contain < > &' },
+              },
+            ],
+          },
+        },
+      ],
+    },
+    {
       title: 'IPv6',
       showIf: (_v, caps) => hasFlag(caps, 'ipv6_support'),
       fields: [
@@ -544,21 +609,34 @@ export const wireguardServerPage: SettingsPageDef = {
   gate: (c) => hasFlag(c, 'wireguard_support'),
   confidence: { read: 'structural', write: 'unverified-write' },
   writeExclusion: 'vpn',
+  instance: {
+    label: 'Server unit',
+    options: [
+      { value: '1', label: 'Server 1' },
+      { value: '2', label: 'Server 2 (unexposed by native UI)' },
+    ],
+  },
   intro:
-    'This router only exposes one WireGuard server instance (wgs1_, the native page hardcodes its instance selector to a single option) — no instance selector is modeled here. Peer management (the wgs1_c1_ .. wgs1_c10_ per-peer families: name, address, allowed IPs, preshared key) is deferred to a later pass; this page only edits the server-wide interface settings.',
+    "A second instance selector is offered here, but Server 2 is genuinely unexposed by native firmware, not just hidden behind an extra click: shared/defaults.c has NO wgs2_* literal entries at all (only the unindexed wgs_/wgsc_ working-copy families exist, confirmed by exhaustive grep — contrast OpenVPN server, which has full separate vpn_server1_*/vpn_server2_* blocks). The httpd write-path redirect for wgs_ fields (web.c ~4746) has no upper bound on unit, so writes to wgs2_* nvram DO land — but native's own render hook (ej_get_wgs_parameter, web.c ~40336-40351) clamps wgs_unit back to 1 on every page load, and the native page's unit selector offers only a single hardcoded <option value=\"1\">; there is no way to reach unit 2 by clicking around in native. Whether the rc-level restart_wgs script honors a second instance at all is UNCONFIRMED — no rc/ tree is vendored in the source checkout this research used, only httpd/shared/www. Fresh reads of wgs2_* will most likely come back empty (no seeded defaults, no default port offset the way OpenVPN server 2 gets one). Treat Server 2 here as an nvram-layer-only capability of unknown practical effect. Peer management (the wgs{unit}_c1_ .. wgs{unit}_c10_ per-peer families) is on the separate WireGuard Server Peers page, scoped to server unit 1 only.",
   read: {
-    nvram: ['wgs1_enable', 'wgs1_dns', 'wgs1_nat6', 'wgs1_psk', 'wgs1_alive', 'wgs1_addr', 'wgs1_port', 'wgs1_priv', 'wgs1_pub'],
+    nvram: ['wgs{p}_enable', 'wgs{p}_dns', 'wgs{p}_nat6', 'wgs{p}_psk', 'wgs{p}_alive', 'wgs{p}_addr', 'wgs{p}_port', 'wgs{p}_priv', 'wgs{p}_pub'],
+    // buildFields' output VALUES are not '{p}'-expanded by the renderer
+    // (only its output KEYS and template read/field keys are — see
+    // SettingsPage.tsx's `expand`/`expandRecord`), so the selected unit is
+    // stashed here as a synthetic '__unit' value, same derive-stash pattern
+    // openvpnServerPage uses for its own instance token.
+    derive: (_raw, instance) => ({ __unit: instance ?? '1' }),
   },
   sections: [
     {
       title: 'Basic config',
       fields: [
-        { key: 'wgs1_enable', label: 'Enable WireGuard server', control: 'radio', options: yesNo },
-        { key: 'wgs1_dns', label: 'Allow DNS', control: 'radio', options: yesNo },
-        { key: 'wgs1_nat6', label: 'IPv6 NAT', control: 'radio', options: yesNo },
-        { key: 'wgs1_psk', label: 'Use preshared key', control: 'radio', options: yesNo },
+        { key: 'wgs{p}_enable', label: 'Enable WireGuard server', control: 'radio', options: yesNo },
+        { key: 'wgs{p}_dns', label: 'Allow DNS', control: 'radio', options: yesNo },
+        { key: 'wgs{p}_nat6', label: 'IPv6 NAT', control: 'radio', options: yesNo },
+        { key: 'wgs{p}_psk', label: 'Use preshared key', control: 'radio', options: yesNo },
         {
-          key: 'wgs1_alive',
+          key: 'wgs{p}_alive',
           label: 'Persistent keepalive (seconds)',
           control: 'number',
           validate: { min: 0, max: 65535 },
@@ -568,10 +646,10 @@ export const wireguardServerPage: SettingsPageDef = {
     {
       title: 'Interface',
       fields: [
-        { key: 'wgs1_priv', label: 'Private key', control: 'readonly' },
-        { key: 'wgs1_pub', label: 'Public key', control: 'readonly' },
-        { key: 'wgs1_addr', label: 'Address', control: 'text', validate: { maxLength: 63, required: true } },
-        { key: 'wgs1_port', label: 'Listen port', control: 'number', validate: { min: 1, max: 65535, required: true } },
+        { key: 'wgs{p}_priv', label: 'Private key', control: 'readonly' },
+        { key: 'wgs{p}_pub', label: 'Public key', control: 'readonly' },
+        { key: 'wgs{p}_addr', label: 'Address', control: 'text', validate: { maxLength: 63, required: true } },
+        { key: 'wgs{p}_port', label: 'Listen port', control: 'number', validate: { min: 1, max: 65535, required: true } },
       ],
     },
   ],
@@ -587,12 +665,144 @@ export const wireguardServerPage: SettingsPageDef = {
     // positional. wgs_unit already precedes the other wgs_ entries in that
     // table (shared/defaults.c), so no client-side ordering is required.
     // See D-007, D-008, and D-015 in DECISIONS.md. Posting the already-
-    // indexed wgs1_xxx keys directly, as this project did before this fix,
-    // is never inspected by validate_apply at all, since it only reads
+    // indexed wgs{unit}_xxx keys directly, as this project did before this
+    // fix, is never inspected by validate_apply at all, since it only reads
     // keys from that static table, never from the posted body's own names.
-    buildFields: (changed) => {
-      const fields: Record<string, string> = { wgs_unit: '1' };
-      for (const [k, v] of Object.entries(changed)) fields[k.replace(/^wgs1_/, 'wgs_')] = v;
+    // wgs_unit is read from the derive-stashed '__unit' (see read.derive
+    // above), NOT from a literal '{p}' in the value — buildFields output
+    // values are never template-expanded, only its output keys are.
+    buildFields: (changed, all) => {
+      const fields: Record<string, string> = { wgs_unit: all.__unit ?? '1' };
+      for (const [k, v] of Object.entries(changed)) fields[k.replace(/^wgs\{p\}_/, 'wgs_')] = v;
+      return fields;
+    },
+  },
+};
+
+// ---------------------------------------------------------------------------
+// WireGuard Server Peers (Advanced_WireguardServer_Content.asp, wgsc_* slot)
+// ---------------------------------------------------------------------------
+
+/**
+ * Peer management for WireGuard server unit 1 only (see wireguardServerPage's
+ * intro for why unit 2 is out of scope generally; peers for unit 2 would
+ * additionally require a two-dimensional instance selector — server unit AND
+ * peer slot together — which this project's InstanceSelector doesn't
+ * support, so unit-2 peers are unreachable here regardless).
+ *
+ * The instance IS the peer slot (1..WG_SERVER_CLIENT_MAX=10,
+ * shared/vpn_utils.h:147-150, cross-checked against the native page's own
+ * wgsc_unit <select> offering exactly options 1..10). Fields are read
+ * directly against the real per-peer keys (wgs1_c{p}_*) but written through
+ * the unindexed 'wgsc_' working-copy redirect (web.c ~4756-4770) — a second,
+ * parallel instance of the same wgs_/wgs{unit}_ redirect pattern documented
+ * on wireguardServerPage, extended with a companion wgsc_unit field:
+ *   else if(!strncmp(name, "wgsc_", 5) && unit > 0 && subunit > 0) {
+ *       snprintf(prefix, sizeof(prefix), "wgs%d_c%d_", unit, subunit);
+ *       ...
+ *       if(strlen(value) == 0) nvram_unset(tmp);       // empty post deletes
+ *       else if(strcmp(nvram_safe_get(tmp), value)) nvram_set(tmp, value);
+ *   }
+ * Both wgs_unit AND wgsc_unit must be present in the same POST or the whole
+ * branch is silently skipped (unit/subunit default to -1). Posting an
+ * already-indexed key like 'wgs1_c3_addr' directly is never inspected by
+ * validate_apply at all (no such literal defaults.c entry exists to match
+ * against) — same D-007/D-008-class pitfall as wgs1_* direct posts.
+ *
+ * Field set is the full literal 'wgsc_' defaults.c enumeration
+ * (shared/defaults.c:5428-5438) MINUS 'unit' itself and MINUS two
+ * undocumented extras, 'caller' and 'extinfo': neither is referenced
+ * anywhere in Advanced_WireguardServer_Content.asp's visible markup (grepped
+ * exhaustively), so their purpose/consumer is unknown and native never
+ * posts them — left out entirely rather than guessed at or round-tripped.
+ *
+ * 'psk', 'pub', and 'priv' are rendered here as readonly, matching native
+ * exactly: none of the three is an <input> on the native page (psk and the
+ * server's own priv/pub are read-only <div>s; peer priv/pub aren't rendered
+ * at all) — the native UI never posts them, so there is no evidence the
+ * router even honors a client-supplied value for them. No genkey/pubkey
+ * hook exists anywhere in httpd/web.c; the actual keypair generation
+ * mechanism is rc-level and NOT visible in this vendored tree (no rc/
+ * directory present) — UNCONFIRMED. Values shown are placeholders only,
+ * e.g. 'FAKEDEMOKEYBASE64=' — never real key material.
+ *
+ * Native has no explicit "delete peer" control at all: clearing a peer's
+ * editable fields to empty and applying relies on the nvram_unset-on-empty
+ * semantics above (or setting enable=0 to disable without deleting). This
+ * is native's own semantics, reproduced here unmodified.
+ */
+export const wireguardServerPeersPage: SettingsPageDef = {
+  kind: 'settings',
+  id: 'wireguard-server-peers',
+  aspPage: 'Advanced_WireguardServer_Content.asp',
+  title: 'WireGuard Server Peers',
+  navGroup: 'vpn',
+  navSub: 'incoming',
+  navOrder: 39.5,
+  navLabel: 'WireGuard Server Peers',
+  gate: (c) => hasFlag(c, 'wireguard_support'),
+  confidence: { read: 'structural', write: 'unverified-write' },
+  writeExclusion: 'vpn',
+  instance: {
+    label: 'Peer slot',
+    options: Array.from({ length: 10 }, (_, i) => ({ value: String(i + 1), label: `Peer ${i + 1}` })),
+  },
+  intro:
+    "Peers for WireGuard server unit 1 only (WG_SERVER_CLIENT_MAX=10, shared/vpn_utils.h:147-150) — server unit 2's peers are out of scope, see wireguardServerPage's intro. Preshared key, private key, and public key are shown read-only: native never exposes them as editable inputs either (they're read-only <div>s, or for the peer's own priv/pub, not rendered at all), and the actual keypair-generation mechanism is rc-level and not visible in this vendored source tree (no rc/ directory) — UNCONFIRMED whether posting a value here would even be honored. Two undocumented fields present in firmware (wgsc_caller, wgsc_extinfo) are never referenced by the native page and are left out entirely rather than guessed at. Clearing an editable field to empty and applying deletes that value for this peer (nvram_unset on empty post) — this is native's own semantics, not a bug.",
+  read: {
+    nvram: [
+      'wgs1_c{p}_name',
+      'wgs1_c{p}_enable',
+      'wgs1_c{p}_addr',
+      'wgs1_c{p}_aips',
+      'wgs1_c{p}_caips',
+      'wgs1_c{p}_psk',
+      'wgs1_c{p}_pub',
+      'wgs1_c{p}_priv',
+    ],
+    derive: (_raw, instance) => ({ __unit: instance ?? '1' }),
+  },
+  sections: [
+    {
+      title: 'Peer',
+      fields: [
+        { key: 'wgs1_c{p}_enable', label: 'Enable this peer', control: 'radio', options: yesNo },
+        { key: 'wgs1_c{p}_name', label: 'Name', control: 'text', validate: { maxLength: 63 } },
+        { key: 'wgs1_c{p}_addr', label: 'Address', control: 'text', validate: { maxLength: 63 } },
+        { key: 'wgs1_c{p}_aips', label: 'Allowed IPs (server)', control: 'text', validate: { maxLength: 4095 } },
+        { key: 'wgs1_c{p}_caips', label: 'Allowed IPs (client)', control: 'text', validate: { maxLength: 4095 } },
+      ],
+    },
+    {
+      title: 'Keys',
+      note: 'Read-only, matching native (see this page\'s intro). Keypair generation is not exposed here.',
+      fields: [
+        { key: 'wgs1_c{p}_psk', label: 'Preshared key', control: 'readonly' },
+        { key: 'wgs1_c{p}_pub', label: 'Public key', control: 'readonly' },
+        { key: 'wgs1_c{p}_priv', label: 'Private key', control: 'readonly' },
+      ],
+    },
+  ],
+  write: {
+    endpoint: 'applyapp',
+    // Matches native's static action_script for this page exactly
+    // (Advanced_WireguardServer_Content.asp ~111, action_wait ~112) — same
+    // as wireguardServerPage, since peer saves post through the same form.
+    rcService: 'restart_wgs;restart_dnsmasq',
+    actionWait: 1,
+    // wgs_unit is fixed to server 1 (peers here are unit-1-only, see the
+    // page comment above); wgsc_unit carries the selected PEER, stashed via
+    // '__unit' for the same reason wireguardServerPage stashes its unit
+    // (buildFields output values are never '{p}'-expanded — only its output
+    // keys are, see SettingsPage.tsx's `expand`). buildVerify is left as
+    // the default (dirty verbatim): the ORIGINAL template keys
+    // (wgs1_c{p}_xxx) DO get '{p}'-expanded at the I/O boundary before
+    // verification, landing on exactly the real per-peer nvram key
+    // (wgs1_c{peer}_xxx) that copy_index_to_unindex's wgsc_ redirect
+    // targets — no override needed.
+    buildFields: (changed, all) => {
+      const fields: Record<string, string> = { wgs_unit: '1', wgsc_unit: all.__unit ?? '1' };
+      for (const [k, v] of Object.entries(changed)) fields[k.replace(/^wgs1_c\{p\}_/, 'wgsc_')] = v;
       return fields;
     },
   },
@@ -763,4 +973,9 @@ export const pptpServerPage: SettingsPageDef = {
   },
 };
 
-export const vpnServerPages: SettingsPageDef[] = [openvpnServerPage, wireguardServerPage, pptpServerPage];
+export const vpnServerPages: SettingsPageDef[] = [
+  openvpnServerPage,
+  wireguardServerPage,
+  wireguardServerPeersPage,
+  pptpServerPage,
+];
