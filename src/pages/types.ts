@@ -114,8 +114,21 @@ export interface WriteDef {
    * semantics are required.
    */
   endpoint: WriteEndpoint;
-  /** Service restart directive (rc_service / action_script value). */
-  rcService?: string;
+  /**
+   * Service restart directive (rc_service / action_script value). Either a
+   * fixed string, or a resolver `(changed, all) => string | undefined` — same
+   * shape as buildFields/buildVerify — for the services where native firmware
+   * branches this by enable/disable direction instead of issuing one static
+   * action regardless of direction (OpenVPN server, PPTP, and IPSec; see
+   * their page defs in vpn-server.ts / ipsec.ts for exact firmware
+   * citations). WireGuard server is confirmed static-restart natively
+   * (Advanced_WireguardServer_Content.asp ~111) and stays a plain string.
+   * The resolver receives `all`, the full current edited value set (i.e. the
+   * resulting/new state after this Apply), not just `changed` — matching how
+   * native re-derives its action_script from current DOM/form state on every
+   * submit rather than from only the field that was just edited.
+   */
+  rcService?: string | ((changed: Record<string, string>, all: Record<string, string>) => string | undefined);
   /**
    * The native page's own client-side wait for this operation, in seconds.
    * Sent as `action_wait` on start_apply, and on BOTH endpoints it governs how

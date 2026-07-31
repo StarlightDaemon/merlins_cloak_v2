@@ -478,12 +478,20 @@ export const openvpnServerPage: SettingsPageDef = {
   ],
   write: {
     endpoint: 'applyapp',
-    // See file header: assumes restart_vpnserver{p} reconciles start/stop
-    // from nvram like other rc "restart_X" scripts, mirroring the native
-    // page's split action_script (restart_chpass;restart_vpnserverN when
-    // enabling vs stop_vpnserverN when disabling) which this static WriteDef
-    // cannot express conditionally.
-    rcService: 'restart_vpnserver{p}',
+    // Native branches by direction (Advanced_VPN_OpenVPN.asp ~625-634):
+    // action_script = "restart_chpass;restart_vpnserver" + unit when
+    // VPNServer_enable ends up "1" at submit time, else "stop_vpnserver" +
+    // unit. The condition reads the CURRENT form value, i.e. the
+    // resulting/new state after this Apply, not only whether enable itself
+    // was the field just edited — reproduced here via `all.vpn_server_enable`
+    // (the full edited value set passed to this resolver), the same pattern
+    // native's own inline JS uses (it re-derives action_script from DOM
+    // state on every submit). restart_chpass (password-hash sync) is
+    // included verbatim on the enable branch, matching native; nothing else
+    // on this page depends on it. See DECISIONS.md D-010 / OPEN_LOOPS.md
+    // "rcService restart vs. stop branching" for the prior static-restart
+    // gap this replaces.
+    rcService: (_changed, all) => (all.vpn_server_enable === '1' ? 'restart_chpass;restart_vpnserver{p}' : 'stop_vpnserver{p}'),
     actionWait: 15,
     buildFields: (changed, all) => {
       const fields: Record<string, string> = {};
@@ -701,11 +709,18 @@ export const pptpServerPage: SettingsPageDef = {
   ],
   write: {
     endpoint: 'applyapp',
-    // Native page splits restart_pptpd (enabling) vs stop_pptpd (disabling);
-    // assumes restart_pptpd reconciles start/stop from pptpd_enable like
-    // other rc "restart_X" scripts (this static WriteDef can't branch on
-    // the field's value the way the native inline JS does).
-    rcService: 'restart_pptpd',
+    // Native branches by direction (Advanced_VPN_PPTP.asp ~320-322,
+    // 433-434): action_script = "restart_pptpd" when pptpd_enable ends up
+    // "1", else "stop_pptpd". Reproduced via `all.pptpd_enable` (the
+    // resulting/new state), same pattern as the OpenVPN server page above.
+    // Native also appends ";restart_samba" on the enable branch when a
+    // page-computed global Samba-integration flag (enable_samba, sourced
+    // from unrelated nvram, not modeled anywhere on this page) is set — not
+    // reproduced here; out of scope, consistent with this page's existing
+    // "Advanced settings not modeled" scoping (see intro above). See
+    // DECISIONS.md D-010 / OPEN_LOOPS.md "rcService restart vs. stop
+    // branching" for the prior static-restart gap this replaces.
+    rcService: (_changed, all) => (all.pptpd_enable === '1' ? 'restart_pptpd' : 'stop_pptpd'),
     actionWait: 10,
     buildFields: (changed, all) => {
       const fields: Record<string, string> = {};

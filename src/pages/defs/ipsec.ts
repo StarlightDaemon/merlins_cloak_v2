@@ -386,13 +386,15 @@ export const ipsecServerPage: SettingsPageDef = {
   ],
   write: {
     endpoint: 'applyapp',
-    // Native action_script branches ipsec_start (enabling) vs ipsec_stop
-    // (disabling); this static WriteDef can't express that branch the way
-    // the page's inline JS does. Per source, rcService is the verbatim
-    // "(re)configure" token — ipsec_start. Disabling via this page still
-    // correctly flips the plain nvram key ipsec_server_enable to "0", but
-    // the rc directive we send restarts rather than stops the daemon.
-    rcService: 'ipsec_start',
+    // Native branches by direction (Advanced_VPN_IPSec.asp ~687-692):
+    // action_script = "ipsec_start" when ipsec_server_enable ends up "1" at
+    // submit time, else "ipsec_stop". Reproduced via `all.ipsec_server_enable`
+    // (the resulting/new state, confirmed set from the toggle's current DOM
+    // state by ipsecShowAndHide() ~347-355 before applyRule() reads it), the
+    // same pattern used on the OpenVPN server and PPTP pages. See
+    // DECISIONS.md D-010 / OPEN_LOOPS.md "rcService restart vs. stop
+    // branching" for the prior static-restart gap this replaces.
+    rcService: (_changed, all) => (all.ipsec_server_enable === '1' ? 'ipsec_start' : 'ipsec_stop'),
     actionWait: 5,
     // CAVEAT (pre-existing, not introduced by this pass): this project only
     // rebuilds ipsec_profile_1 (and, per this fix, ipsec_profile_2 with it)

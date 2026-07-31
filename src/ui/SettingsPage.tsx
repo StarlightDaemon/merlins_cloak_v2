@@ -170,6 +170,11 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
           : fields;
       const expandRecord = (rec: Record<string, string>) =>
         Object.fromEntries(Object.entries(rec).map(([k, v]) => [expand(k), v]));
+      // rcService may be a fixed string or a direction-dependent resolver
+      // (see WriteDef.rcService in pages/types.ts) — resolved once here,
+      // against the same (dirty, values) pair buildFields/buildVerify see.
+      const rcServiceValue =
+        typeof def.write.rcService === 'function' ? def.write.rcService(dirty, values) : def.write.rcService;
       const spec: WriteSpec = {
         endpoint: def.write.endpoint,
         // Threaded through so the guard can enforce it. The UI below also
@@ -177,7 +182,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
         // this is not a UI-only control.
         writeExclusion: def.writeExclusion ?? null,
         fields: expandRecord(templateFields),
-        rcService: def.write.rcService ? expand(def.write.rcService) : undefined,
+        rcService: rcServiceValue ? expand(rcServiceValue) : undefined,
         actionWait: def.write.actionWait,
         confirmTimeoutMs: def.write.confirmTimeoutMs,
         currentPage: def.aspPage,
