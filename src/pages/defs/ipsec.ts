@@ -25,17 +25,24 @@
  * position is read back from the currently-stored profile and written back
  * unchanged (derive/buildFields pattern, positions documented below).
  *
- * ipsec_profile_2 (the IKEv2 profile string) is NOT modeled or written here.
- * Both known native write paths regenerate it wholesale from scratch on
- * every save while enabling — never incrementally edited — using a fixed
- * skeleton plus a cert "remote_id" the C helper get_ipsec_remote_id()
- * computes from ddns_hostname_x / the active WAN's IP (logic not
- * independently reproduced here). There is no user-editable content in it
- * beyond the same virtual_subnet already captured from ipsec_profile_1.
- * Net effect: enabling the server through THIS page does not (re)generate
- * ipsec_profile_2 the way the native page always does on every Apply click —
- * a real functional gap versus the native page, flagged here rather than
- * silently guessed at.
+ * ipsec_profile_2 (the IKEv2 profile string) IS modeled here as a
+ * write-only, wholesale-regenerated lockstep companion to ipsec_profile_1 —
+ * confirmed a literal router_defaults entry (shared/defaults.c ~4628, same
+ * table as ipsec_profile_1), so this project's generic applyapp write path
+ * lands it in nvram directly, the same mechanism as ipsec_profile_1 and NOT
+ * a WireGuard-style silent drop (see DECISIONS.md D-007/D-008 for that
+ * contrast). Native rebuilds it wholesale from a fixed skeleton on every
+ * save while enabling — never incrementally edited, confirmed byte-identical
+ * between the client-side literal (Advanced_VPN_IPSec.asp ~654) and BOTH
+ * server-side snprintf skeletons (web.c do_get_ipsec_profile_cgi() ~18022
+ * and do_set_ipsec_profile_cgi() ~18502) — reproduced verbatim by
+ * buildProfile2() below. There is no user-editable content in it beyond the
+ * same virtual_subnet already captured from ipsec_profile_1, plus a
+ * cert "remote_id" derived from ddns_hostname_x / wan0_ipaddr (see
+ * buildProfile2()'s own doc comment for the exact formula and a caveat
+ * about a client-vs-server-side inconsistency in native firmware itself).
+ * This closes the staleness gap tracked as DECISIONS.md D-009 /
+ * OPEN_LOOPS.md "ipsec_profile_2 regeneration".
  *
  * ipsec_client_list_1 / ipsec_client_list_2 (per-user accounts) are two
  * plain nvram keys — both real router_defaults entries, both applyapp-write
@@ -98,6 +105,51 @@ function parseProfile1(raw: string): string[] {
   const out = raw ? raw.split('>') : [];
   while (out.length < PROFILE1_SKELETON.length) out.push(PROFILE1_SKELETON[out.length]);
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// ipsec_profile_2 (IKEv2) lockstep regeneration
+// ---------------------------------------------------------------------------
+
+/**
+ * ipsec_profile_2 is a distinct, fixed 43-field skeleton (NOT a field-by-
+ * field transform of profile_1's 38 fields — the IKEv2 profile has its own
+ * layout with different literals at nearly every position: exchange mode
+ * "Host-to-Netv2", xauth_server_type "eap-mschapv2", keyingtries "10", a
+ * cert subject block ("pubkey"/"svrCert.pem"/"always"/"svrKey.pem"/
+ * "%identity") that has no profile_1 counterpart at all, and an always-empty
+ * samba segment "<<<<" rather than the pushed DNS/WINS list). Only two
+ * values are ever live: virtual_subnet (identical to profile_1's position-14
+ * value) and a cert "remote_id"/cert_address string. Reproduced verbatim
+ * from the literal template shared by Advanced_VPN_IPSec.asp ~654 and
+ * web.c's snprintf skeletons cited above — string concatenation, not the
+ * indexed-array pattern used for profile_1, because there is nothing here to
+ * incrementally edit; native itself never edits this profile, only
+ * regenerates it whole.
+ *
+ * cert_address formula reproduced from the CLIENT-SIDE .asp JS specifically
+ * (Advanced_VPN_IPSec.asp ~644-649: ddns_hostname_x non-empty ? "@"+it :
+ * literal wan0_ipaddr), because this project posts through applyapp.cgi, the
+ * same generic endpoint that page's own client JS posts through. CAVEAT: the
+ * OTHER native write path, do_set_ipsec_profile_cgi() (web.c ~17604-17619,
+ * ~18501), which this project does NOT call, computes this via
+ * get_ipsec_remote_id() instead — a DIFFERENT formula that additionally
+ * gates on ddns_enable_x and reads the ACTIVE wan unit's ipaddr rather than
+ * always wan0. Native firmware itself is inconsistent between its two write
+ * paths here; this project matches the one path it actually uses. On a
+ * dual-WAN deployment where wan1 (not wan0) is the active unit and DDNS is
+ * disabled, this may compute a different cert_address than
+ * do_set_ipsec_profile_cgi would — a pre-existing native inconsistency, not
+ * something this project introduces.
+ */
+function buildProfile2(virtualSubnet: string, ddnsHostname: string, wan0Ipaddr: string): string {
+  const certAddress = ddnsHostname !== '' ? `@${ddnsHostname}` : wan0Ipaddr;
+  return [
+    '4', 'Host-to-Netv2', 'null', 'null', 'wan', '', '0', 'null', 'null', 'null', 'null', 'null', 'null',
+    '1', virtualSubnet, 'null', '2', 'null', 'null', '0', certAddress, 'null', 'null', '0', '', '',
+    'eap-mschapv2', '1', '500', '4500', '10', '1', 'null', 'null', 'null', 'null', '<<<<', '1',
+    'pubkey', 'svrCert.pem', 'always', 'svrKey.pem', '%identity',
+  ].join('>');
 }
 
 function parseSamba(seg: string): { dns1: string; dns2: string; wins1: string; wins2: string } {
@@ -196,9 +248,9 @@ export const ipsecServerPage: SettingsPageDef = {
   confidence: { read: 'structural', write: 'unverified-write' },
   writeExclusion: 'vpn',
   intro:
-    'There is no separate IKEv1/IKEv2 enable toggle — one switch (ipsec_server_enable) turns the server on; which IKE version a given account may use is set per-account in the user list below. The IKEv2 certificate profile (ipsec_profile_2) is regenerated wholesale by the native page on every save and is not reproduced here — see file header for why. The dual-WAN "local interface" selector exists in the native form but its row is permanently hidden (dead UI) and is preserved unedited rather than exposed. Client passwords are stored in nvram as plain text — native firmware behavior, not introduced by this tool.',
+    'There is no separate IKEv1/IKEv2 enable toggle — one switch (ipsec_server_enable) turns the server on; which IKE version a given account may use is set per-account in the user list below. The IKEv2 certificate profile (ipsec_profile_2) is regenerated wholesale in lockstep with ipsec_profile_1 on every save while enabled, matching the native page — see file header for how. The dual-WAN "local interface" selector exists in the native form but its row is permanently hidden (dead UI) and is preserved unedited rather than exposed. Client passwords are stored in nvram as plain text — native firmware behavior, not introduced by this tool.',
   read: {
-    nvram: ['ipsec_server_enable', 'ipsec_block_intranet', 'ipsec_profile_1'],
+    nvram: ['ipsec_server_enable', 'ipsec_block_intranet', 'ipsec_profile_1', 'ddns_hostname_x', 'wan0_ipaddr'],
     nvramAscii: ['ipsec_client_list_1', 'ipsec_client_list_2'],
     derive: (raw) => {
       const parts = parseProfile1(raw.ipsec_profile_1 ?? '');
@@ -342,6 +394,20 @@ export const ipsecServerPage: SettingsPageDef = {
     // the rc directive we send restarts rather than stops the daemon.
     rcService: 'ipsec_start',
     actionWait: 5,
+    // CAVEAT (pre-existing, not introduced by this pass): this project only
+    // rebuilds ipsec_profile_1 (and, per this fix, ipsec_profile_2 with it)
+    // when `profileTouched` — i.e. when one of PROFILE1_VIEW_KEYS itself was
+    // edited this Apply. Native rebuilds BOTH profiles on every Apply click
+    // while the resulting state is enabled, regardless of which fields
+    // changed, because it always reconstructs the full profile_array from
+    // current DOM values. Net divergence: toggling ipsec_server_enable from
+    // 0 to 1 with no other field edited in the same save will not (re)write
+    // either profile here, whereas native would. This is an existing
+    // limitation of profile_1's own trigger (unchanged by this fix); the
+    // profile_2 lockstep added here intentionally rides the same trigger
+    // rather than introducing a broader one, per the task's ask to follow
+    // ipsec.ts's existing profile_1 composition pattern. Re-litigating
+    // profile_1's own trigger condition is out of scope for this fix.
     buildFields: (changed, all) => {
       const fields: Record<string, string> = {};
       let profileTouched = false;
@@ -353,7 +419,17 @@ export const ipsecServerPage: SettingsPageDef = {
           fields.ipsec_client_list_2 = s.list2;
         } else fields[k] = v;
       }
-      if (profileTouched) fields.ipsec_profile_1 = buildProfile1(all);
+      if (profileTouched) {
+        fields.ipsec_profile_1 = buildProfile1(all);
+        // Lockstep companion (see buildProfile2 doc comment above). Native
+        // only (re)generates profile_2 while the resulting state is
+        // enabled — when disabling, native marks the field disabled/excluded
+        // from submission rather than touching its value, so the gate below
+        // mirrors that rather than writing profile_2 unconditionally.
+        if ((all.ipsec_server_enable ?? '') === '1') {
+          fields.ipsec_profile_2 = buildProfile2(all.ipsec_clients_start ?? '', all.ddns_hostname_x ?? '', all.wan0_ipaddr ?? '');
+        }
+      }
       return fields;
     },
     buildVerify: (changed, all) => {
@@ -367,7 +443,12 @@ export const ipsecServerPage: SettingsPageDef = {
           expect.ipsec_client_list_2 = s.list2;
         } else expect[k] = v;
       }
-      if (profileTouched) expect.ipsec_profile_1 = buildProfile1(all);
+      if (profileTouched) {
+        expect.ipsec_profile_1 = buildProfile1(all);
+        if ((all.ipsec_server_enable ?? '') === '1') {
+          expect.ipsec_profile_2 = buildProfile2(all.ipsec_clients_start ?? '', all.ddns_hostname_x ?? '', all.wan0_ipaddr ?? '');
+        }
+      }
       return expect;
     },
   },
