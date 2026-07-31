@@ -77,7 +77,7 @@ export const browser = {
   },
   tabs: {
     async create({ url }: { url: string }): Promise<{ id: number; url: string }> {
-      // eslint-disable-next-line no-console
+       
       console.info('[screenshot-harness] browser.tabs.create (no-op):', url);
       return { id: -1, url };
     },
