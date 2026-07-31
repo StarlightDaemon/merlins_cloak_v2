@@ -583,6 +583,17 @@ export const timemachinePage: SettingsPageDef = {
           label: 'Partition device name',
           hint: 'Raw device leaf name (e.g. sda1), not a mount path — no live partition picker; see intro',
           control: 'text',
+          // The alphanumeric-only pattern is a SECURITY boundary, not just a
+          // format hint. rc-source research (RC_SOURCE_FINDINGS.md §5;
+          // RAW/merlin-rc rc/timemachine.c find_mountpoint ~298-325) found the
+          // firmware builds the AFP share path as "/tmp/mnt/<tm_device_name>"
+          // with NO path-traversal guard of its own — the only gate is a
+          // check_if_dir_exist() whose body ships closed-source. A value like
+          // "../../jffs" that resolved to a real directory would be shared.
+          // This charset (which fully covers real Linux block-device leaf
+          // names like sda1) makes such a value impossible to construct here,
+          // so the extension can never originate that payload regardless of
+          // read-only mode. Do not loosen it to add '/' or '.'.
           validate: { maxLength: 64, pattern: '^[a-zA-Z0-9]*$', patternHint: 'Device leaf name, e.g. sda1' },
           showIf: (v) => v.timemachine_enable === '1',
         },
