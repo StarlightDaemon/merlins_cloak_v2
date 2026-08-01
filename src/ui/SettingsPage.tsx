@@ -303,7 +303,12 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
         {def.aspPage}
         {def.merlinOnly ? ' · Merlin' : ''}
       </p>
-      {def.intro && <Banner tone="info">{def.intro}</Banner>}
+      {(() => {
+        const raw = typeof def.intro === 'function' ? def.intro(instance) : def.intro;
+        if (!raw) return null;
+        const resolved = typeof raw === 'string' ? { text: raw, tone: 'info' as const } : raw;
+        return <Banner tone={resolved.tone ?? 'info'}>{resolved.text}</Banner>;
+      })()}
       {def.write && hardExcluded && (
         <Banner tone="err">
           {hardExclusionReason(hardExcluded)} You can read and inspect these settings, but Apply is unavailable on

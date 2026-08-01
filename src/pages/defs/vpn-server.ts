@@ -632,8 +632,48 @@ export const wireguardServerPage: SettingsPageDef = {
       { value: '2', label: 'Server 2 (unexposed by native UI)' },
     ],
   },
-  intro:
-    "A second instance selector is offered here, but Server 2 is genuinely unexposed by native firmware, not just hidden behind an extra click: shared/defaults.c has NO wgs2_* literal entries at all (only the unindexed wgs_/wgsc_ working-copy families exist, confirmed by exhaustive grep — contrast OpenVPN server, which has full separate vpn_server1_*/vpn_server2_* blocks). The httpd write-path redirect for wgs_ fields (web.c ~4746) has no upper bound on unit, so writes to wgs2_* nvram DO land — but native's own render hook (ej_get_wgs_parameter, web.c ~40336-40351) clamps wgs_unit back to 1 on every page load, and the native page's unit selector offers only a single hardcoded <option value=\"1\">; there is no way to reach unit 2 by clicking around in native. The rc SERVICE side, however, fully supports unit 2 — CONFIRMED 2026-07-31 from the now-vendored rc source (RAW/merlin-rc, RAW/merlin-3004-rc; RC_SOURCE_FINDINGS.md §2): start_wgsall/stop_wgsall loop 1..WG_SERVER_MAX (=2) and start_wgs(unit)/stop_wgs(unit) are fully unit-parametrized (rc/wireguard.c ~1446-1628), reading wgs2_* exactly as wgs1_*; restart_wgs 2 dispatches to start_wgs(2) (rc/services.c ~22018). So Server 2 is a genuine, functional second instance if written and restarted — NOT merely an nvram-layer artifact. The remaining honest caveat is only that fresh reads of wgs2_* come back empty until first written (no seeded defaults / no default port offset the way OpenVPN server 2 gets one), and that this project still never live-submits it (writeExclusion 'vpn'). Peer management (the wgs{unit}_c1_ .. wgs{unit}_c10_ per-peer families) is on the separate WireGuard Server Peers page, scoped to server unit 1 only.",
+  // Server 1 renders with no intro banner at all; selecting Server 2 shows a
+  // SHORT warn-toned summary (operator request 2026-07-31, twice refined:
+  // first gated off Server 1, then condensed — the full technical detail
+  // was "absolutely too much" even behind the gate). The complete findings
+  // live in the comment below, for the project record:
+  //
+  // Server 2 is genuinely unexposed by native firmware, not just hidden
+  // behind an extra click: shared/defaults.c has NO wgs2_* literal entries
+  // at all (only the unindexed wgs_/wgsc_ working-copy families exist,
+  // confirmed by exhaustive grep — contrast OpenVPN server, which has full
+  // separate vpn_server1_*/vpn_server2_* blocks). The httpd write-path
+  // redirect for wgs_ fields (web.c ~4746) has no upper bound on unit, so
+  // writes to wgs2_* nvram DO land — but native's own render hook
+  // (ej_get_wgs_parameter, web.c ~40336-40351) clamps wgs_unit back to 1 on
+  // every page load, and the native page's unit selector offers only a
+  // single hardcoded <option value="1">; there is no way to reach unit 2 by
+  // clicking around in native. The rc SERVICE side, however, fully supports
+  // unit 2 — CONFIRMED 2026-07-31 from the now-vendored rc source
+  // (RAW/merlin-rc, RAW/merlin-3004-rc; RC_SOURCE_FINDINGS.md §2):
+  // start_wgsall/stop_wgsall loop 1..WG_SERVER_MAX (=2) and
+  // start_wgs(unit)/stop_wgs(unit) are fully unit-parametrized
+  // (rc/wireguard.c ~1446-1628), reading wgs2_* exactly as wgs1_*;
+  // restart_wgs 2 dispatches to start_wgs(2) (rc/services.c ~22018). So
+  // Server 2 is a genuine, functional second instance if written and
+  // restarted — NOT merely an nvram-layer artifact. The remaining honest
+  // caveat is only that fresh reads of wgs2_* come back empty until first
+  // written (no seeded defaults / no default port offset the way OpenVPN
+  // server 2 gets one). Peer management (the wgs{unit}_c1_ .. wgs{unit}_c10_
+  // per-peer families) is on the separate WireGuard Server Peers page,
+  // scoped to server unit 1 only.
+  intro: (instance) =>
+    instance !== '2'
+      ? undefined
+      : {
+          tone: 'warn',
+          text:
+            'Server 2 is a hidden second WireGuard server instance. ASUS never shows it in their ' +
+            'own interface and ships no defaults for it, so every field here starts empty — but the ' +
+            'firmware service layer fully supports it, and settings saved here would genuinely run as a ' +
+            'second server. Treat it as advanced/experimental. (Full source-level findings: ' +
+            'vpn-server.ts, this page’s definition.)',
+        },
   read: {
     nvram: ['wgs{p}_enable', 'wgs{p}_dns', 'wgs{p}_nat6', 'wgs{p}_psk', 'wgs{p}_alive', 'wgs{p}_addr', 'wgs{p}_port', 'wgs{p}_priv', 'wgs{p}_pub'],
     // buildFields' output VALUES are not '{p}'-expanded by the renderer

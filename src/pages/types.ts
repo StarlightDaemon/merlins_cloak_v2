@@ -241,7 +241,19 @@ export interface SettingsPageDef extends PageDefBase {
   };
   sections: SectionDef[];
   write?: WriteDef;
-  intro?: string;
+  /**
+   * Page-level intro banner. A plain string renders as an info banner on
+   * every instance. The function form receives the currently selected
+   * instance value and may return undefined (no banner), a string (info
+   * banner), or {text, tone} — for instance-specific caveats that would be
+   * a wall of noise on the instances they don't apply to (e.g. the
+   * WireGuard Server 2 explanation, operator-requested 2026-07-31).
+   */
+  intro?:
+    | string
+    | ((
+        instance: string | undefined,
+      ) => string | { text: string; tone?: 'warn' | 'err' | 'info' } | undefined);
 }
 
 /** Fully custom page (dashboard, logs, traffic monitor, SDN, …). */
