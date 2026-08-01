@@ -100,16 +100,51 @@ each of these without operator involvement.
   keys is the only format the firmware validates against, not a risky divergence
   from stock behavior.
 
-#### Note: Client-side band-token translation (not confirmed)
-Whether `Advanced_Wireless_Content.asp` translates band-token keys to `wl`
-prefixed keys client-side in the browser before the POST was not confirmed during
-this research. Cited but not verified: `asus.js` around line 321–374.
+#### Note: Client-side band-token translation — RESOLVED FROM SOURCE 2026-07-31
+Resolved: there is NO client-side translation. `asus.js:321-374` is
+`system.wlBandSeq` — a band-token-keyed lookup table built from
+`wlnband_list`, not a key rewriter. `Advanced_Wireless_Content.asp`
+builds band-token-prefixed keys directly (`2g1_ssid`, `5g1_wpa_psk`, …;
+asp:3340-3417, prefix origin asus.js:428) and posts them as-is to
+`/applyapp.cgi` via `httpApi.nvramSet` (httpApi.js:227-252). The
+translation is SERVER-side and generic: `do_json_decode()`
+(web.c:12754-12773) runs `wl_nband_to_wlx()` on every incoming JSON key
+before `validate_apply`/`validate_instance` ever see it (same normalizer
+backs the read side — `ej_nvram_get` and 15 sibling hooks). So the parent
+entry's claim is correct about `validate_instance` in isolation but
+incomplete about the write path as a whole: band-token keys ARE
+effectively accepted, normalized one layer earlier. No exposure for this
+project either way — it posts fully-indexed `wl{unit}_` keys, which is
+exactly the post-normalization form `validate_instance` matches. (Caveat:
+`wl_nband_to_wlx()`'s body is absent from all four vendored GPL trees —
+call sites only; its pass-through behavior for already-canonical keys is
+inferred from its uniform application to every posted key, including
+non-wireless ones like `action_mode`, and from its hand-rolled
+predecessor `ej_wl_nvram_get`, web.c:1213-1265. A separate legacy
+`wl_apply.cgi` path with its own explicit translation loop,
+web.c:13051-13132, is unreferenced by this page's JS — red herring.)
 
-#### Note: Physical radio band index mapping (not confirmed)
-This research did not verify which numeric unit index corresponds to which
-physical radio band (2.4 GHz vs. 5 GHz vs. 5 GHz-2 vs. 6 GHz). A wrong band-to-
-index mapping would be a distinct correctness issue from the key format question
-closed above.
+#### Note: Physical radio band index mapping — RESOLVED FROM SOURCE 2026-07-31
+Resolved. The firmware's authoritative band determinant is `wl{unit}_nband`,
+read per-unit at runtime: 2 = 2.4 GHz, 1 = 5 GHz (both 5 GHz radios —
+nband alone doesn't disambiguate 5G-1 vs 5G-2), 4 = 6 GHz, 6 = 60 GHz
+WiGig (broadcom.c:2296-2317 `wl_get_bw_cap`, executable logic; corroborated
+rc.c:5686 and defaults.c inline comments). The native UI never assumes
+index order — web.c:33669-33698 (`ej_wl_nband_info`) builds `wlnband_list`
+from per-unit nvram reads and general.js:2217-2232 tests token content per
+unit (`is_unit_24g()` etc.). Unit→band ORDER is genuinely model-dependent:
+defaults.c:447-508 has distinct branches — QUADBAND builds put 2.4 GHz on
+wl3; GT10/RT-AX9000/GS7_PRO put it on wl2 (wl0=5G); BT10 and
+GSBE18000/12000/GT7 put 6 GHz on wl0; RTBE95U wl0=5G/wl1=6G/wl2=2.4G. The
+operator's RT-BE92U appears in none of the special branches and groups
+with the plain tri-band BE class, so it inherits the generic fallback
+(defaults.c:498-507): wl0=2.4G, wl1=5G, wl2=6G — matching this project's
+`BAND_INSTANCE` (wireless.ts, whose header already documents the
+assumption) and dashboard.tsx's legacy radio labels (caveat comment added
+there this pass). Verdict: no correctness issue on this build's hardware
+class; the mapping is not portable to the reversed-order SKUs above.
+(RT-BE92U placement is inferred by elimination — no literal `#ifdef
+RTBE92U` default block exists; everything else is confirmed from source.)
 
 ### WireGuard server (`wgs1_*`) direct-prefixed writes
 - **Status:** Confirmed open, **CRITICAL** severity (raised from high — see

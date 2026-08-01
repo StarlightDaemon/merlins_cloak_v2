@@ -177,6 +177,11 @@ export function DashboardPage({ caps }: PageProps) {
         }
         // Per-band radio on/off state — needed on both paths (the classic
         // fallback table's State column, and the SDN path's radio-state strip).
+        // The wl0/1/2 → 2.4/5/6 GHz labels here (and in the classic SSID
+        // table below) assume the generic Broadcom default unit order
+        // (shared/defaults.c fallback branch). That order is model-dependent —
+        // several SKUs put 5 or 6 GHz on wl0 — see the band-instance note in
+        // wireless.ts's header; correct for this build's RT-BE92U class.
         const radioStates: RadioBandState[] = [
           { band: '2.4 GHz', enabled: plain.wl0_radio === '1', tone: '24' },
           { band: '5 GHz', enabled: plain.wl1_radio === '1', tone: '5' },
