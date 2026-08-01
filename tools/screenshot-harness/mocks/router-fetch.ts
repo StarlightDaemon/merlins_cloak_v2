@@ -202,6 +202,14 @@ function buildJsonEnvelope(hooks: string[]): string {
       // Same page — used only for pool/mount-point discovery. `?nodisk=1`
       // answers with no mountPoint anywhere (see USB_NODISK_FIXTURE).
       out.get_usb_info = USB_NODISK_FIXTURE ? {} : buildUsbInfoPayload();
+    } else if (hook === 'get_ui_support()') {
+      // Native isSupport()'s source (client_function.js:141-144), read live
+      // by lib/sdn.ts's fetchSdnWriteSnapshot for the restart_stubby
+      // rc_service segment. adguard_dns truthy mirrors the operator's
+      // RT-BE92U (proved by the LIVE_PROBE §9.4 capture, where native's own
+      // SDN edit emitted restart_stubby); only the key that read path
+      // consumes is fixtured.
+      out.get_ui_support = { adguard_dns: 1 };
     } else if ((m = /^sysinfo\("([^"]+)"\)$/.exec(hook))) {
       // Real firmware keys parenthesized sysinfo() scalar hooks as
       // "sysinfo-<arg>" (see pages/defs/nettools.tsx: s['sysinfo-cpu.model']

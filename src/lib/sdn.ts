@@ -23,7 +23,7 @@
  *   bits 2 | 4 | 8     -> 5 GHz (incl. 5G-1/5G-2 MLO variants)
  *   bits 16 | 32 | 64  -> 6 GHz (incl. 6G-1/6G-2 MLO variants)
  */
-import { nvramCharToAscii, nvramGet } from './router-io';
+import { appGet, nvramCharToAscii, nvramGet } from './router-io';
 import { flagValue, type Capabilities } from './capabilities';
 import { parseRuleList, serializeRuleList } from './rulelist';
 import type { ListSpec } from '../pages/types';
@@ -479,6 +479,20 @@ export interface SdnWriteSnapshot {
   };
   /** sdn.js:68 — cap used by every allocator's linear scan below. */
   sdnMaximum: number;
+  /** nvram qos_enable === '1' at snapshot time — drives the restart_qos;restart_firewall rc segment (sdn.js:9252). */
+  qosActive: boolean;
+  /**
+   * Native's `support_adguard_dns` (sdn.js:246): ui_support.adguard_dns
+   * truthy AND router in RT mode. Read from the get_ui_support() hook —
+   * native's own isSupport source — NOT from the *_support state.js globals,
+   * because adguard_dns is a ui_support-only key set by closed-source
+   * web_hook code (no rc_support token, no state.js global; live capture
+   * proves it's truthy on the RT-BE92U while the collector's flag set may
+   * not carry it). Native also accepts WISP mode; this build recognizes only
+   * RT (sw_mode '1') — on a WISP unit the computed string would lack
+   * restart_stubby, a known, documented narrowing.
+   */
+  supportAdguardDns: boolean;
 }
 
 /**
@@ -503,6 +517,23 @@ export async function fetchSdnWriteSnapshot(caps: Capabilities): Promise<SdnWrit
     'dhcp_dns1_x', 'dhcp_dns2_x', 'dhcp_wins_x', 'dhcp_static_x',
     'dnspriv_enable', 'dnspriv_profile', 'wan0_ipaddr', 'wan1_ipaddr',
   ]);
+  const plain = await nvramGet(['qos_enable', 'sw_mode']);
+  // Native's isSupport source (client_function.js:141-144) — see the
+  // supportAdguardDns doc comment for why this is a live hook read rather
+  // than a caps-flag lookup. Best-effort: on failure, fall back to the flag
+  // set (which errs toward omitting restart_stubby, the segment that is
+  // functionally redundant for the edited profile anyway — see
+  // sdnEditRcService).
+  let adguardUi: boolean;
+  try {
+    const ui = await appGet(['get_ui_support()']);
+    const raw = ui.get_ui_support;
+    const parsed = typeof raw === 'string' ? (JSON.parse(raw) as Record<string, unknown>) : (raw as Record<string, unknown> | undefined);
+    const v = parsed?.adguard_dns;
+    adguardUi = v !== undefined && v !== 0 && v !== '0' && v !== '' && v !== false;
+  } catch {
+    adguardUi = flagValue(caps, 'adguard_dns') !== undefined;
+  }
   const sdnRows = parseRuleList(ascii.sdn_rl, SDN_RL_SPEC).filter((r) => rowGet(SDN_RL_SPEC, r, 'idx') !== '0');
   const subnetRowsRaw = parseRuleList(ascii.subnet_rl, SUBNET_RL_SPEC);
   const subnetByIdx = new Map(subnetRowsRaw.map((r) => [rowGet(SUBNET_RL_SPEC, r, 'subnet_idx'), r] as const));
@@ -531,6 +562,8 @@ export async function fetchSdnWriteSnapshot(caps: Capabilities): Promise<SdnWrit
       wan1Ipaddr: lan.wan1_ipaddr ?? '',
     },
     sdnMaximum: getSdnMaximum(caps),
+    qosActive: plain.qos_enable === '1',
+    supportAdguardDns: adguardUi && plain.sw_mode === '1',
   };
 }
 
@@ -826,33 +859,101 @@ export function getGuestProfileSummary(
 }
 
 // -----------------------------------------------------------------------------
-// Payload builders. rcService is a static 'restart_wireless' for every write
-// in this module (task scoping decision): native's own strings are richer —
-// create/edit send "restart_wireless;restart_sdn {idx};" (sdn.js:9126) and
-// delete sends "start_sdn_del;restart_wireless;" (sdn.js:8562) — but since
-// writeExclusion:'wireless' refuses every write this module can build
-// unconditionally (lib/write-policy.ts HARD_EXCLUDED_WRITE_CATEGORIES), the
-// exact rc_service string never reaches the wire either way; 'restart_wireless'
-// is kept as the one constant true of every native SDN apply (brief §4) and
-// documents that plainly rather than reproducing the fuller dynamic string.
+// rc_service assembly — a function of the profile, reproducing native's
+// apply_profile / delete-path logic (source-resolved 2026-08-01, closing the
+// "SDN rc_service is richer than our constant" loop; previously a static
+// 'restart_wireless').
+//
+// Native's edit assembly (sdn.js apply_profile, 9099-9501) keys every
+// segment on CURRENT state (DOM toggles + nvram), never on which fields
+// changed. Fixed append order:
+//   BASE: "restart_wireless;restart_sdn {sdn_rl.idx};"          (sdn.js:9126)
+//     — swapped wholesale for "restart_net_and_phy;" when the profile has an
+//       AiMesh port binding or a vlan_trunklist entry for its VID
+//       (sdn.js:9100-9123). This build REFUSES that case instead (see
+//       buildEditGuestProfileWrite) — a full network+PHY bounce is out of
+//       scope per the module header.
+//   + "restart_qos;restart_firewall;"  when bw_limit is on OR qos_enable==1
+//                                                        (sdn.js:9248/9252)
+//   + "restart_chilli;restart_uam_srv;" when cp_idx is 2 or 4 (sdn.js:9382)
+//   + "restart_stubby;"  when support_adguard_dns && subnet_idx > 0
+//                                                    (sdn.js:9466 + 9496)
+// The restart_stubby trigger was live-observed 2026-07-31
+// (docs/LIVE_PROBE_RT-BE92U.md §9.4: "restart_wireless;restart_sdn 4;
+// restart_stubby;" for a plain SSID rename) and initially mis-hypothesized
+// as dot_enable-keyed; source shows it is NOT keyed on dot_enable,
+// dnspriv_enable, or the AdGuard toggle — the edit path at sdn.js:9466
+// deliberately drops the `#adguard_enable` term all eight wizard copies
+// carry (sdn.js:2421…5645), so on an adguard_dns-capable RT/WISP unit every
+// edit of every subnet-owning profile emits it. Functionally it is
+// near-redundant: `restart_sdn {idx}` already carries SDN_FEATURE_DNSPRIV
+// (rc sdn.h:23, services.c:19477-19492) for the edited profile; the bare
+// restart_stubby additionally bounces every OTHER network's stubby
+// (ALL_SDN, services.c:19626-19649), each instance self-gated on its own
+// dot_enable (rc/sdn.c:340) — a no-op where DoT is off, a brief DNS blip
+// where it is on. Emitted anyway for byte-parity with native.
+//
+// Gaming-profile /24-change firewall (sdn.js:9406-9415) is not reproduced:
+// this build cannot construct that edit (no subnet editing).
+//
 // sdn_rl_x/vlan_rl_x/subnet_rl_x/radius_list_x (delete only) are literal
 // router_defaults[] "for remove" entries (defaults.c:5488-5491) posted
 // alongside the trimmed tables, per sdn.js:8530 (parse_JSONToStr_del_sdn_all_rl).
 // -----------------------------------------------------------------------------
 
-// LIVE-OBSERVED 2026-07-31 (native UI, extension disabled — see
-// docs/LIVE_PROBE_RT-BE92U.md §9): native's actual rc_service for a
-// single-profile SSID edit was "restart_wireless;restart_sdn 4;restart_stubby;"
-// — richer than both this constant AND the source-derived string in this
-// module's header (sdn.js:9126, "restart_wireless;restart_sdn {idx};"). The
-// trailing restart_stubby (DNS-over-TLS daemon) was not predicted from source;
-// the edited profile's subnet_rl row carries dot_enable=1, the plausible
-// trigger, but that conditionality was not isolated. Still moot for this
-// module today (writeExclusion 'wireless' refuses every write it builds), and
-// deliberately NOT changed on the strength of one observation — recorded as an
-// OPEN_LOOPS follow-up so a future pass fixes it with the conditionality
-// understood rather than hardcoding one profile's string.
-const SDN_RC_SERVICE = 'restart_wireless';
+/** Shared conditional tail segments, in native's fixed append order (edit path). */
+function rcTail(snap: SdnWriteSnapshot, opts: { cpIdx?: string; subnetIdx?: string }): string {
+  let tail = '';
+  if (snap.qosActive) tail += 'restart_qos;restart_firewall;';
+  if (opts.cpIdx === '2' || opts.cpIdx === '4') tail += 'restart_chilli;restart_uam_srv;';
+  if (snap.supportAdguardDns && (parseInt(opts.subnetIdx ?? '0', 10) || 0) > 0) tail += 'restart_stubby;';
+  return tail;
+}
+
+/**
+ * Wizard-create string (sdn.js:2330-5894, all eight wizard paths share the
+ * shape): base + qos. The wizard's restart_stubby additionally requires the
+ * AdGuard toggle ON — this build never enables AdGuard on create, so the
+ * segment never applies; cp_idx is always 0 for a new profile here.
+ */
+function sdnCreateRcService(snap: SdnWriteSnapshot, sdnIdx: string): string {
+  return `restart_wireless;restart_sdn ${sdnIdx};` + rcTail(snap, {});
+}
+
+function sdnEditRcService(snap: SdnWriteSnapshot, sdnIdx: string, subnetIdx: string, cpIdx: string): string {
+  return `restart_wireless;restart_sdn ${sdnIdx};` + rcTail(snap, { cpIdx, subnetIdx });
+}
+
+/**
+ * Delete string (sdn.js:8558-8613): "start_sdn_del;restart_wireless;" + qos
+ * (8588) + stubby (8591-8596 — native gates on the AdGuard iframe's DOM
+ * presence, approximated here by the same support flag; the extra segment is
+ * self-gated at rc level either way). NO restart_sdn on delete. Native's
+ * optional "restart_ledg;" PREFIX (8572, support_ledg_sdn + sdn_name in
+ * {Gaming, Kids, VPN}) is intentionally not reproduced: the ui_support flag
+ * behind support_ledg_sdn is unverified in the vendored tree, and a wrong
+ * flag name in an always-blocked payload would be worse than the omission —
+ * restart_ledg only refreshes the LED strip.
+ */
+function sdnDeleteRcService(snap: SdnWriteSnapshot, subnetIdx: string): string {
+  let rc = 'start_sdn_del;restart_wireless;';
+  if (snap.qosActive) rc += 'restart_qos;restart_firewall;';
+  if (snap.supportAdguardDns && (parseInt(subnetIdx, 10) || 0) > 0) rc += 'restart_stubby;';
+  return rc;
+}
+
+/**
+ * apg{idx}_dut_list record with a non-empty lanport column (field 2 of
+ * `<mac>bandBitwise>lanport`) — the AiMesh-port-binding half of native's
+ * restart_net_and_phy escalation predicate (sdn.js:9100-9111). This build's
+ * own star dut_list (`<*>{bitwise}>`) always has an empty lanport.
+ */
+function dutListHasLanport(dutList: string): boolean {
+  return dutList
+    .split('<')
+    .filter(Boolean)
+    .some((rec) => (rec.split('>')[2] ?? '') !== '');
+}
 
 export interface SdnWritePayload {
   fields: Record<string, string>;
@@ -956,7 +1057,7 @@ export function buildCreateGuestProfileWrite(snap: SdnWriteSnapshot, input: Gues
     ...buildApgKeyValues(apgIdx, apgFields),
   };
   assertNoApmKeys(fields);
-  return { fields, verify: { ...fields }, rcService: SDN_RC_SERVICE };
+  return { fields, verify: { ...fields }, rcService: sdnCreateRcService(snap, sdnIdx) };
 }
 
 export interface GuestProfileEditInput {
@@ -995,6 +1096,22 @@ export function buildEditGuestProfileWrite(
 
   const apgIdx = rowGet(SDN_RL_SPEC, row, 'apg_idx');
   const currentFields = apgFieldsFromRaw(apgIdx, currentApgRaw);
+
+  // Native swaps the ENTIRE rc base to "restart_net_and_phy;" — a full
+  // network+PHY bounce that drops every client on every network — when the
+  // profile has an AiMesh port binding or a vlan_trunklist entry for its VID
+  // (sdn.js:9100-9123). Port binding / VLAN trunking is out of scope for
+  // this module (see header), so refuse rather than silently escalate or,
+  // worse, emit the un-escalated string native would not send.
+  const vlanIdx = rowGet(SDN_RL_SPEC, row, 'vlan_idx');
+  const vlanRow = snap.vlanRows.find((r) => rowGet(VLAN_RL_SPEC, r, 'vlan_idx') === vlanIdx);
+  const vid = vlanRow ? rowGet(VLAN_RL_SPEC, vlanRow, 'vid') : '';
+  if (dutListHasLanport(currentFields.dut_list) || trunklistBindsVid(snap.vlanTrunklistRaw, vid)) {
+    throw new Error(
+      'SDN edit refused: this profile has an AiMesh port binding or a VLAN trunk entry for its VID, ' +
+        'which native escalates to restart_net_and_phy (sdn.js:9100-9123) — out of scope for this build.',
+    );
+  }
   const nextFields: GuestProfileApgFields = {
     ...currentFields,
     ...(input.ssid !== undefined ? { ssid: input.ssid } : {}),
@@ -1024,7 +1141,11 @@ export function buildEditGuestProfileWrite(
     // native's blank-unless-loaded / AdGuard-stripping behavior).
   };
   assertNoApmKeys(fields);
-  return { fields, verify: { ...fields }, rcService: SDN_RC_SERVICE };
+  return {
+    fields,
+    verify: { ...fields },
+    rcService: sdnEditRcService(snap, sdnIdx, rowGet(SDN_RL_SPEC, row, 'subnet_idx'), rowGet(SDN_RL_SPEC, row, 'cp_idx')),
+  };
 }
 
 /**
@@ -1090,5 +1211,5 @@ export function buildDeleteGuestProfileWrite(snap: SdnWriteSnapshot, sdnIdx: str
     fields[`dot${subnetIdx}_rl`] = '';
   }
   assertNoApmKeys(fields);
-  return { fields, verify: { ...fields }, rcService: SDN_RC_SERVICE };
+  return { fields, verify: { ...fields }, rcService: sdnDeleteRcService(snap, subnetIdx) };
 }

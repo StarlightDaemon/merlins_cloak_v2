@@ -1167,3 +1167,46 @@
   `navigator.clipboard` is unavailable. Divergence-from-native was the
   operator's call to make, not a unilateral one, which is why the loop
   sat open until this session.
+
+## D-033
+
+- Date: 2026-08-01
+- Status: Closed
+- Decision: Both SDN payload-fidelity loops filed by D-031 were resolved
+  from source (two parallel read-only research agents over RAW/merlin +
+  RAW/merlin-rc, findings cross-corroborating) and shipped as code, all
+  still behind the unchanged 'wireless' hard exclusion. (1) The three
+  list keys native posts that this project omitted: `vlan_trunklist` now
+  round-trips verbatim on create/edit (native posts it unconditionally —
+  its editor call site sdn.js:9422-9428 lacks the orig-non-empty guard —
+  and unchanged values are provably inert behind web.c:4817's strcmp
+  gate) and has the deleted profile's VID stripped on delete
+  (sdn.js:8577-8583's repair; a recycled VID would tag the next created
+  network onto a physical AiMesh port); `dhcpres{N}_rl`/`dot{N}_rl` are
+  per-profile side tables reachable only through the profile's own
+  subnet_rl columns, so they stay deliberately omitted on create/edit
+  (safer than native's blank-unless-loaded / AdGuard-stripping editor)
+  and are blanked on delete (the dot orphan is genuinely reachable:
+  subnet_idx recycling + dot_enable inherited from dnspriv_enable).
+  (2) `SDN_RC_SERVICE` became a function of the profile: base
+  `restart_wireless;restart_sdn {idx};` + conditional qos / chilli /
+  stubby segments in native's fixed order. The restart_stubby trigger
+  is `support_adguard_dns && subnet_idx > 0` (sdn.js:246, 9466, 9496) —
+  NOT dot_enable, killing §9.4's hypothesis; the edit path drops the
+  AdGuard-toggle term the wizards carry, and the derived rule reproduces
+  the live capture byte-for-byte. The adguard_dns gate reads native's
+  own get_ui_support() hook (ui_support-only flag, closed-source
+  web_hook origin — no rc_support token exists). Native's
+  restart_net_and_phy escalation (port binding / trunk-bound VID) is
+  refused rather than reproduced; the ledg delete-prefix is knowingly
+  omitted (unverifiable flag name, LED-only effect) and documented.
+- Rationale: D-031 required these be fixed "with the conditionality
+  understood rather than hardcoding one profile's string" — that bar is
+  now met with citations at every decision point, and the deliberate
+  divergences from native (dhcpres/dot omission on edit, trunklist
+  multi-VID-preserving strip, refusal instead of escalation) are strictly
+  conservative and recorded in lib/sdn.ts. Residual: one live read of
+  subnet_rl field 19 (+ dot1_rl) would settle whether §9.4's
+  "dot_enable=1" note was misattributed or native's own edit silently
+  zeroed the profile's DoT flag; blocked only on the live Chrome session,
+  harmless either way to the shipped logic.

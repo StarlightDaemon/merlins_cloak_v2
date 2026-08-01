@@ -749,7 +749,31 @@ actionable.
   capture in `docs/LIVE_PROBE_RT-BE92U.md` §9.4.
 
 ### SDN rc_service is richer than both our constant and our source note
-- **Status:** Open, new 2026-07-31 from the same capture. Native sent
+- **Status:** CLOSED 2026-08-01 (D-033), source-resolved and shipped.
+  Native's full edit assembly was reproduced from sdn.js apply_profile
+  (9099-9501): fixed append order `restart_wireless;restart_sdn {idx};`
+  + qos (9248/9252) + chilli/uam for cp_idx 2/4 (9382) + restart_stubby
+  (9466+9496). **The restart_stubby trigger is NOT dot_enable** (the
+  §9.4 hypothesis) — it is `support_adguard_dns && subnet_idx > 0`; the
+  edit path at 9466 deliberately drops the `#adguard_enable` term all
+  eight wizard copies carry, so every subnet-owning profile edit emits
+  it on an adguard-capable RT/WISP unit. Functionally near-redundant
+  (`restart_sdn {idx}` already carries SDN_FEATURE_DNSPRIV; the bare
+  restart_stubby bounces every OTHER network's stubby, each self-gated
+  on its own dot_enable at rc/sdn.c:340). `SDN_RC_SERVICE` replaced by
+  computed sdnCreate/Edit/DeleteRcService functions; the
+  restart_net_and_phy escalation case (port binding / trunk-bound VID,
+  9100-9123) now REFUSES in buildEditGuestProfileWrite. The
+  adguard_dns gate reads native's own get_ui_support() hook (the flag
+  is ui_support-only, set by closed-source web_hook code). Derived rule
+  reproduces the §9.4 capture byte-for-byte; harness payloads verified
+  (`restart_wireless;restart_sdn 2;restart_stubby;` edit,
+  `start_sdn_del;restart_wireless;restart_stubby;` delete). Residual,
+  minor: the doc's §9.4 `dot_enable=1` claim contradicts the captured
+  empty `dot1_rl` per source (sdn.js:9476-9495 would have zeroed the
+  posted flag); needs one live read of subnet_rl field 19 — recorded in
+  D-033, blocked only on the Chrome session being reconnected.
+- **Original entry:** new 2026-07-31 from the same capture. Native sent
   `restart_wireless;restart_sdn 4;restart_stubby;` for a plain SSID edit.
   This project sends a static `restart_wireless`, and `lib/sdn.ts`'s own
   header (from sdn.js:9126) predicted only

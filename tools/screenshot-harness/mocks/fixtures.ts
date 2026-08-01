@@ -243,6 +243,10 @@ export const FIXTURE_NVRAM: Record<string, string> = {
   wlc_band: '',
   mlo_rp: '0',
   mlo_mb: '0',
+  // QoS off, mirroring the live RT-BE92U — keeps the SDN rc_service's
+  // restart_qos;restart_firewall segment out of harness payloads, matching
+  // the LIVE_PROBE §9.4 capture (lib/sdn.ts rcTail).
+  qos_enable: '0',
 
   // --- Router HTTPS Certificate (pages/defs/certificates.tsx, id
   // 'router-cert') — le_enable=1 selects the "Let's Encrypt" status badge;
