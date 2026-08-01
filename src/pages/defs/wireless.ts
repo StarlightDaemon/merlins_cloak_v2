@@ -38,8 +38,12 @@
  *    populates wlnband_list at runtime, is not present in this open-source
  *    tree (closed Broadcom SDK code) so the live value on THIS unit can't be
  *    confirmed from source alone. This file follows the brief's explicit
- *    wl{p}_ instruction; a future live session should confirm wlnband_list's
- *    actual value on the operator's RT-BE92U before this is fully settled.
+ *    wl{p}_ instruction. LIVE-CONFIRMED 2026-07-31 (read-only nvram read on
+ *    the operator's RT-BE92U): wlnband_list = "2g1<5g1<6g1", i.e. band-token
+ *    order 2g1/5g1/6g1 maps unit-wise to wl0=2.4G, wl1=5G, wl2=6G — exactly
+ *    the BAND_INSTANCE assumption below. This is now fully settled for this
+ *    hardware class (the reversed-order SKUs in defaults.c remain the
+ *    documented portability caveat).
  * 2. wl{p}_nmode_x (wireless mode Auto/N-only/Legacy) is read by this page's
  *    JS (to gate other rows) but there is no generateXXX() row that renders
  *    it as an editable control anywhere in Advanced_Wireless_Content.asp —
