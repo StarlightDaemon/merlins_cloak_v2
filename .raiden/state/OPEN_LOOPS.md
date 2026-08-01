@@ -222,6 +222,22 @@ RTBE92U` default block exists; everything else is confirmed from source.)
   actually applies the redirected values to the running interface. This is
   now a Track D live-testing item, not further code or research work.
 
+- **Update 2026-07-31 (D-030): first of the two live questions CLOSED.**
+  Operator-present live test on the RT-BE92U: `wgs_addr`/`wgs_port`
+  submitted through the extension's Apply (wgs_unit redirect), confirmed
+  landed in `wgs1_addr`/`wgs1_port` by forced-fresh re-read, then cleared
+  back to the byte-exact empty baseline by operator console fetch — the
+  deployed firmware matches the verified source tree's redirect behavior
+  in both set and clear directions. `writeExclusion: 'vpn'` is lifted for
+  the WireGuard Server page only. **Still open (deliberately):** whether
+  `restart_wgs` applies redirected values to a *running* interface — the
+  operator declined the brief-enable test this session (offered as scope
+  option B: zero-peer server is cryptographically inert, but it opens a
+  WAN UDP port and generates keys). That is the remaining scoped
+  follow-up for a future supervised session, along with the page's other
+  5 never-submitted fields. Full record:
+  `docs/WRITE_PATH_CHARACTERIZATION.md` §7.
+
 ### `ipsec_profile_2` regeneration
 - **Status: code fix SHIPPED 2026-07-31** (`d8ca9ff`) — `ipsec.ts` now
   regenerates `ipsec_profile_2` in lockstep with `ipsec_profile_1` on
@@ -721,6 +737,29 @@ actionable.
 - **Where:** `src/pages/defs/wireless.ts` `wpsPage`'s `wps_band_x`
   options; gate mechanism in `src/pages/types.ts` (`FieldOption.gate`)
   and `src/ui/SettingsPage.tsx` (`FieldControl`).
+
+### No UI affordance to clear a field back to unset (revert-to-empty gap)
+- **Status:** Open, operator-surfaced 2026-07-31 during the WireGuard
+  server live test (D-030). Fields whose nvram baseline is unset/empty
+  but whose FieldDef carries `validate.required` (e.g. `wgs{p}_addr`,
+  `wgs{p}_port`) cannot be returned to that baseline through the UI:
+  blanking them trips the required error and grays out Apply, because
+  validation runs over every visible field regardless of dirty state
+  (`SettingsPage.tsx` `errors` memo). The live-test revert had to fall
+  back to an operator-pasted console fetch posting empty values —
+  which the firmware accepts fine (web.c:4750 `nvram_set(tmp, "")`),
+  so this is purely a client-side expressiveness gap.
+- **Design questions for whoever picks this up:** an explicit
+  "clear/reset this field" affordance (per-field × button? a
+  revert-to-baseline row action?) needs to interact with (a) required
+  validation — "empty because clearing" must be distinguishable from
+  "empty because incomplete input"; (b) delta-write semantics — a
+  cleared field must be posted as an explicit empty value, not dropped
+  from the delta; (c) verify — expecting `""` back is already
+  well-defined. Scope decision needed: all fields, or only fields whose
+  loaded baseline was empty?
+- **Where:** `src/ui/SettingsPage.tsx` (validation + dirty tracking),
+  `src/pages/types.ts` (FieldDef), any affected page defs.
 
 ### Router Status card layout — label-left / value-right rows
 - **Status:** Open, operator-requested 2026-07-31 (live session, observed

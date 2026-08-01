@@ -611,8 +611,20 @@ export const wireguardServerPage: SettingsPageDef = {
   navOrder: 39,
   navLabel: 'WireGuard Server',
   gate: (c) => hasFlag(c, 'wireguard_support'),
+  // writeExclusion 'vpn' LIFTED for this one page 2026-07-31 (D-030),
+  // operator-present decision mirroring D-022's WPS lift: chosen because the
+  // operator's WG SERVER is entirely unconfigured (every wgs1_* key empty,
+  // nothing running) and their active WireGuard CLIENT (wgc1) is a separate
+  // nvram family/rc action restart_wgs cannot touch. Scope of the live test
+  // this lift enabled: nvram-landing only (wgs_addr/wgs_port through the
+  // wgs_unit redirect, server never enabled) — see
+  // docs/WRITE_PATH_CHARACTERIZATION.md §7. The peers page below and every
+  // other VPN page keep 'vpn'; confidence.write stays 'unverified-write'
+  // because only 2 of this page's 7 writable fields have been exercised
+  // live, and the restart_wgs-applies-to-running-interface question remains
+  // open (deliberately out of scope — testing it means starting a listening
+  // VPN service).
   confidence: { read: 'structural', write: 'unverified-write' },
-  writeExclusion: 'vpn',
   instance: {
     label: 'Server unit',
     options: [

@@ -300,6 +300,81 @@ the test, back on afterward). This closes the last untested field on
 
 ---
 
+## 7. Session 4 — WireGuard server `wgs_*` redirect (nvram-landing), 2026-07-31
+
+First live write in the `vpn` category, and the first live contact for the
+D-015 WireGuard write-path fix. `writeExclusion: 'vpn'` was lifted for the
+WireGuard Server page ONLY (D-030, operator-present decision mirroring
+D-022's framing); the peers page and every other VPN page keep the
+exclusion. Scope deliberately limited to **nvram landing**: the server was
+never enabled, so whether `restart_wgs` applies values to a *running*
+interface remains open (recorded, not silently dropped — testing it means
+starting a listening VPN service; declined this session).
+
+Preconditions that made this the chosen candidate: the operator's WG
+SERVER was entirely unconfigured (every `wgs1_*` key empty, nothing
+running, no peers), while their active WireGuard CLIENT (`wgc1_enable=1`)
+is a separate nvram family and rc action that `restart_wgs` cannot touch.
+
+### 7.1 Baseline (forced-fresh, before the lift was even built)
+
+`wgs_unit=1`; ALL of `wgs1_{enable,dns,nat6,psk,alive,addr,port,priv,pub}`
+empty; unindexed working-copy defaults present (`wgs_addr=10.6.0.1/32`,
+`wgs_port=51820` — the shared/defaults.c:5418-5419 values, which the test
+deliberately reused so even the working copies could not drift).
+
+### 7.2 Apply — extension UI, operator's click
+
+The UI's own `required` validation on address/port forced a two-field
+minimum test (validation runs over all visible fields, not just dirty
+ones). Enable was never touched, so it was never posted (delta design).
+
+- Payload (operator-reported from the extension's write inspector):
+  `action_mode=apply&rc_service=restart_wgs%3Brestart_dnsmasq&wgs_unit=1&wgs_addr=10.6.0.1%2F32&wgs_port=51820`
+- Response: `200 { "modify": "1", "run_service": "restart_wgs;restart_dnsmasq" }` (not trusted, per policy)
+- Extension verify: VERIFIED APPLIED — 1 read, 1022 ms into the 30000 ms
+  window after the page's 1000 ms actionWait settle, polling the
+  **indexed** keys (`wgs1_addr`, `wgs1_port`) — i.e. the redirect target,
+  not the posted names.
+- Independent full-family fresh read: `wgs1_addr="10.6.0.1/32"`,
+  `wgs1_port="51820"` — **the web.c:4746 `wgs_`→`wgs{unit}_` redirect
+  works on the deployed firmware**. Equally load-bearing negatives:
+  `wgs1_enable` still empty (server never started), `wgs1_priv`/`wgs1_pub`
+  still empty (**no key generation** — `restart_wgs` with the server
+  disabled self-gated exactly as the rc source predicted,
+  RC_SOURCE_FINDINGS §2), `wgc1_enable=1` untouched, `wgs_unit` unchanged.
+
+### 7.3 Revert — operator console paste (§5-addendum pattern)
+
+The UI cannot post a cleared required field (Apply grays out — logged as
+its own OPEN_LOOPS UX gap during this test), so the revert used the
+operator-pasted console fetch precedent, deliberately WITHOUT an
+`rc_service` (pure nvram write, no second dnsmasq blip):
+
+```javascript
+fetch('/applyapp.cgi', {method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'action_mode=apply&wgs_unit=1&wgs_addr=&wgs_port='})
+```
+
+Post-revert full-family fresh read: every `wgs1_*` key empty — **exact
+baseline restored** (empty-value posts flow through the same redirect
+into `nvram_set(tmp, "")`, web.c:4750, confirmed live). Working-copy
+defaults unchanged. Connectivity 9 ms (apply-side check was also 9 ms).
+
+### 7.4 What this session proves / leaves open
+
+- **Proves:** the D-008 Critical finding's fix (D-015) is real on this
+  deployed firmware — WireGuard server saves now land in nvram, in both
+  set and clear directions; the extension's verify correctly targets the
+  indexed keys; the `vpn`-category write mechanism (guard → delta build →
+  redirect → forced-fresh verify) works end to end.
+- **Leaves open:** whether `restart_wgs` applies redirected values to a
+  running interface (needs a supervised session willing to briefly enable
+  a zero-peer server — see OPEN_LOOPS); the remaining 5 writable fields
+  of the page (enable/dns/nat6/psk/alive) are still never-submitted, so
+  `confidence.write` stays `'unverified-write'`.
+
+---
+
 ## 4. Excluded categories — explicitly unresolved, carried forward
 
 The following were **hard-excluded from this session by the operator's own

@@ -1053,3 +1053,44 @@
   mid-test), so transport identity with D-022's session is inferred from
   the shared page def, while all state confirmations are direct live
   nvram reads.
+
+## D-030
+
+- Date: 2026-07-31
+- Status: Closed
+- Decision: With the operator present and explicitly choosing scope
+  option A of three offered ("nvram-landing only" vs. "full test incl.
+  brief enable" vs. "defer"), `writeExclusion: 'vpn'` was lifted for the
+  WireGuard Server page ONLY — the peers page and every other VPN page
+  keep the exclusion — and the D-015 write-path fix had its first live
+  contact: the operator submitted `wgs_addr=10.6.0.1/32` +
+  `wgs_port=51820` (native's own defaults, chosen so even the unindexed
+  working copies could not drift) through the extension's normal Apply,
+  with the server's enable field never touched. Both the extension's own
+  verify (polling the INDEXED `wgs1_*` keys — the redirect target) and an
+  independent full-family forced-fresh read confirmed the values landed;
+  `wgs1_priv`/`wgs1_pub` stayed empty (restart_wgs self-gated, no keygen,
+  matching RC_SOURCE_FINDINGS §2's prediction) and the operator's active
+  WireGuard CLIENT (`wgc1`, separate family/rc action) was untouched
+  throughout. Revert was an operator-pasted console fetch posting empty
+  values without an rc_service (§5-addendum precedent) — confirmed
+  restored to the byte-exact empty baseline, live-proving the
+  empty-value clear path (web.c:4750) as well. Full record:
+  docs/WRITE_PATH_CHARACTERIZATION.md §7.
+- Rationale: this closes, live, the nvram-landing half of the D-008
+  CRITICAL finding's fix — WireGuard server saves genuinely reach nvram
+  on the deployed firmware, in both set and clear directions — and
+  exercises the vpn-category write mechanism end to end for the first
+  time. `confidence.write` deliberately stays `'unverified-write'`: only
+  2 of the page's 7 writable fields have been live-submitted, and the
+  restart_wgs-applies-to-running-interface question remains open by
+  explicit operator choice (testing it means briefly running a
+  zero-peer listening server; offered, declined this session, recorded
+  in OPEN_LOOPS as the scoped follow-up). The lift itself stays in place
+  (as D-022's did), with the page-level comment documenting scope. Two
+  UX gaps surfaced during the test are logged as their own OPEN_LOOPS
+  entries rather than fixed mid-test: the revert-to-empty gap (required
+  validation makes clearing a field back to unset impossible through the
+  UI) and, from the same session minutes earlier, the Server 2
+  wall-of-text (fixed same session: instance-gated, warn-toned,
+  condensed summary banner).
