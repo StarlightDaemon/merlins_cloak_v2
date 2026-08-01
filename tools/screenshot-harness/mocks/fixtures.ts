@@ -154,7 +154,12 @@ export const FIXTURE_NVRAM: Record<string, string> = {
   //   idx5 Kids    (disabled)            -> apg3 "MerlinNet-Kids-Disabled"
   //     — enabled=0, exercises the dashboard's enabled-only filter (sdn.tsx's
   //     full list still shows it as "disabled").
+  //   idx0 DEFAULT (pre-seeded template row, live-observed on the RT-BE92U)
+  //     — exercises the SDN page's "System records" demotion (view-only, no
+  //     Edit/Delete: the write snapshot excludes idx 0, so an edit would
+  //     throw "not found").
   sdn_rl:
+    '<0>DEFAULT>1>0>0>0>>>>>>>>>>' +
     '<1>MAINFH>1>1>1>1>>>>>>>>>>' +
     '<2>Guest>1>2>2>1>>>>>>>>>>' +
     '<3>IoT>1>3>3>2>>>>>>>>>>' +

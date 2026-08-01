@@ -377,6 +377,64 @@ function SdnPage(props: PageProps) {
 
   const editingNetwork = modal?.mode === 'edit' ? (networks?.find((n) => n.idx === modal.idx) ?? null) : null;
 
+  // Grouping mirrors native's own show_sdn_profilelist() (sdn.js:10440-10499):
+  // native renders exactly two sections — "Main network" (MAINFH) and the
+  // guest/user-profile list — and HIDES idx 0 (DEFAULT) and MAINBH entirely.
+  // This page keeps those hidden rows visible, demoted into a third "System
+  // records" card (operator decision 2026-07-31: transparency over native
+  // parity — the operator first learned the backhaul record existed from this
+  // page). Rows in that card are always view-only regardless of their
+  // guest-class name check (DEFAULT's name would otherwise pass it).
+  const mainRows = (networks ?? []).filter((n) => n.name === 'MAINFH');
+  const systemRows = (networks ?? []).filter((n) => n.idx === '0' || n.name === 'MAINBH');
+  const guestRows = (networks ?? []).filter(
+    (n) => n.name !== 'MAINFH' && n.idx !== '0' && n.name !== 'MAINBH',
+  );
+
+  const renderTable = (rows: SdnNetwork[], withActions: boolean) => (
+    <table className="mc-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>SSID</th>
+          <th>State</th>
+          <th>Subnet</th>
+          <th>DHCP pool</th>
+          <th>Bands</th>
+          <th style={{ width: 160 }} />
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((n) => (
+          <tr key={n.idx}>
+            <td>{n.idx}</td>
+            <td>{SDN_TYPE_LABEL[n.name] ?? n.name}</td>
+            <td>{n.ssid || '—'}</td>
+            <td>{n.enabled ? <Badge tone="ok">enabled</Badge> : <Badge>disabled</Badge>}</td>
+            <td className="num">{n.subnet || '—'}</td>
+            <td className="num">{n.dhcp || '—'}</td>
+            <td>{bandsLabel(n.bands) || '—'}</td>
+            <td>
+              {withActions && n.isGuestClass ? (
+                <>
+                  <Button small disabled={busy} onClick={() => openEdit(n)}>
+                    Edit
+                  </Button>{' '}
+                  <Button small variant="danger" disabled={busy} onClick={() => void deleteNetwork(n)}>
+                    Delete
+                  </Button>
+                </>
+              ) : (
+                <span className="hint">view-only</span>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+
   return (
     <div>
       <h1 className="mc-page-title">Separate Networks & Guest Wi-Fi</h1>
@@ -392,60 +450,37 @@ function SdnPage(props: PageProps) {
       {!networks && !error ? (
         <Loading />
       ) : networks ? (
-        <Card
-          title={`Networks (${networks.length})`}
-          badge={
-            <Button small variant="primary" disabled={busy} onClick={openCreate}>
-              + New guest network
-            </Button>
-          }
-        >
-          {networks.length === 0 ? (
-            <EmptyState>No self-defined networks configured</EmptyState>
-          ) : (
-            <table className="mc-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Name</th>
-                  <th>SSID</th>
-                  <th>State</th>
-                  <th>Subnet</th>
-                  <th>DHCP pool</th>
-                  <th>Bands</th>
-                  <th style={{ width: 160 }} />
-                </tr>
-              </thead>
-              <tbody>
-                {networks.map((n) => (
-                  <tr key={n.idx}>
-                    <td>{n.idx}</td>
-                    <td>{SDN_TYPE_LABEL[n.name] ?? n.name}</td>
-                    <td>{n.ssid || '—'}</td>
-                    <td>{n.enabled ? <Badge tone="ok">enabled</Badge> : <Badge>disabled</Badge>}</td>
-                    <td className="num">{n.subnet || '—'}</td>
-                    <td className="num">{n.dhcp || '—'}</td>
-                    <td>{bandsLabel(n.bands) || '—'}</td>
-                    <td>
-                      {n.isGuestClass ? (
-                        <>
-                          <Button small disabled={busy} onClick={() => openEdit(n)}>
-                            Edit
-                          </Button>{' '}
-                          <Button small variant="danger" disabled={busy} onClick={() => void deleteNetwork(n)}>
-                            Delete
-                          </Button>
-                        </>
-                      ) : (
-                        <span className="hint">view-only</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <>
+          {mainRows.length > 0 && <Card title="Main network">{renderTable(mainRows, false)}</Card>}
+          <Card
+            title={`Guest & IoT networks (${guestRows.length})`}
+            badge={
+              <Button small variant="primary" disabled={busy} onClick={openCreate}>
+                + New guest network
+              </Button>
+            }
+          >
+            {guestRows.length === 0 ? (
+              <EmptyState>No guest networks configured</EmptyState>
+            ) : (
+              renderTable(guestRows, true)
+            )}
+          </Card>
+          {systemRows.length > 0 && (
+            <Card
+              title="System records"
+              note={
+                'Native’s own SDN page never displays these rows (sdn.js show_sdn_profilelist filters out ' +
+                'idx 0 and MAINBH). DEFAULT is the firmware’s pre-seeded template row — dropped by ' +
+                'native’s serializer on every write, never a live network. The AiMesh backhaul is the ' +
+                'dedicated router↔node mesh link, not a client-joinable network: the firmware blocks normal ' +
+                'clients on backhaul BSSes (ncb_enable, shared/defaults.c:3770) and its SSID is machine-generated.'
+              }
+            >
+              <div style={{ opacity: 0.7 }}>{renderTable(systemRows, false)}</div>
+            </Card>
           )}
-        </Card>
+        </>
       ) : null}
       {modal?.mode === 'create' && (
         <GuestProfileModal
