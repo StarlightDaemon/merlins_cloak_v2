@@ -636,18 +636,35 @@ actionable.
 ## 1.0-readiness pass, new items (2026-07-31)
 
 ### Dashboard network-centric SSID view — live confirmation pending
-- **Status:** Code shipped and harness-verified (`0df9636`); three
-  specific facts could not be verified without live hardware and belong
-  in the operator's next live pass:
-  1. Whether multiple MAINFH-tagged `sdn_rl` records actually occur with
-     Smart Connect off on this firmware (the code enumerates all matches
-     defensively; never exercised against real multi-MAINFH data).
-  2. Real-world `apg{idx}_dut_list` band-bitwise values (decode logic
-     sourced from native SDN.asp JS + `amas_apg_shared.h`, not a live
-     capture).
-  3. Whether MAINBH records carry a nonzero `apg_idx` in practice (both
-     cases handled; only the synthetic fixture exercises the name-based
-     filter path).
+- **Status: CLOSED 2026-07-31** (operator-present live session, read-only
+  observation against the RT-BE92U through the operator's authenticated
+  browser; raw values below are structural facts, not private data —
+  SSID strings themselves are not reproduced here). The three facts:
+  1. Multiple MAINFH with Smart Connect off: **not exercisable on this
+     deployment** — `smart_connect_x=1` (Smart Connect ON) and exactly
+     one MAINFH record exists (idx 2). Baseline documented; the SC-off
+     multi-MAINFH case remains defensive-only until some deployment
+     actually exhibits it. Not worth holding this loop open for.
+  2. Real `dut_list` band-bitwise values captured, all three shapes:
+     wildcard `<*>7>` (guest LEGACY, 2.4+5), wildcard `<*>87>`
+     (MAINFH main network, 2.4+5+6), and per-node-MAC
+     `<MAC>3>` (a guest profile bound to one AiMesh node, 2.4+5).
+     `decodeDutListBands`' bit interpretation confirmed against all
+     three.
+  3. MAINBH nonzero `apg_idx`: **yes — live MAINBH carries `apg_idx=2`**
+     (and MAINFH carries `apg_idx=1`). The name-based filter is
+     load-bearing; an `apg_idx !== '0'` check alone would not exclude
+     the backhaul row.
+- **Defect found by the same live data, fixed same day:** MAINFH/MAINBH
+  per-network fields live under `apm{idx}_*`, not `apg{idx}_*` (the two
+  pools' idx spaces overlap — live MAINFH `apg_idx=1` collides with
+  LEGACY's `apg_idx=1`), so the Dashboard "Main" row and the SDN
+  overview's MAINFH/MAINBH rows were resolving the *guest* pool's
+  SSID/bands. `lib/sdn.ts` gained `apPrefixForSdnName()`; `fetchSdnCore`
+  now fetches the correct family per record; both consumers updated; the
+  harness fixture now mirrors the live idx collision so a regression is
+  visible (Main would render the guest SSID). Read path only — no write
+  surface touched.
 - **Where:** `src/pages/defs/dashboard.tsx`, `src/lib/sdn.ts` (shared
   parser, also consumed by `sdn.tsx`).
 

@@ -82,6 +82,7 @@ import { useCallback, useEffect, useState } from 'react';
 import type { Capabilities } from '../../lib/capabilities';
 import { hasFlag } from '../../lib/capabilities';
 import {
+  apPrefixForSdnName,
   BAND_LABEL,
   BAND_ORDER,
   type Band,
@@ -115,17 +116,20 @@ interface SdnNetwork {
 }
 
 async function fetchSdn(): Promise<SdnNetwork[]> {
-  const { records, subnetByIdx, apgValues } = await fetchSdnCore();
+  const { records, subnetByIdx, apValues } = await fetchSdnCore();
   return records.map((r) => {
     const subnet = subnetByIdx.get(r.subnetIdx);
     const apg = r.apgIdx;
+    // MAINFH/MAINBH per-network fields live under apm{idx}_*, not apg{idx}_*
+    // (overlapping idx pools — lib/sdn.ts apPrefixForSdnName).
+    const prefix = apPrefixForSdnName(r.name);
     return {
       idx: r.idx,
       name: r.name,
       enabled: r.enabled,
       apgIdx: apg,
-      ssid: apgValues[`apg${apg}_ssid`] ?? '',
-      bands: decodeDutListBands(apgValues[`apg${apg}_dut_list`]),
+      ssid: apValues[`${prefix}${apg}_ssid`] ?? '',
+      bands: decodeDutListBands(apValues[`${prefix}${apg}_dut_list`]),
       subnet: subnet ? `${subnet[2]}/${subnet[3]}` : '',
       dhcp: subnet ? (subnet[4] === '1' ? `${subnet[5]} – ${subnet[6]}` : 'DHCP off') : '',
       isGuestClass: isGuestClassSdnName(r.name),

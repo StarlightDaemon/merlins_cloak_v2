@@ -130,50 +130,54 @@ export const FIXTURE_NVRAM: Record<string, string> = {
   wl1_ssid: 'MerlinNet-Demo-5G',
   wl2_ssid: 'MerlinNet-Demo-6G',
 
-  // --- dashboard (SDN path) / SDN.asp: sdn_rl + subnet_rl + apg{idx}_* ---
+  // --- dashboard (SDN path) / SDN.asp: sdn_rl + subnet_rl + apg/apm{idx}_* ---
   // Format reference: lib/sdn.ts header comment, RAW/merlin/.../shared/
   // amas_apg_shared.h (~93-273) and RAW SDN.asp sdn.js get_dut_list()
   // (~11542-11594, dut_list record shape `<mac>bandBitwise>lanport`).
   // sdn_rl columns: idx>name>enable>vlan_idx>subnet_idx>apg_idx>… (rest
   // unused by this extension's read path, left blank).
-  // Four networks modeled, all FICTIONAL:
-  //   idx1 MAINFH  (Main, all 3 bands)   -> apg1 "MerlinNet-Demo"
-  //   idx2 Guest   (2.4+5 GHz)           -> apg2 "MerlinNet-Guest"
-  //   idx3 IoT     (2.4 GHz only)        -> apg3 "MerlinNet-IoT"
-  //   idx4 MAINBH  (AiMesh backhaul, all 3 bands) -> apg4 "MerlinNet-Demo-BH"
+  // MAINFH/MAINBH per-network fields live under apm{idx}_*, guest-class under
+  // apg{idx}_*, and the two pools' idx spaces OVERLAP — this fixture
+  // deliberately mirrors the live RT-BE92U layout that caught the apm/apg
+  // mix-up (2026-07-31): MAINFH apg_idx=1 (apm pool) collides with the guest
+  // row's apg_idx=1 (apg pool), so resolving the wrong family for a MAINFH
+  // row visibly shows the guest SSID as "Main".
+  // Five networks modeled, all FICTIONAL:
+  //   idx1 MAINFH  (Main, all 3 bands)   -> apm1 "MerlinNet-Demo" (wildcard dut_list, live-observed shape)
+  //   idx2 Guest   (2.4+5 GHz)           -> apg1 "MerlinNet-Guest"
+  //   idx3 IoT     (2.4 GHz only)        -> apg2 "MerlinNet-IoT"
+  //   idx4 MAINBH  (AiMesh backhaul, all 3 bands) -> apm2 "MerlinNet-Demo-BH"
   //     — enabled and carries a normal apg_idx/SSID/dut_list on purpose, so
   //     the fixture actually exercises the dashboard's MAINBH name filter
   //     (sdn.tsx's full list still shows it; the dashboard's network table
   //     must not).
-  //   idx5 Kids    (disabled)            -> apg5 "MerlinNet-Kids-Disabled"
+  //   idx5 Kids    (disabled)            -> apg3 "MerlinNet-Kids-Disabled"
   //     — enabled=0, exercises the dashboard's enabled-only filter (sdn.tsx's
   //     full list still shows it as "disabled").
   sdn_rl:
     '<1>MAINFH>1>1>1>1>>>>>>>>>>' +
-    '<2>Guest>1>2>2>2>>>>>>>>>>' +
-    '<3>IoT>1>3>3>3>>>>>>>>>>' +
-    '<4>MAINBH>1>1>1>4>>>>>>>>>>' +
-    '<5>Kids>0>5>5>5>>>>>>>>>>',
+    '<2>Guest>1>2>2>1>>>>>>>>>>' +
+    '<3>IoT>1>3>3>2>>>>>>>>>>' +
+    '<4>MAINBH>1>1>1>2>>>>>>>>>>' +
+    '<5>Kids>0>5>5>3>>>>>>>>>>',
   subnet_rl:
     '<1>br0>192.168.50.1>255.255.255.0>1>192.168.50.100>192.168.50.200>' +
     '<2>br1>192.168.20.1>255.255.255.0>1>192.168.20.100>192.168.20.200>' +
     '<3>br2>192.168.30.1>255.255.255.0>1>192.168.30.100>192.168.30.200>' +
     '<5>br4>192.168.40.1>255.255.255.0>1>192.168.40.100>192.168.40.200>',
-  apg1_ssid: 'MerlinNet-Demo',
-  apg1_dut_list: '<02:1A:2B:00:20:01>19>', // 19 = 1 (2.4G) | 2 (5G) | 16 (6G)
+  apm1_ssid: 'MerlinNet-Demo',
+  apm1_dut_list: '<*>87>', // 87 = 1 (2.4G) | 2|4 (5G) | 16|64 (6G) — live-observed wildcard form
+  apm2_ssid: 'MerlinNet-Demo-BH',
+  apm2_dut_list: '<02:1A:2B:00:20:01>19>', // 19 = 1 (2.4G) | 2 (5G) | 16 (6G)
+  apg1_ssid: 'MerlinNet-Guest',
+  apg1_dut_list: '<02:1A:2B:00:20:01>3>', // 3 = 1 (2.4G) | 2 (5G)
   apg1_enable: '1',
-  apg2_ssid: 'MerlinNet-Guest',
-  apg2_dut_list: '<02:1A:2B:00:20:01>3>', // 3 = 1 (2.4G) | 2 (5G)
+  apg2_ssid: 'MerlinNet-IoT',
+  apg2_dut_list: '<02:1A:2B:00:20:01>1>', // 1 = 2.4G only
   apg2_enable: '1',
-  apg3_ssid: 'MerlinNet-IoT',
-  apg3_dut_list: '<02:1A:2B:00:20:01>1>', // 1 = 2.4G only
-  apg3_enable: '1',
-  apg4_ssid: 'MerlinNet-Demo-BH',
-  apg4_dut_list: '<02:1A:2B:00:20:01>19>',
-  apg4_enable: '1',
-  apg5_ssid: 'MerlinNet-Kids-Disabled',
-  apg5_dut_list: '<02:1A:2B:00:20:01>1>',
-  apg5_enable: '0',
+  apg3_ssid: 'MerlinNet-Kids-Disabled',
+  apg3_dut_list: '<02:1A:2B:00:20:01>1>',
+  apg3_enable: '0',
 
   // --- DHCP settings page (pages/defs/lan.ts dhcpPage) ---
   dhcp_enable_x: '1',

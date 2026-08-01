@@ -4,8 +4,10 @@
  *
  * SDN-managed units (mtlancfg_support, ASUSWRT 5.0): the wl0/1/2_ssid nvram
  * values are NOT the broadcast SSIDs (live-observed: derived placeholders,
- * e.g. a 32-hex string) — real SSIDs live one-per-network in apg{idx}_ssid,
- * each bound to a set of bands via apg{idx}_dut_list (a band can carry
+ * e.g. a 32-hex string) — real SSIDs live one-per-network in apg{idx}_ssid
+ * (guest-class rows) / apm{idx}_ssid (MAINFH/MAINBH rows; separate pool,
+ * overlapping idx space — lib/sdn.ts apPrefixForSdnName),
+ * each bound to a set of bands via the matching {apg|apm}{idx}_dut_list (a band can carry
  * multiple SSIDs: Main, Guest, IoT, …). The old band-row table here used to
  * resolve only the first MAINFH record and paint its SSID onto all three
  * band rows, hiding every other configured network. On SDN units this now
@@ -42,7 +44,7 @@
 import { useEffect, useState } from 'react';
 import { appGet, nvramCharToAscii, nvramGet } from '../../lib/router-io';
 import { hasFlag } from '../../lib/capabilities';
-import { BAND_LABEL, BAND_ORDER, decodeDutListBands, fetchSdnCore, SDN_TYPE_LABEL, type Band } from '../../lib/sdn';
+import { apPrefixForSdnName, BAND_LABEL, BAND_ORDER, decodeDutListBands, fetchSdnCore, SDN_TYPE_LABEL, type Band } from '../../lib/sdn';
 import type { PageProps } from '../types';
 import { Badge, Banner, Card, Loading } from '../../ui/components';
 
@@ -193,22 +195,27 @@ export function DashboardPage({ caps }: PageProps) {
         let sdnNetworks: DashData['sdnNetworks'];
         let legacyRadios: DashData['legacyRadios'];
         if (hasFlag(caps, 'mtlancfg_support')) {
-          // SDN-managed unit: one SSID per network (apg{idx}_ssid), each bound
-          // to a set of bands via apg{idx}_dut_list — a band can carry
-          // multiple SSIDs (Main, Guest, IoT, …), so this is network-centric,
-          // not band-centric. Enumerate every enabled, non-backhaul record
-          // (never just the first MAINFH match: Smart Connect off can leave
-          // multiple MAINFH-tagged records, each with its own bands).
+          // SDN-managed unit: one SSID per network, each bound to a set of
+          // bands via its dut_list — a band can carry multiple SSIDs (Main,
+          // Guest, IoT, …), so this is network-centric, not band-centric.
+          // Enumerate every enabled, non-backhaul record (never just the
+          // first MAINFH match: Smart Connect off can leave multiple
+          // MAINFH-tagged records, each with its own bands). The nvram family
+          // is per-record: guest-class rows read apg{idx}_*, MAINFH reads
+          // apm{idx}_* — the pools' idx spaces overlap, so using apg for a
+          // MAINFH row shows a guest SSID as "Main" (live-caught on the
+          // RT-BE92U 2026-07-31; see lib/sdn.ts apPrefixForSdnName).
           try {
-            const { records, apgValues } = await fetchSdnCore();
+            const { records, apValues } = await fetchSdnCore();
             sdnNetworks = records
               .filter((r) => r.enabled && r.name !== 'MAINBH' && r.apgIdx && r.apgIdx !== '0')
               .map((r) => {
-                const dutBands = decodeDutListBands(apgValues[`apg${r.apgIdx}_dut_list`]);
+                const prefix = apPrefixForSdnName(r.name);
+                const dutBands = decodeDutListBands(apValues[`${prefix}${r.apgIdx}_dut_list`]);
                 return {
                   idx: r.idx,
                   label: r.name === 'MAINFH' ? 'Main' : (SDN_TYPE_LABEL[r.name] ?? r.name),
-                  ssid: apgValues[`apg${r.apgIdx}_ssid`] ?? '',
+                  ssid: apValues[`${prefix}${r.apgIdx}_ssid`] ?? '',
                   bands: BAND_ORDER.filter((b) => dutBands.has(b)),
                 };
               });

@@ -1,6 +1,7 @@
 /**
  * Shared SDN (Self-Defined Networks / Guest Network Pro) record parsing —
- * sdn_rl / subnet_rl / apg{idx}_* nvram families. Consumed by both
+ * sdn_rl / subnet_rl / apg{idx}_* (guest-class) and apm{idx}_* (MAINFH/
+ * MAINBH) nvram families. Consumed by both
  * pages/defs/sdn.tsx (the full read-only network list) and
  * pages/defs/dashboard.tsx (the SDN-aware "Wireless networks" summary),
  * factored here so both read the identical field layout instead of two
@@ -96,33 +97,64 @@ export function decodeDutListBands(dutList: string | undefined): Set<Band> {
   return bands;
 }
 
+/**
+ * nvram family prefix for one sdn_rl record's per-network fields (ssid,
+ * dut_list, …): guest-class profiles use apg{idx}_*, while MAINFH/MAINBH use
+ * the SEPARATE apm{idx}_* family (native sdn.js's ap_prefix branch,
+ * sdn.js:9552, web.c:3866-3882 — the same split the write-path guards below
+ * are built around). The two pools' idx spaces overlap: live-confirmed on the
+ * RT-BE92U (2026-07-31), where MAINFH carried apg_idx=1 (apm pool) alongside
+ * LEGACY's apg_idx=1 (apg pool) — reading apg1_* for the MAINFH row rendered
+ * the guest network's SSID as the main network's.
+ */
+export function apPrefixForSdnName(name: string): 'apg' | 'apm' {
+  return isGuestClassSdnName(name) ? 'apg' : 'apm';
+}
+
 export interface SdnCore {
   records: SdnRecord[];
   subnetByIdx: Map<string, string[]>;
-  /** apg{idx}_ssid / apg{idx}_dut_list (ascii) and apg{idx}_enable (plain), keyed by full nvram name. */
-  apgValues: Record<string, string>;
+  /**
+   * Per-network detail values keyed by full nvram name: {apg|apm}{idx}_ssid /
+   * {apg|apm}{idx}_dut_list (ascii) for every record with a nonzero apg_idx
+   * (family per apPrefixForSdnName), plus apg{idx}_enable (plain) for
+   * guest-class records.
+   */
+  apValues: Record<string, string>;
 }
 
 /**
- * Fetch sdn_rl + subnet_rl and every referenced apg{idx}_{ssid,dut_list,enable}.
- * The apg detail read is best-effort (mirrors sdn.tsx's original fetchSdn):
- * a failure there still leaves the sdn_rl/subnet_rl skeleton usable by the
- * caller, just without per-network SSID/band detail.
+ * Fetch sdn_rl + subnet_rl and every referenced {apg|apm}{idx}_{ssid,dut_list}
+ * (+ apg{idx}_enable for guest-class records). The detail read is best-effort
+ * (mirrors sdn.tsx's original fetchSdn): a failure there still leaves the
+ * sdn_rl/subnet_rl skeleton usable by the caller, just without per-network
+ * SSID/band detail.
  */
 export async function fetchSdnCore(): Promise<SdnCore> {
   const lists = await nvramCharToAscii(['sdn_rl', 'subnet_rl']);
   const records = parseSdnRl(lists.sdn_rl);
   const subnetByIdx = parseSubnetRl(lists.subnet_rl);
-  const apgIdxes = records.map((r) => r.apgIdx).filter((v) => v && v !== '0');
-  const apgKeys = apgIdxes.flatMap((i) => [`apg${i}_ssid`, `apg${i}_dut_list`]);
-  const apgEnable = apgIdxes.map((i) => `apg${i}_enable`);
-  let apgValues: Record<string, string> = {};
+  const withIdx = records.filter((r) => r.apgIdx && r.apgIdx !== '0');
+  const asciiKeys = [
+    ...new Set(
+      withIdx.flatMap((r) => {
+        const p = apPrefixForSdnName(r.name);
+        return [`${p}${r.apgIdx}_ssid`, `${p}${r.apgIdx}_dut_list`];
+      }),
+    ),
+  ];
+  const apgEnable = [
+    ...new Set(
+      withIdx.filter((r) => apPrefixForSdnName(r.name) === 'apg').map((r) => `apg${r.apgIdx}_enable`),
+    ),
+  ];
+  let apValues: Record<string, string> = {};
   try {
-    apgValues = { ...(await nvramCharToAscii(apgKeys)), ...(await nvramGet(apgEnable)) };
+    apValues = { ...(await nvramCharToAscii(asciiKeys)), ...(await nvramGet(apgEnable)) };
   } catch {
     // per-network detail is best-effort; the sdn_rl skeleton still renders
   }
-  return { records, subnetByIdx, apgValues };
+  return { records, subnetByIdx, apValues };
 }
 
 // =============================================================================
