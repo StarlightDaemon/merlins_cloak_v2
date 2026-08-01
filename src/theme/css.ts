@@ -532,6 +532,8 @@ ${varsToCssLines(buildThemeVars())}
 .mc-kv-line dt { color: var(--fujin-text-secondary); flex: none; }
 .mc-kv-line dd { margin: 0; font-family: var(--fujin-font-family-mono); font-size: 12px; flex: 1; text-align: right; }
 .mc-nowrap { white-space: nowrap; }
+/* Free-input control + its Clear-to-empty button on one line. */
+.mc-clearable { display: inline-flex; align-items: center; gap: 8px; }
 .mc-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
 
 /*

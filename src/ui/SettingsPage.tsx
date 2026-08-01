@@ -36,10 +36,19 @@ import {
 } from './components';
 import { ListEditor, validateRuleList } from './ListEditor';
 
-function validateField(f: FieldDef, value: string): string | null {
+function validateField(f: FieldDef, value: string, emptyIntended = false): string | null {
   if (f.control === 'list' && f.list) return validateRuleList(value, f.list);
   const v = f.validate;
   if (!v) return null;
+  // An empty value that is the field's INTENDED state — explicitly cleared
+  // via the Clear action, or pristine-unset (baseline empty and the value
+  // still equal to it) — is valid as-is: the firmware accepts empty for
+  // every plain nvram field (web.c:4750 nvram_set(tmp, "")), so
+  // required/min/pattern describe non-empty *input*, not an obligation to
+  // configure the feature. Backspacing a required field to empty without
+  // the Clear action still errors — that is how "empty because clearing"
+  // stays distinguishable from "empty because incomplete".
+  if (emptyIntended && value.trim() === '') return null;
   if (v.required && value.trim() === '') return 'Required';
   if (v.min !== undefined || v.max !== undefined) {
     const n = Number(value);
@@ -57,11 +66,14 @@ function FieldControl({
   value,
   onChange,
   caps,
+  emptyOk,
 }: {
   field: FieldDef;
   value: string;
   onChange: (v: string) => void;
   caps: Capabilities;
+  /** Empty is this field's intended state (cleared / pristine-unset) — suppress invalid styling for it. */
+  emptyOk?: boolean;
 }) {
   switch (field.control) {
     case 'toggle': {
@@ -91,13 +103,13 @@ function FieldControl({
     case 'readonly':
       return <code>{value || '—'}</code>;
     case 'number':
-      return <TextInput value={value} onChange={onChange} width={140} invalid={validateField(field, value) !== null} />;
+      return <TextInput value={value} onChange={onChange} width={140} invalid={validateField(field, value, emptyOk) !== null} />;
     case 'password':
       return <TextInput value={value} onChange={onChange} type="password" width={260} />;
     case 'list':
       return field.list ? <ListEditor spec={field.list} value={value} onChange={onChange} /> : null;
     default:
-      return <TextInput value={value} onChange={onChange} width={260} invalid={validateField(field, value) !== null} />;
+      return <TextInput value={value} onChange={onChange} width={260} invalid={validateField(field, value, emptyOk) !== null} />;
   }
 }
 
@@ -109,6 +121,14 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
   const [applyProgress, setApplyProgress] = useState<ApplyProgressState | null>(null);
   const [outcome, setOutcome] = useState<GuardedWriteOutcome | null>(null);
   const [eulaAccepted, setEulaAccepted] = useState<boolean | null>(null);
+  /**
+   * Keys the operator explicitly set to empty via the field's Clear action.
+   * Marks "empty because clearing" (a real write of an explicit empty value,
+   * exempt from required validation) as distinct from "empty because
+   * incomplete input" (still an error). Typing in a field un-marks it;
+   * Revert and every reload reset the whole set.
+   */
+  const [cleared, setCleared] = useState<Set<string>>(() => new Set());
 
   const instanceOptions = useMemo(
     () => (def.instance ? def.instance.options.filter((o) => !o.gate || o.gate(caps)) : []),
@@ -161,6 +181,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
       if (eula !== null) setEulaAccepted(eula);
       setBaseline(merged);
       setValues(merged);
+      setCleared(new Set());
     } catch (e) {
       if (gen !== loadGen.current) return; // superseded by a newer load
       setLoadError(e instanceof Error ? e.message : String(e));
@@ -182,15 +203,38 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
     return d;
   }, [values, baseline, allFields]);
 
+  /** Empty is this field's intended state: explicitly cleared, or pristine-unset (see validateField). */
+  const emptyIntended = useCallback(
+    (key: string) => cleared.has(key) || ((baseline?.[key] ?? '') === '' && (values[key] ?? '') === ''),
+    [cleared, baseline, values],
+  );
+
   const errors = useMemo(() => {
     const errs: Record<string, string> = {};
     for (const f of allFields) {
       if (f.showIf && !f.showIf(values, caps)) continue;
-      const err = validateField(f, values[f.key] ?? '');
+      const err = validateField(f, values[f.key] ?? '', emptyIntended(f.key));
       if (err) errs[f.key] = err;
     }
     return errs;
-  }, [values, allFields, caps]);
+  }, [values, allFields, caps, emptyIntended]);
+
+  /** User edit: set the value and un-mark any explicit clear — typed input validates normally again. */
+  const setFieldValue = useCallback((key: string, v: string) => {
+    setValues((s) => ({ ...s, [key]: v }));
+    setCleared((s) => {
+      if (!s.has(key)) return s;
+      const next = new Set(s);
+      next.delete(key);
+      return next;
+    });
+  }, []);
+
+  /** Clear action: an explicit empty value becomes the field's intended state. */
+  const clearField = useCallback((key: string) => {
+    setValues((s) => ({ ...s, [key]: '' }));
+    setCleared((s) => new Set(s).add(key));
+  }, []);
 
   const dirtyCount = Object.keys(dirty).length;
   const hasErrors = Object.keys(errors).length > 0;
@@ -333,8 +377,30 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
             if (visible.length === 0) return null;
             return (
               <Card key={i} title={section.title} note={section.note}>
-                {visible.map((f) =>
-                  f.control === 'list' ? (
+                {visible.map((f) => {
+                  // Clear-to-empty affordance: only meaningful on writable
+                  // pages, for free-input controls whose required validation
+                  // would otherwise make an empty value inexpressible
+                  // (operator-surfaced during the D-030 WireGuard revert).
+                  const clearable =
+                    Boolean(def.write) &&
+                    Boolean(f.validate?.required) &&
+                    ['text', 'number', 'password', 'textarea'].includes(f.control ?? 'text');
+                  const clearBtn = clearable && (
+                    <Button
+                      small
+                      title="Set this field to empty — Apply will write an explicit empty value, clearing the setting on the router"
+                      onClick={() => clearField(f.key)}
+                      disabled={
+                        busy ||
+                        ((values[f.key] ?? '') === '' &&
+                          (cleared.has(f.key) || (baseline[f.key] ?? '') === ''))
+                      }
+                    >
+                      Clear
+                    </Button>
+                  );
+                  return f.control === 'list' ? (
                     <div key={f.key} className={`mc-row mc-row--stack${dirty[f.key] !== undefined ? ' is-dirty' : ''}`}>
                       <div className="mc-row__label">
                         {f.label}
@@ -343,7 +409,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
                       <FieldControl
                         field={f}
                         value={values[f.key] ?? ''}
-                        onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
+                        onChange={(v) => setFieldValue(f.key, v)}
                         caps={caps}
                       />
                       {errors[f.key] && <span className="mc-row__error">{errors[f.key]}</span>}
@@ -356,15 +422,29 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
                       error={errors[f.key]}
                       dirty={dirty[f.key] !== undefined}
                     >
-                      <FieldControl
-                        field={f}
-                        value={values[f.key] ?? ''}
-                        onChange={(v) => setValues((s) => ({ ...s, [f.key]: v }))}
-                        caps={caps}
-                      />
+                      {clearBtn ? (
+                        <span className="mc-clearable">
+                          <FieldControl
+                            field={f}
+                            value={values[f.key] ?? ''}
+                            onChange={(v) => setFieldValue(f.key, v)}
+                            caps={caps}
+                            emptyOk={emptyIntended(f.key)}
+                          />
+                          {clearBtn}
+                        </span>
+                      ) : (
+                        <FieldControl
+                          field={f}
+                          value={values[f.key] ?? ''}
+                          onChange={(v) => setFieldValue(f.key, v)}
+                          caps={caps}
+                          emptyOk={emptyIntended(f.key)}
+                        />
+                      )}
                     </Row>
-                  ),
-                )}
+                  );
+                })}
               </Card>
             );
           })}
@@ -376,7 +456,13 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
                 {hasErrors && ' · fix validation errors to apply'}
                 {isReadOnlyMode() && ' · read-only mode: Apply will preview the request without sending'}
               </div>
-              <Button onClick={() => setValues(baseline)} disabled={busy}>
+              <Button
+                onClick={() => {
+                  setValues(baseline);
+                  setCleared(new Set());
+                }}
+                disabled={busy}
+              >
                 Revert
               </Button>
               <Button variant="primary" onClick={() => void apply()} disabled={busy || hasErrors}>

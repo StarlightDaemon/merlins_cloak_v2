@@ -789,7 +789,20 @@ actionable.
   and `src/ui/SettingsPage.tsx` (`FieldControl`).
 
 ### No UI affordance to clear a field back to unset (revert-to-empty gap)
-- **Status:** Open, operator-surfaced 2026-07-31 during the WireGuard
+- **Status:** CLOSED 2026-08-01 (operator chose the per-field Clear
+  action). `SettingsPage.tsx` now tracks an explicit `cleared` set: a
+  Clear button (writable pages only; free-input controls with
+  `validate.required`) sets the value to an *intended* empty — exempt
+  from validation, posted as an explicit empty value in the delta, and
+  verified as `""`. Typing un-marks the clear (backspacing to empty
+  still errors Required, keeping "clearing" and "incomplete"
+  distinguishable); Revert/reload reset the set. Pristine-unset fields
+  (baseline empty, value untouched) are also no longer validation
+  errors, so a half-configured page can apply unrelated edits. All
+  design questions in the original entry resolved as above;
+  harness-verified on the WireGuard Server page including a dry-run
+  payload carrying `wgs_addr=` (explicit empty).
+- **Original entry:** operator-surfaced 2026-07-31 during the WireGuard
   server live test (D-030). Fields whose nvram baseline is unset/empty
   but whose FieldDef carries `validate.required` (e.g. `wgs{p}_addr`,
   `wgs{p}_port`) cannot be returned to that baseline through the UI:
