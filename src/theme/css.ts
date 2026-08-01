@@ -532,6 +532,22 @@ ${varsToCssLines(buildThemeVars())}
 .mc-kv { display: grid; grid-template-columns: fit-content(180px) minmax(0, 1fr); gap: 4px 16px; font-size: 12.5px; }
 .mc-kv dt { color: var(--fujin-text-secondary); }
 .mc-kv dd { margin: 0; font-family: var(--fujin-font-family-mono); font-size: 12px; }
+/*
+ * .mc-kv-line: single-line key/value rows (label left, value pushed to the
+ * card's right edge), each dt/dd pair wrapped in a <div> row. Overflow is
+ * handled per row by flex-wrap, not by a container-width breakpoint: the dd
+ * (flex: 1, basis 0) stays on the label's line as long as its min-content
+ * width fits — a multi-token value (DNS list) wraps at token boundaries
+ * inside its own box, while an atomic .mc-nowrap value has no break
+ * opportunities so its min-content is the whole token and the row wraps the
+ * dd to a full-width line of its own instead. Either way a token is never
+ * split mid-token and nothing clips, which is the operator's standing
+ * overflow criterion. Values are right-aligned in both positions.
+ */
+.mc-kv-line { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; margin: 0; }
+.mc-kv-line > div { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 16px; row-gap: 2px; }
+.mc-kv-line dt { color: var(--fujin-text-secondary); flex: none; }
+.mc-kv-line dd { margin: 0; font-family: var(--fujin-font-family-mono); font-size: 12px; flex: 1; text-align: right; }
 .mc-nowrap { white-space: nowrap; }
 .mc-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 26px; }
 

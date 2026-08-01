@@ -810,8 +810,19 @@ actionable.
   `src/pages/types.ts` (FieldDef), any affected page defs.
 
 ### Router Status card layout — label-left / value-right rows
-- **Status:** Open, operator-requested 2026-07-31 (live session, observed
-  on the real dashboard). The Router Status page's cards (Internet,
+- **Status:** CLOSED 2026-08-01 for the requested target (Router Status
+  page). New `.mc-kv-line` class (`src/theme/css.ts`): each dt/dd pair is
+  a flex-wrap row — label left, value right-aligned on the same line at
+  every width. Overflow honors the operator's criterion per row rather
+  than via a breakpoint: a multi-token value (DNS list) wraps at token
+  boundaries inside its box; an atomic `.mc-nowrap` value drops whole to
+  its own line; nothing clips or splits mid-token (harness-verified at
+  700/520/380/300px content widths with a live-shaped 3-address DNS
+  list). All three dashboard cards (Internet, Router, dual-WAN variant)
+  migrated. **Residual:** whether to generalize to the other `mc-kv`
+  consumers (`extension.tsx`, `nettools.tsx`) is an operator style call,
+  not yet asked — `mc-kv` itself left untouched for them.
+- **Original request:** The Router Status page's cards (Internet,
   Router, and siblings) currently stack each field's label above its
   value, so every field costs two visual lines ("WAN IP" on one line,
   the address under it; "Firmware" / version; "Gateway" / IP; etc.).

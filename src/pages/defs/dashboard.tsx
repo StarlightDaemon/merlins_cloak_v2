@@ -270,15 +270,23 @@ export function DashboardPage({ caps }: PageProps) {
     const wan = wanStateBadge(data.wanState);
     const routerCard = (
       <Card title="Router">
-        <dl className="mc-kv">
-          <dt>LAN IP</dt>
-          <dd className="mc-nowrap">{data.lanIp}</dd>
-          <dt>Firmware</dt>
-          <dd className="mc-nowrap">{caps.identity.displayVersion}</dd>
-          <dt>Branch</dt>
-          <dd className="mc-nowrap">{caps.identity.branch === 'merlin' ? 'Asuswrt-Merlin' : caps.identity.branch}</dd>
-          <dt>Uptime</dt>
-          <dd>{data.uptimeStr || '—'}</dd>
+        <dl className="mc-kv-line">
+          <div>
+            <dt>LAN IP</dt>
+            <dd className="mc-nowrap">{data.lanIp}</dd>
+          </div>
+          <div>
+            <dt>Firmware</dt>
+            <dd className="mc-nowrap">{caps.identity.displayVersion}</dd>
+          </div>
+          <div>
+            <dt>Branch</dt>
+            <dd className="mc-nowrap">{caps.identity.branch === 'merlin' ? 'Asuswrt-Merlin' : caps.identity.branch}</dd>
+          </div>
+          <div>
+            <dt>Uptime</dt>
+            <dd>{data.uptimeStr || '—'}</dd>
+          </div>
         </dl>
       </Card>
     );
@@ -301,15 +309,23 @@ export function DashboardPage({ caps }: PageProps) {
                 const badge = wanStateBadge(u.state);
                 return (
                   <Card key={u.unit} title={`Internet — ${roleLabel}`} badge={<Badge tone={badge.tone}>{badge.label}</Badge>}>
-                    <dl className="mc-kv">
-                      <dt>WAN IP</dt>
-                      <dd className="mc-nowrap">{u.ip || '—'}</dd>
-                      <dt>Gateway</dt>
-                      <dd className="mc-nowrap">{u.gateway || '—'}</dd>
-                      <dt>DNS</dt>
-                      <dd>{u.dns || '—'}</dd>
-                      <dt>Connection type</dt>
-                      <dd className="mc-nowrap">{u.proto || '—'}</dd>
+                    <dl className="mc-kv-line">
+                      <div>
+                        <dt>WAN IP</dt>
+                        <dd className="mc-nowrap">{u.ip || '—'}</dd>
+                      </div>
+                      <div>
+                        <dt>Gateway</dt>
+                        <dd className="mc-nowrap">{u.gateway || '—'}</dd>
+                      </div>
+                      <div>
+                        <dt>DNS</dt>
+                        <dd>{u.dns || '—'}</dd>
+                      </div>
+                      <div>
+                        <dt>Connection type</dt>
+                        <dd className="mc-nowrap">{u.proto || '—'}</dd>
+                      </div>
                     </dl>
                   </Card>
                 );
@@ -320,15 +336,23 @@ export function DashboardPage({ caps }: PageProps) {
         ) : (
           <div className="mc-grid-2">
             <Card title="Internet" badge={<Badge tone={wan.tone}>{wan.label}</Badge>}>
-              <dl className="mc-kv">
-                <dt>WAN IP</dt>
-                <dd className="mc-nowrap">{data.wanIp || '—'}</dd>
-                <dt>Gateway</dt>
-                <dd className="mc-nowrap">{data.wanGateway || '—'}</dd>
-                <dt>DNS</dt>
-                <dd>{data.wanDns || '—'}</dd>
-                <dt>Connection type</dt>
-                <dd className="mc-nowrap">{data.wanProto || '—'}</dd>
+              <dl className="mc-kv-line">
+                <div>
+                  <dt>WAN IP</dt>
+                  <dd className="mc-nowrap">{data.wanIp || '—'}</dd>
+                </div>
+                <div>
+                  <dt>Gateway</dt>
+                  <dd className="mc-nowrap">{data.wanGateway || '—'}</dd>
+                </div>
+                <div>
+                  <dt>DNS</dt>
+                  <dd>{data.wanDns || '—'}</dd>
+                </div>
+                <div>
+                  <dt>Connection type</dt>
+                  <dd className="mc-nowrap">{data.wanProto || '—'}</dd>
+                </div>
               </dl>
             </Card>
             {routerCard}
