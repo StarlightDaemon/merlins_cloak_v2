@@ -693,13 +693,16 @@ actionable.
   push is operator-authorized).
 
 ### `wps_band_x` — untested field on an otherwise live-verified page
-- **Status:** Open. `wpsPage`'s `wps_enable` field is now live-verified
-  bidirectionally (D-022); `wps_band_x` (the WPS target-band picker,
-  relabeled and gated in D-023) has never been submitted. Low risk —
-  the field only selects which radio accepts the next WPS pairing
-  request, doesn't touch SSID/security/channel — but unverified is
-  unverified. A natural next low-risk supervised test if more wireless
-  write-path coverage is wanted.
+- **Status: CLOSED 2026-07-31** (operator-present live session, D-029).
+  Submitted bidirectionally by the operator's own click (0→1, then 1→0),
+  each direction independently confirmed by a forced-fresh nvram re-read;
+  delta-write held (`wps_enable` not posted, value untouched); router
+  uptime confirmed continuous across both submits (no reboot — the
+  operator-observed "everything restarted" was client-side reassociation
+  fallout from `restart_wireless`, matching D-022's observation).
+  `wpsPage.confidence.write` is now `'live-verified'` — both of the
+  page's fields have been exercised live. Full record:
+  `docs/WRITE_PATH_CHARACTERIZATION.md` §6.
 - **Where:** `src/pages/defs/wireless.ts` `wpsPage`.
 
 ### `band5g_2_support` hardware — WPS "5 GHz-2" option untested
@@ -718,6 +721,30 @@ actionable.
 - **Where:** `src/pages/defs/wireless.ts` `wpsPage`'s `wps_band_x`
   options; gate mechanism in `src/pages/types.ts` (`FieldOption.gate`)
   and `src/ui/SettingsPage.tsx` (`FieldControl`).
+
+### Router Status card layout — label-left / value-right rows
+- **Status:** Open, operator-requested 2026-07-31 (live session, observed
+  on the real dashboard). The Router Status page's cards (Internet,
+  Router, and siblings) currently stack each field's label above its
+  value, so every field costs two visual lines ("WAN IP" on one line,
+  the address under it; "Firmware" / version; "Gateway" / IP; etc.).
+  The operator wants two-column rows instead: label in a left column,
+  value right-aligned (or left-aligned in a right column) on the SAME
+  line — "firmware on the left, firmware number on the right" —
+  condensing the page and reading cleaner.
+- **Scope notes for whoever picks this up:** presentation-only, no data
+  or write-path change. Check the operator's standing overflow
+  criterion before shipping (memory + CURRENT_STATE narrow-window
+  notes): atomic values must never split mid-token, so long values
+  (DNS lists with 3 addresses, IPv6 addresses) need a wrap strategy at
+  narrow widths — likely value-wraps-whole-tokens or the pair falls
+  back to stacked below a container-width threshold. Verify at ~960px
+  and narrower in the fixture harness. Consider whether the same
+  treatment should apply to other card-based read-only status views
+  for consistency (the dashboard is the requested target; don't
+  generalize without checking with the operator).
+- **Where:** `src/pages/defs/dashboard.tsx` (card field rendering),
+  `src/theme/css.ts` (any new row/grid classes).
 
 ## Missing features (deferred scope)
 

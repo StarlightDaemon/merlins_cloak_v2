@@ -267,19 +267,19 @@ export const wpsPage: SettingsPageDef = {
   // No instance selector: wps_enable / wps_band_x are single global nvram
   // keys (the band being configured is itself the field's value), not a
   // wl{p}_-templated family.
-  // LIVE-VERIFIED 2026-07-31 (operator-supervised, RT-BE92U): wps_enable
-  // confirmed bidirectionally — 1->0 and 0->1, each submitted by the
-  // operator's own click, each independently confirmed by a live nvram
-  // re-read, each producing the expected restart_wireless client
-  // reassociation (matches native page behavior). writeExclusion lifted
-  // for this reason. wps_band_x remains UNTESTED — confidence.write stays
-  // 'unverified-write' rather than claiming the whole page, since that
-  // field was never submitted live. Full record:
-  // docs/WRITE_PATH_CHARACTERIZATION.md §2, DECISIONS.md D-022. Every
-  // other page in this file keeps its 'wireless' exclusion — this is not
-  // a precedent for lifting them without the same live, supervised
-  // process.
-  confidence: { read: 'structural', write: 'unverified-write' },
+  // LIVE-VERIFIED 2026-07-31 (operator-supervised, RT-BE92U): BOTH fields
+  // now confirmed bidirectionally, each submitted by the operator's own
+  // click, each independently confirmed by a forced-fresh nvram re-read.
+  // wps_enable: 1->0 and 0->1 (D-022). wps_band_x: 0->1 and 1->0 (D-029,
+  // same-day later session) — delta-write held (wps_enable not posted),
+  // router uptime confirmed continuous across both submits (restart_wireless
+  // reassociates clients but never reboots). confidence.write is
+  // 'live-verified' because the page's full field set has now been
+  // exercised. Full record: docs/WRITE_PATH_CHARACTERIZATION.md §4/§6,
+  // DECISIONS.md D-022/D-029. Every other page in this file keeps its
+  // 'wireless' exclusion — this is not a precedent for lifting them
+  // without the same live, supervised process.
+  confidence: { read: 'structural', write: 'live-verified' },
   read: {
     nvram: ['wps_enable', 'wps_band_x'],
   },

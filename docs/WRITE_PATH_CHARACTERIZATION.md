@@ -255,6 +255,51 @@ unverified; see `OPEN_LOOPS.md`.
 
 ---
 
+## 6. Session 3 — WPS target band (`wps_band_x`), 2026-07-31
+
+Same page, same discipline, and the same already-lifted `writeExclusion`
+as Session 2 (§4/D-022) — no code change was needed to run this test.
+Operator-present interactive session driven through Claude-in-Chrome
+tooling; the assistant navigated, read, and verified only. Every write
+was submitted by the operator's own click through the extension's normal
+Apply flow (read-only mode deliberately turned off by the operator for
+the test, back on afterward). This closes the last untested field on
+`wpsPage` — `confidence.write` is now `'live-verified'` (D-029).
+
+### 6.1 Per-field detail
+
+| | Apply (0→1) | Revert (1→0) |
+|---|---|---|
+| Baseline (forced-fresh) | `wps_enable=1`, `wps_band_x=0` (2.4 GHz) | `wps_band_x=1` |
+| Payload | `wps_band_x=1` (5 GHz), delta — `wps_enable` NOT posted | `wps_band_x=0` |
+| Extension verify | VERIFIED APPLIED (operator-observed) | operator-submitted; see note |
+| Independent fresh nvram re-read | `wps_band_x="1"`, `wps_enable="1"` untouched — **confirmed applied, delta held** | `wps_band_x="0"`, exact baseline — **confirmed reverted** |
+| Connectivity after | — | Normal (9 ms round-trip) |
+
+### 6.2 Observations
+
+1. **No router reboot across either submit.** `uptime()` read 31,777 s
+   before the apply and 34,976 s after the revert (~53 min of continuous
+   uptime spanning both submissions) — `restart_wireless` reassociates
+   every radio's clients but never reboots the device. The operator
+   observed all their Wi-Fi equipment reconnecting ("everything had to be
+   restarted"); the uptime continuity proves that was client-side
+   rejoin behavior, not a router restart.
+2. **Tooling gap on the revert:** the operator's browser was restarted
+   between the apply and the revert verification (client equipment
+   restart fallout), which destroyed the tab and its network log — the
+   revert's POST was not captured, and the router session had to be
+   re-authenticated by the operator before verification. The revert's
+   ground truth is the forced-fresh nvram re-read above, which is the
+   only confirmation this project trusts anyway (§1.5/§5.7).
+3. The apply-direction POST body was likewise not captured by the
+   network tracker (tracking armed after the fact); transport identity
+   with Session 2 (`POST /applyapp.cgi`, `action_mode=apply`,
+   `rc_service=restart_wireless`) is inferred from the shared page def
+   and the extension's own VERIFIED APPLIED verify flow, not re-observed.
+
+---
+
 ## 4. Excluded categories — explicitly unresolved, carried forward
 
 The following were **hard-excluded from this session by the operator's own

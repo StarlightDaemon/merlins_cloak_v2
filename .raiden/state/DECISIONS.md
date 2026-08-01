@@ -1020,3 +1020,36 @@
   class of source-blocked questions with primary-source evidence, matching
   this project's standing rigor for write-path characterization. The `rc/`
   trees remain available in `RAW/` for future rc-layer questions.
+
+## D-029
+
+- Date: 2026-07-31
+- Status: Closed
+- Decision: With the operator present and driving, `wps_band_x` — the one
+  remaining untested field on `wpsPage`, whose `writeExclusion` was already
+  lifted by D-022 — was live-tested bidirectionally (0→1 "5 GHz", then 1→0
+  "2.4 GHz" revert). No code change was needed to run the test. Both
+  submissions were made by the operator's own click through the extension's
+  normal Apply flow (read-only mode operator-disabled for the test); the
+  assistant, operating Claude-in-Chrome browser tooling for the first time
+  in this project's history, navigated/read/verified only and submitted
+  nothing, per the standing rule that full browser automation does not
+  change who submits a write. Each direction was independently confirmed by
+  a forced-fresh nvram re-read; the delta-write design held (`wps_enable`
+  was not posted and its value was untouched); `uptime()` continuity
+  (31,777 s → 34,976 s across both submits) proved `restart_wireless`
+  never rebooted the router — the operator's observed all-device
+  reconnection was client-side reassociation fallout, consistent with
+  D-022. `wpsPage.confidence.write` is now `'live-verified'`: both fields
+  of the page's full field set have been exercised live. Full record:
+  `docs/WRITE_PATH_CHARACTERIZATION.md` §6.
+- Rationale: closes the `wps_band_x` OPEN_LOOPS entry outright and makes
+  wpsPage the first page in the project with a fully live-verified write
+  path beyond Tweaks. No new exclusion was lifted and no exclusion scope
+  changed; every other wireless page remains hard-excluded. One tooling
+  caveat is recorded honestly in the characterization doc: neither POST
+  body was captured by the network tracker (the apply pre-dated tracking
+  arming; the revert's tab was destroyed by an operator browser restart
+  mid-test), so transport identity with D-022's session is inferred from
+  the shared page def, while all state confirmations are direct live
+  nvram reads.
