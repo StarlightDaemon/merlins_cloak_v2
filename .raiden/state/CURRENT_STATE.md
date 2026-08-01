@@ -24,7 +24,71 @@ Full detail: [README.md](../../README.md), [STATUS.md](../../STATUS.md),
 
 ---
 
-## This Session (2026-07-31, latest) — rc-source acquisition + research
+## This Session (2026-07-31, latest) — operator-present live write session
+
+Ran `.raiden/local/prompts/live-write-verification-handoff.md` to
+completion: **all three ranked candidates closed**, plus six UI/UX fixes
+that came out of the operator watching their own live data. First session
+with full browser-automation tooling (Claude-in-Chrome) — which changed
+nothing about the standing rule: **every write was submitted by the
+operator's own click or console paste**; the assistant navigated, read,
+and verified only. Read-only mode was operator-disabled only for the two
+write tests. Seven commits, all local, **nothing pushed**.
+
+Live write tests (each: baseline → operator submits → forced-fresh nvram
+verify → revert → verify → connectivity check):
+- **`wps_band_x` both directions** (D-029, `2e3f9a7`) — 0→1→0, delta held
+  (`wps_enable` never posted), `uptime()` continuity across both submits
+  proved `restart_wireless` never reboots (the operator's "everything
+  restarted" was client-side reassociation). `wpsPage.confidence.write`
+  → `'live-verified'`: first page beyond Tweaks fully exercised.
+- **WireGuard `wgs_addr`/`wgs_port`** (D-030, `8e63a95`) — `writeExclusion:
+  'vpn'` lifted for the WireGuard Server page ONLY, after an in-the-moment
+  D-022-style conversation where the operator chose the narrowest of three
+  offered scopes. Values confirmed landing in `wgs1_*` through the
+  `wgs_unit` redirect and clearing back to empty — **the nvram-landing
+  half of the CRITICAL D-008 finding is now closed live on deployed
+  firmware**, not just source-verified. No keygen (server never enabled,
+  `restart_wgs` self-gated as rc source predicted); operator's active WG
+  *client* untouched throughout. Still open by operator choice:
+  restart_wgs-applies-to-running-interface.
+- **SDN SSID key family** (D-031, `04a9182`) — observation-only, with the
+  extension **disabled** so native's own SDN.asp ran unmodified: native
+  posts `apg{idx}_ssid`, never `wl{p}_ssid`, killing the band-role-token
+  hypothesis and closing a loop open since D-021. Two new gaps filed
+  (three list keys we omit; a richer rc_service incl. `restart_stubby`).
+
+UI/UX shipped from live observation:
+- **apm/apg SSID defect fixed** (`1da9f47`) — live data caught the
+  Dashboard's "Main" row rendering the *guest* SSID: MAINFH/MAINBH fields
+  live under `apm{idx}_*` and the two pools' idx spaces overlap. Fixture
+  now mirrors the collision so a regression is visible.
+- SDN page grouped Main / Guest & IoT / System records (`5ec989d`), with
+  a source-grounded note that the AiMesh backhaul is not client-joinable;
+  DEFAULT row's meaningless Edit/Delete buttons removed.
+- SSID-first naming; `LEGACY` no longer mislabeled "Legacy guest"
+  (`889242f`) — the operator's IoT network read as "legacy"; firmware
+  types ANY all-nodes-synced profile `LEGACY` regardless of wizard
+  (sdn.js:3630), so the SSID is the only purpose record.
+- Instance-gated intro banners (`21b1208`) — new `intro` function form;
+  WG Server 2's wall of text now a 380-char warn summary shown only on
+  Server 2.
+- `wlnband_list` live-confirmed (`8083136`), settling the wl0/1/2 band
+  order caveat for this hardware class.
+
+New loops filed: revert-to-empty UI gap (required validation makes
+clearing a field impossible in-UI — the WG revert needed a console
+paste), Router Status label-left/value-right layout, and the two SDN
+payload gaps above.
+
+**Privacy note carried forward:** two of the operator's WPA passphrases
+passed through this session's context (read as part of the composite
+`apg{idx}_security` key — once while probing structure, once inside the
+captured native payload). No credential value was written to any file,
+commit, or state doc; the capture buffer was cleared. The operator was
+told both times; rotation is their call.
+
+## This Session (2026-07-31, earlier) — rc-source acquisition + research
 
 Operator-approved follow-up to the deferred-features pass. Acquired the
 firmware `rc/` init-script package — long missing from `RAW/`, the cause of

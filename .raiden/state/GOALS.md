@@ -22,7 +22,31 @@
   excluded. Full record: `docs/WRITE_PATH_CHARACTERIZATION.md` §4,
   `DECISIONS.md` D-022. Count: still 47 of 49 *pages* never submitted at
   all (Tweaks was the sole prior exception); WPS is now a second, partial
-  exception.
+  exception. 2026-07-31 (later) — every solo-completable item in
+  OPEN_LOOPS.md is now closed; a ready-to-run handoff for the next
+  operator-present live session (ranked candidates: `wps_band_x`,
+  WireGuard `wgs1_*`, the SDN SSID-semantics native-traffic observation)
+  is at `.raiden/local/prompts/live-write-verification-handoff.md`.
+  2026-07-31 (evening) — **that handoff was run to completion; all three
+  ranked candidates closed** in one operator-present session, the first
+  using full browser-automation tooling (which changed nothing about who
+  submits a write: every write was the operator's own click or paste).
+  1. `wps_band_x` both directions (D-029) → `wpsPage.confidence.write` is
+     now `'live-verified'`, the first page beyond Tweaks with its full
+     field set exercised live.
+  2. WireGuard `wgs1_*` (D-030) → `writeExclusion: 'vpn'` lifted for the
+     WireGuard Server page only; `wgs_addr`/`wgs_port` confirmed to land
+     through the `wgs_unit` redirect and to clear back to empty —
+     **closing the nvram-landing half of the CRITICAL D-008 finding
+     live**. Still open by explicit operator choice: whether
+     `restart_wgs` applies values to a *running* interface.
+  3. SDN SSID key family (D-031) → resolved by observing native's own
+     traffic with the extension disabled: native posts `apg{idx}_ssid`,
+     never `wl{p}_ssid`. Two new SDN write-payload gaps filed.
+  Count: 46 of 49 pages still never submitted at all; WPS is now fully
+  verified, WireGuard Server partially (2 of 7 fields), Tweaks remains
+  the original exception. Six UI/UX improvements also shipped from
+  operator observations made during the same session.
 
 ### Firefox live verification
 
