@@ -510,39 +510,22 @@ ${varsToCssLines(buildThemeVars())}
 @keyframes mc-spin { to { transform: rotate(360deg); } }
 .mc-empty { color: var(--fujin-text-muted); text-align: center; padding: 26px 0; font-size: 12.5px; }
 /*
- * .mc-kv label track: fit-content(180px) sizes the column to its actual
- * content (so short labels like "Uptime" don't force 180px of dead space in
- * a narrow card) while still capping it at 180px for long labels — a hard
- * minmax(180px, …) floor was starving the value column in the ~320px-wide
- * cards a 236px-nav + ~700px-content window produces. .mc-kv dd drops
- * word-break: break-all (which sliced
- * tokens at ANY character, e.g. "Asuswrt-Merlin" -> "Asuswrt-Merli"/"n") for
- * plain word-boundary wrapping (the browser default: wrap at a space, never
- * mid-token — overflow-wrap is deliberately left at its normal default
- * rather than break-word/anywhere, which would still fracture a single
- * unbroken atomic token as a last resort). Genuinely atomic values (IPs,
- * firmware strings, branch/product identifiers, …) are marked .mc-nowrap
- * at the call site instead of ever being allowed to break — see
- * dashboard.tsx / nettools.tsx / extension.tsx. A value that still can't
- * fit its column overflows/clips (inside .mc-card's overflow: hidden)
- * rather than fracturing — the width fixes above (fit-content label track,
- * content-width card collapse) are what keep that from being needed in
- * practice.
- */
-.mc-kv { display: grid; grid-template-columns: fit-content(180px) minmax(0, 1fr); gap: 4px 16px; font-size: 12.5px; }
-.mc-kv dt { color: var(--fujin-text-secondary); }
-.mc-kv dd { margin: 0; font-family: var(--fujin-font-family-mono); font-size: 12px; }
-/*
  * .mc-kv-line: single-line key/value rows (label left, value pushed to the
- * card's right edge), each dt/dd pair wrapped in a <div> row. Overflow is
- * handled per row by flex-wrap, not by a container-width breakpoint: the dd
- * (flex: 1, basis 0) stays on the label's line as long as its min-content
- * width fits — a multi-token value (DNS list) wraps at token boundaries
- * inside its own box, while an atomic .mc-nowrap value has no break
- * opportunities so its min-content is the whole token and the row wraps the
- * dd to a full-width line of its own instead. Either way a token is never
- * split mid-token and nothing clips, which is the operator's standing
- * overflow criterion. Values are right-aligned in both positions.
+ * card's right edge), each dt/dd pair wrapped in a <div> row. Replaces the
+ * older .mc-kv two-column grid (which stacked wholesale below a 760px
+ * container query — every field cost two lines in the operator's real
+ * window). Overflow is handled per row by flex-wrap, not by a
+ * container-width breakpoint: the dd (flex: 1, basis 0) stays on the
+ * label's line as long as its min-content width fits — a multi-token value
+ * (DNS list) wraps at token boundaries inside its own box (browser-default
+ * word wrapping only; overflow-wrap is deliberately NOT break-word/
+ * anywhere, which would fracture an unbroken token as a last resort),
+ * while an atomic .mc-nowrap value (IPs, firmware strings, branch/product
+ * identifiers — marked at the call site) has no break opportunities so its
+ * min-content is the whole token and the row wraps the dd to a full-width
+ * line of its own instead. Either way a token is never split mid-token and
+ * nothing clips, which is the operator's standing overflow criterion.
+ * Values are right-aligned in both positions.
  */
 .mc-kv-line { display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; margin: 0; }
 .mc-kv-line > div { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 16px; row-gap: 2px; }
@@ -559,14 +542,13 @@ ${varsToCssLines(buildThemeVars())}
  * observed 958px-wide operator window the content area is only ~670px, yet
  * a naive 900px viewport media query stays in the wide (2-column) branch
  * the whole time, starving the two side-by-side cards. .mc-main is
- * established as an inline-size query container so .mc-grid-2 / .mc-kv
- * / .mc-row collapse based on the space they actually have.
+ * established as an inline-size query container so .mc-grid-2 / .mc-row
+ * collapse based on the space they actually have. (.mc-kv-line needs no
+ * query entry — its per-row flex-wrap self-adapts at any width.)
  */
 .mc-main { container-type: inline-size; }
 @container (max-width: 760px) {
   .mc-grid-2 { grid-template-columns: 1fr; }
-  .mc-kv { grid-template-columns: 1fr; row-gap: 2px; }
-  .mc-kv dd { margin-bottom: 4px; }
   .mc-row { flex-direction: column; align-items: flex-start; gap: 4px; }
   .mc-row__label { flex-basis: auto; }
 }

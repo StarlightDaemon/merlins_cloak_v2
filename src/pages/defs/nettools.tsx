@@ -114,54 +114,72 @@ function SysinfoPage(_props: PageProps) {
         </div>
         <div className="mc-grid-2">
           <Card title="CPU">
-            <dl className="mc-kv">
-              <dt>Model</dt>
-              <dd>
-                {scalars?.cpuModel || '—'}
-                {scalars?.cpuFreq ? ` @ ${scalars.cpuFreq}\u00A0MHz` : ''}
-              </dd>
-              <dt>Load (1 / 5 / 15 min)</dt>
-              <dd>{feed.cpuLoad.join(' / ') || '—'}</dd>
-              <dt>HW acceleration</dt>
-              <dd>
-                {scalars?.hwaccelRunner ? `Runner: ${scalars.hwaccelRunner}` : ''}
-                {scalars?.hwaccelFc ? ` · Flow Cache: ${scalars.hwaccelFc}` : ''}
-                {!scalars?.hwaccelRunner && !scalars?.hwaccelFc && '—'}
-              </dd>
+            <dl className="mc-kv-line">
+              <div>
+                <dt>Model</dt>
+                <dd>
+                  {scalars?.cpuModel || '—'}
+                  {scalars?.cpuFreq ? ` @ ${scalars.cpuFreq}\u00A0MHz` : ''}
+                </dd>
+              </div>
+              <div>
+                <dt>Load (1 / 5 / 15 min)</dt>
+                <dd>{feed.cpuLoad.join(' / ') || '—'}</dd>
+              </div>
+              <div>
+                <dt>HW acceleration</dt>
+                <dd>
+                  {scalars?.hwaccelRunner ? `Runner: ${scalars.hwaccelRunner}` : ''}
+                  {scalars?.hwaccelFc ? ` · Flow Cache: ${scalars.hwaccelFc}` : ''}
+                  {!scalars?.hwaccelRunner && !scalars?.hwaccelFc && '—'}
+                </dd>
+              </div>
             </dl>
           </Card>
           <Card title="Memory">
-            <dl className="mc-kv">
-              <dt>Total / free / available</dt>
-              <dd>
-                {fmtMb(mem[0])} / {fmtMb(mem[1])} / {fmtMb(mem[9] ?? '')}
-              </dd>
-              <dt>Buffers / cache</dt>
-              <dd>
-                {fmtMb(mem[2])} / {fmtMb(mem[3])}
-              </dd>
-              <dt>Swap</dt>
-              <dd>
-                {fmtMb(mem[4])} / {fmtMb(mem[5])}
-              </dd>
-              <dt>nvram usage</dt>
-              <dd>
-                {mem[6] || '—'}
-                {scalars?.nvramTotal ? ` / ${scalars.nvramTotal}\u00A0bytes` : ''}
-              </dd>
-              <dt>JFFS free</dt>
-              <dd>{mem[7] || '—'}</dd>
+            <dl className="mc-kv-line">
+              <div>
+                <dt>Total / free / available</dt>
+                <dd>
+                  {fmtMb(mem[0])} / {fmtMb(mem[1])} / {fmtMb(mem[9] ?? '')}
+                </dd>
+              </div>
+              <div>
+                <dt>Buffers / cache</dt>
+                <dd>
+                  {fmtMb(mem[2])} / {fmtMb(mem[3])}
+                </dd>
+              </div>
+              <div>
+                <dt>Swap</dt>
+                <dd>
+                  {fmtMb(mem[4])} / {fmtMb(mem[5])}
+                </dd>
+              </div>
+              <div>
+                <dt>nvram usage</dt>
+                <dd>
+                  {mem[6] || '—'}
+                  {scalars?.nvramTotal ? ` / ${scalars.nvramTotal}\u00A0bytes` : ''}
+                </dd>
+              </div>
+              <div>
+                <dt>JFFS free</dt>
+                <dd>{mem[7] || '—'}</dd>
+              </div>
             </dl>
           </Card>
         </div>
         <Card title="Connections">
-          <dl className="mc-kv">
-            <dt>Tracked / active</dt>
-            <dd>
-              {feed.connStats[0] ?? '—'}
-              {scalars?.connMax ? ` / ${scalars.connMax}\u00A0max` : ''} ·{' '}
-              {`${feed.connStats[1] ?? '—'}\u00A0active`}
-            </dd>
+          <dl className="mc-kv-line">
+            <div>
+              <dt>Tracked / active</dt>
+              <dd>
+                {feed.connStats[0] ?? '—'}
+                {scalars?.connMax ? ` / ${scalars.connMax}\u00A0max` : ''} ·{' '}
+                {`${feed.connStats[1] ?? '—'}\u00A0active`}
+              </dd>
+            </div>
           </dl>
         </Card>
         <Card title="Wireless clients (associated / authorized / authenticated)">
@@ -180,20 +198,24 @@ function SysinfoPage(_props: PageProps) {
         </Card>
         {(scalars?.cfeVersion || (scalars?.driverVersions.length ?? 0) > 0) && (
           <Card title="Firmware components">
-            <dl className="mc-kv">
-              <dt>Bootloader (CFE)</dt>
-              <dd className="mc-nowrap">{scalars?.cfeVersion || '—'}</dd>
-              <dt>Wireless driver</dt>
-              <dd>
-                {scalars?.driverVersions.length
-                  ? scalars.driverVersions.map((v, i) => (
-                      <span key={i}>
-                        {i > 0 ? ' · ' : ''}
-                        <span className="mc-nowrap">{v}</span>
-                      </span>
-                    ))
-                  : '—'}
-              </dd>
+            <dl className="mc-kv-line">
+              <div>
+                <dt>Bootloader (CFE)</dt>
+                <dd className="mc-nowrap">{scalars?.cfeVersion || '—'}</dd>
+              </div>
+              <div>
+                <dt>Wireless driver</dt>
+                <dd>
+                  {scalars?.driverVersions.length
+                    ? scalars.driverVersions.map((v, i) => (
+                        <span key={i}>
+                          {i > 0 ? ' · ' : ''}
+                          <span className="mc-nowrap">{v}</span>
+                        </span>
+                      ))
+                    : '—'}
+                </dd>
+              </div>
             </dl>
           </Card>
         )}

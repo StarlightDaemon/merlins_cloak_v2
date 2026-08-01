@@ -819,9 +819,10 @@ actionable.
   its own line; nothing clips or splits mid-token (harness-verified at
   700/520/380/300px content widths with a live-shaped 3-address DNS
   list). All three dashboard cards (Internet, Router, dual-WAN variant)
-  migrated. **Residual:** whether to generalize to the other `mc-kv`
-  consumers (`extension.tsx`, `nettools.tsx`) is an operator style call,
-  not yet asked — `mc-kv` itself left untouched for them.
+  migrated. **Residual resolved 2026-08-01:** operator chose to
+  generalize — `extension.tsx` (identity card) and `nettools.tsx` (all
+  four Sysinfo cards) migrated too, and the now-consumerless `.mc-kv`
+  grid + its container-query overrides removed. No `mc-kv` remains.
 - **Original request:** The Router Status page's cards (Internet,
   Router, and siblings) currently stack each field's label above its
   value, so every field costs two visual lines ("WAN IP" on one line,

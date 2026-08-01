@@ -181,33 +181,47 @@ export function DiagnosticsPage({ caps }: PageProps) {
       />
       {tab === 'identity' && (
         <Card title="Detected router identity">
-          <dl className="mc-kv">
-            <dt>Product ID</dt>
-            <dd className="mc-nowrap">{ident.productId}</dd>
-            <dt>Firmware version</dt>
-            <dd className="mc-nowrap">{ident.displayVersion}</dd>
-            <dt>Generation</dt>
-            <dd>
-              {ident.generation === 'asuswrt-50-wifi7'
-                ? 'ASUSWRT 5.0 (Wi-Fi 7 hardware)'
-                : ident.generation === 'asuswrt-40-wifi6'
-                  ? 'ASUSWRT 4.0 (Wi-Fi 6 / 6E hardware)'
-                  : 'unknown'}
-            </dd>
-            <dt>Branch</dt>
-            <dd className="mc-nowrap">
-              {ident.branch === 'merlin' ? 'Asuswrt-Merlin' : ident.branch === 'stock' ? 'stock ASUSWRT' : 'unknown'}
-            </dd>
-            <dt>LAN address</dt>
-            <dd className="mc-nowrap">{ident.lanIp}</dd>
-            <dt>Flag source</dt>
-            <dd>
-              {caps.flagSource === 'main-world'
-                ? 'state.js globals (main world) — authoritative'
-                : 'rc_support token fallback — numeric flag values unavailable'}
-            </dd>
-            <dt>Collected</dt>
-            <dd>{new Date(caps.collectedAt).toLocaleString()}</dd>
+          <dl className="mc-kv-line">
+            <div>
+              <dt>Product ID</dt>
+              <dd className="mc-nowrap">{ident.productId}</dd>
+            </div>
+            <div>
+              <dt>Firmware version</dt>
+              <dd className="mc-nowrap">{ident.displayVersion}</dd>
+            </div>
+            <div>
+              <dt>Generation</dt>
+              <dd>
+                {ident.generation === 'asuswrt-50-wifi7'
+                  ? 'ASUSWRT 5.0 (Wi-Fi 7 hardware)'
+                  : ident.generation === 'asuswrt-40-wifi6'
+                    ? 'ASUSWRT 4.0 (Wi-Fi 6 / 6E hardware)'
+                    : 'unknown'}
+              </dd>
+            </div>
+            <div>
+              <dt>Branch</dt>
+              <dd className="mc-nowrap">
+                {ident.branch === 'merlin' ? 'Asuswrt-Merlin' : ident.branch === 'stock' ? 'stock ASUSWRT' : 'unknown'}
+              </dd>
+            </div>
+            <div>
+              <dt>LAN address</dt>
+              <dd className="mc-nowrap">{ident.lanIp}</dd>
+            </div>
+            <div>
+              <dt>Flag source</dt>
+              <dd>
+                {caps.flagSource === 'main-world'
+                  ? 'state.js globals (main world) — authoritative'
+                  : 'rc_support token fallback — numeric flag values unavailable'}
+              </dd>
+            </div>
+            <div>
+              <dt>Collected</dt>
+              <dd>{new Date(caps.collectedAt).toLocaleString()}</dd>
+            </div>
           </dl>
         </Card>
       )}
