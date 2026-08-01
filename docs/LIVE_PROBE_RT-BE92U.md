@@ -300,6 +300,96 @@ page's inline script or `require.min.js` internals).
 
 ---
 
+## 9. Native SDN SSID-write observation, 2026-07-31
+
+A second live session, operator-present, driven through Claude-in-Chrome
+tooling. **This extension was DISABLED for the entire observation** (popup
+master switch off) so the router's own `SDN.asp` ran unmodified — the
+extension's write path was never exercised, and nothing here is a test of
+it. Every edit was made by the operator's own hand in ASUS's native UI;
+the assistant navigated, installed a read-only in-page request recorder,
+and read the captured payloads.
+
+**Privacy note, same standard as this document's header:** the captured
+payloads contain the profile's `apg{idx}_security` composite, which embeds
+the network's WPA passphrase in cleartext. **No credential value is
+reproduced anywhere in this document**, and the recorder's
+`sessionStorage` buffer was cleared at the end of the session. The
+operator was told, in-session, that the assistant had seen the value.
+
+### 9.1 Purpose
+
+Settle OPEN_LOOPS' "Wireless-general SSID semantics on SDN units" (D-021's
+deferred Option C): which nvram family an SSID *write* must target on an
+SDN-managed unit — `wl{p}_ssid`, `apg{idx}_`, or a band-role-token key
+(`2g1_ssid` etc. per `asus.js` `wlBandSeq`). Source analysis could not
+settle it; native's own runtime behavior can.
+
+### 9.2 Method
+
+Target: the operator's **disabled** SDN guest profile (`sdn_rl` idx 4,
+type `VPN`, `apg_idx` 2) — chosen because a disabled profile broadcasts
+nothing, so no client device could be affected by the edit. The operator
+renamed it (`Skynet_VPN` → `Skynet_VPN2`), applied, then renamed it back
+and applied again; both captured.
+
+Tooling note worth carrying forward: **the SDN UI runs inside an iframe**
+(`SDN/sdn.html`), which has its own `fetch`/`XMLHttpRequest` constructors —
+a recorder installed on the top window captures nothing, and the browser
+extension's own network tracker did not surface the iframe's POST either.
+The recorder had to be installed on `iframe.contentWindow` directly. Both
+`SDN.asp`'s `hidden_frame` and the `sdn.html` UI frame were instrumented.
+
+### 9.3 Result — the SSID key family
+
+**Native posts `apg2_ssid`. `wl{p}_ssid` does not appear in the payload at
+all, and neither does any band-role-token key.** Both directions produced
+byte-identical request structure (25 keys each).
+
+Corroborating live reads taken the same session: `wl0_ssid`, `wl1_ssid`
+and `wl2_ssid` all return the **same 32-hex placeholder string** on this
+unit, while the real broadcast names live in `apm1_ssid` (main network)
+and `apg{idx}_ssid` (guest-class profiles) — consistent with §5's earlier
+observation of the `apg`/`apm` families and with `dashboard.tsx`'s
+network-centric model.
+
+### 9.4 Full posted key set (values omitted where sensitive)
+
+`action_mode=apply`, plus:
+
+- **Whole-table lists:** `sdn_rl`, `subnet_rl`, `vlan_rl`, `radius_list`,
+  `sdn_access_rl` — confirming the whole-table-rewrite model `lib/sdn.ts`
+  already implements (native re-serializes every profile's row on every
+  single-profile edit).
+- **Three additional list keys this project does NOT post:**
+  `vlan_trunklist`, `dhcpres1_rl`, `dot1_rl` — all empty strings in this
+  capture, so their effect when populated is unobserved. **New finding**;
+  see the follow-up loop in OPEN_LOOPS.
+- **The touched profile's 15 `apg{idx}_*` keys**, exactly matching
+  `lib/sdn.ts`'s `APG_FIELD_IDS` in both membership and naming (including
+  the `apg_11be` → `11be` rename): `enable`, `ssid`, `hide_ssid`,
+  `security`, `bw_limit`, `timesched`, `sched`, `expiretime`,
+  `ap_isolate`, `macmode`, `mlo`, `maclist`, `iot_max_cmpt`, `11be`,
+  `dut_list`.
+- **`rc_service = "restart_wireless;restart_sdn 4;restart_stubby;"`** —
+  richer than both this project's static `restart_wireless` AND the
+  source-derived string recorded in `lib/sdn.ts`'s header
+  (`"restart_wireless;restart_sdn {idx};"`, sdn.js:9126). The trailing
+  `restart_stubby` (the DNS-over-TLS daemon) was not predicted from
+  source; this profile's `subnet_rl` row carries DoT enabled
+  (`dot_enable=1`), which is the plausible trigger, but that conditionality
+  was not isolated by this session. **New finding.**
+
+### 9.5 Verification and cleanup
+
+Post-revert forced-fresh read: `apg2_ssid` = `Skynet_VPN` (exact
+baseline), `apg2_enable` = `0` (still disabled), `apg2_dut_list`
+unchanged, and the untouched profiles (`apg1_ssid` IoT, `apm1_ssid` main)
+byte-identical throughout. Connectivity 9 ms. Recorder buffers cleared;
+the function wrappers are page-lifetime only and vanish on reload.
+
+---
+
 ## 8. Remaining open unknowns
 
 1. **Exact AiCloud removal mechanism.** Confirmed to 404 at runtime (§4), but

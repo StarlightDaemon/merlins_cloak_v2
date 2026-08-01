@@ -221,6 +221,16 @@ export async function fetchSdnCore(): Promise<SdnCore> {
 // native serializer (sdn.js:12038-12039, `if(sdn_profile.idx=="0") return;`)
 // and is dropped here too, for byte-parity.
 //
+// LIVE-OBSERVED GAP 2026-07-31 (docs/LIVE_PROBE_RT-BE92U.md §9): native's own
+// single-profile edit posts THREE list keys this module does not —
+// `vlan_trunklist`, `dhcpres1_rl`, `dot1_rl`. All three were empty strings in
+// the observed capture, so whether omitting them matters when they are
+// populated is genuinely unknown (an omitted key is simply never written, so
+// the risk is a stale sibling table rather than a clobber). Recorded as an
+// OPEN_LOOPS follow-up rather than added blind: adding a key to a whole-table
+// rewrite without understanding its content model is exactly the class of
+// change this module's header warns about.
+//
 // radius_list is ALWAYS re-posted VERBATIM, byte-identical to the value this
 // module read, and is NEVER decomposed/rebuilt — this is a deliberate scope
 // cut (task scoping: "radius_list editing beyond verbatim round-trip" is
@@ -723,6 +733,18 @@ export function getGuestProfileSummary(
 // alongside the trimmed tables, per sdn.js:8530 (parse_JSONToStr_del_sdn_all_rl).
 // -----------------------------------------------------------------------------
 
+// LIVE-OBSERVED 2026-07-31 (native UI, extension disabled — see
+// docs/LIVE_PROBE_RT-BE92U.md §9): native's actual rc_service for a
+// single-profile SSID edit was "restart_wireless;restart_sdn 4;restart_stubby;"
+// — richer than both this constant AND the source-derived string in this
+// module's header (sdn.js:9126, "restart_wireless;restart_sdn {idx};"). The
+// trailing restart_stubby (DNS-over-TLS daemon) was not predicted from source;
+// the edited profile's subnet_rl row carries dot_enable=1, the plausible
+// trigger, but that conditionality was not isolated. Still moot for this
+// module today (writeExclusion 'wireless' refuses every write it builds), and
+// deliberately NOT changed on the strength of one observation — recorded as an
+// OPEN_LOOPS follow-up so a future pass fixes it with the conditionality
+// understood rather than hardcoding one profile's string.
 const SDN_RC_SERVICE = 'restart_wireless';
 
 export interface SdnWritePayload {

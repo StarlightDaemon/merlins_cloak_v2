@@ -1094,3 +1094,47 @@
   UI) and, from the same session minutes earlier, the Server 2
   wall-of-text (fixed same session: instance-gated, warn-toned,
   condensed summary banner).
+
+## D-031
+
+- Date: 2026-07-31
+- Status: Closed
+- Decision: Resolved the standing "Wireless-general SSID semantics on SDN
+  units" question (D-021's deferred Option C) by OBSERVATION rather than
+  by exercising this project's own write path. Method: the extension was
+  DISABLED entirely (popup master switch) so ASUS's own `SDN.asp` ran
+  unmodified; the operator renamed one of their own **disabled** SDN
+  guest profiles in the native UI, both directions, while the assistant
+  captured the outgoing payload with an in-page request recorder. Result:
+  **native posts `apg{idx}_ssid`** — `wl{p}_ssid` appears nowhere in the
+  payload, and neither does any band-role-token key, killing the
+  `asus.js wlBandSeq` hypothesis outright. Corroborated by live reads
+  showing all three `wl{0,1,2}_ssid` holding one identical 32-hex
+  placeholder while real names live in `apm{idx}_ssid`/`apg{idx}_ssid`.
+  Consequence: `wireless.ts`'s `wl{p}_ssid` is confirmed NOT the SSID
+  write path on SDN firmware, its `writeExclusion: 'wireless'` stays
+  (now evidence-backed), and SSID editing for SDN units correctly belongs
+  to the SDN page, which already targets the apg family. Full capture:
+  `docs/LIVE_PROBE_RT-BE92U.md` §9.
+- Two NEW findings fell out of the same capture, both filed as OPEN_LOOPS
+  rather than fixed on the spot: (1) native posts three list keys this
+  project omits — `vlan_trunklist`, `dhcpres1_rl`, `dot1_rl` (all empty
+  in the capture, so the populated-case consequence is unknown); (2)
+  native's rc_service for a plain SSID edit was
+  `restart_wireless;restart_sdn 4;restart_stubby;`, richer than both this
+  project's static `restart_wireless` and the source-derived string in
+  `lib/sdn.ts`'s own header — the `restart_stubby` (DNS-over-TLS) tail
+  was unpredicted from source. Neither was "fixed" because both are moot
+  while SDN writes stay hard-excluded, and acting on a single observation
+  would trade one wrong constant for another; both are inline-noted at
+  the exact code sites plus filed with a stated closure path.
+- Rationale: this is the one candidate in the session's handoff that was
+  explicitly designed to answer a write-path question WITHOUT touching
+  this project's write path, and it did — the extension was not merely
+  read-only for it, it was switched off. The disabled-profile choice
+  meant no client device could be affected by either edit. Privacy: the
+  captured payloads embed the profile's WPA passphrase in
+  `apg{idx}_security`; no credential value was written to any file,
+  commit, or state doc, the recorder's sessionStorage buffer was cleared
+  at session end, and the operator was told in-session that the value had
+  been seen (twice this session — see the report's privacy note).

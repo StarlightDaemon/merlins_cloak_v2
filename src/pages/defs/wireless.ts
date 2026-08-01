@@ -61,6 +61,32 @@
  *    editable rows — it is configured via SDN.asp's "Multi-Link Operation"
  *    preset on this generation, per LIVE_PROBE §5. No MLO field is modeled
  *    anywhere in this file, per the task's explicit instruction.
+ * 5. SSID SEMANTICS ON SDN UNITS — RESOLVED FROM LIVE OBSERVATION
+ *    2026-07-31. The long-open question (OPEN_LOOPS "Wireless-general SSID
+ *    semantics on SDN units", D-021 Option C) was which nvram family an
+ *    SSID *write* must target on an SDN-managed unit: `wl{p}_ssid`,
+ *    `apg{idx}_`, or a band-role-token key. Settled by watching the
+ *    NATIVE UI's own traffic (operator edited an SDN guest network's name
+ *    in ASUS's own SDN.asp, both directions; this extension was disabled
+ *    for the observation, so its write path was never exercised):
+ *
+ *      native posts `apg{idx}_ssid` — never `wl{p}_ssid`, never a
+ *      band-role-token key. `wl{p}_ssid` appears NOWHERE in the payload.
+ *
+ *    Corroborated by the live values themselves: all three `wl{0,1,2}_ssid`
+ *    read as the SAME 32-hex placeholder string on this unit, while the
+ *    real broadcast names live in `apm{idx}_ssid` (main) / `apg{idx}_ssid`
+ *    (guest-class). Full capture: docs/LIVE_PROBE_RT-BE92U.md §9.
+ *
+ *    Consequence for THIS file: `wirelessGeneralPage`'s `wl{p}_ssid` field
+ *    is confirmed NOT the SSID write path on SDN firmware — editing it
+ *    would write a value nothing broadcasts. Its `writeExclusion:
+ *    'wireless'` therefore stays, and is now backed by live evidence
+ *    rather than an open question. SSID editing for SDN units belongs on
+ *    the SDN page (pages/defs/sdn.tsx + lib/sdn.ts), which already targets
+ *    the apg family correctly. A future pass should decide whether to
+ *    hide/annotate this field on SDN units rather than render a
+ *    placeholder as if it were the network name.
  */
 import type { SettingsPageDef, InstanceSelector } from '../types';
 import { hasFlag } from '../../lib/capabilities';

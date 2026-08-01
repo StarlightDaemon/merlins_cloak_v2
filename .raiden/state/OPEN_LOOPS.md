@@ -684,20 +684,68 @@ actionable.
 - **Where:** `src/pages/defs/dashboard.tsx`, `src/lib/sdn.ts` (shared
   parser, also consumed by `sdn.tsx`).
 
-### Wireless-general SSID semantics on SDN units — deferred, write-path
-- **Status:** Open, deliberately deferred (the SSID investigation's
-  "Option C"). `wireless.ts` reads/writes `wl{p}_ssid`, which on
-  SDN-managed ASUSWRT 5.0 holds a placeholder, not the broadcast SSID;
-  the page has no per-SDN-network concept. Which nvram family SSID
-  *writes* should target on SDN units (`wl{p}_`, `apg{idx}_`, or
-  band-role-token keys per asus.js `wlBandSeq`) is genuinely unresolved
-  from source. Currently inert: `writeExclusion: 'wireless'` blocks
-  submission and read confidence is `structural`. Do not touch without a
-  dedicated supervised session — this is a write surface with a real
-  risk of targeting the wrong key family.
-- **Where:** `src/pages/defs/wireless.ts` (header comment already flags
-  the ambiguity); investigation record in this file's history and
-  D-021.
+### Wireless-general SSID semantics on SDN units — RESOLVED FROM LIVE OBSERVATION 2026-07-31
+- **Status: RESOLVED** (D-031). Settled by watching the NATIVE UI's own
+  traffic with this extension DISABLED — the operator renamed a disabled
+  SDN guest profile in ASUS's own SDN.asp, both directions, while an
+  in-page recorder captured the payload. **Native posts
+  `apg{idx}_ssid`. `wl{p}_ssid` appears nowhere in the payload, and
+  neither does any band-role-token key** (`2g1_ssid` etc. — the
+  `wlBandSeq` hypothesis is dead). Corroborated by live reads: all three
+  `wl{0,1,2}_ssid` hold the same 32-hex placeholder on this unit, while
+  real names live in `apm{idx}_ssid` (main) / `apg{idx}_ssid` (guest).
+- **Consequence:** `wireless.ts`'s `wl{p}_ssid` is confirmed NOT the SSID
+  write path on SDN firmware — writing it would set a value nothing
+  broadcasts. Its `writeExclusion: 'wireless'` stays, now backed by
+  evidence rather than uncertainty. SSID editing for SDN units belongs on
+  the SDN page, which already targets `apg` correctly. **Residual
+  (small):** decide whether to hide/annotate the field on SDN units
+  rather than render a placeholder as if it were the network name —
+  cosmetic/clarity, not correctness. Full capture:
+  `docs/LIVE_PROBE_RT-BE92U.md` §9; header updated in `wireless.ts` note 5.
+- **Where:** `src/pages/defs/wireless.ts`; original investigation D-021.
+
+### SDN write payload — three list keys native posts that we omit
+- **Status:** Open, new 2026-07-31 from the §9 native-traffic capture.
+  Native's single-profile SDN edit posts `vlan_trunklist`,
+  `dhcpres1_rl`, and `dot1_rl` alongside the five whole-table lists this
+  project already posts (`sdn_rl`, `subnet_rl`, `vlan_rl`, `radius_list`,
+  `sdn_access_rl`). All three were **empty strings** in the observed
+  capture, so the consequence of omitting them when populated is
+  genuinely unknown — an omitted key is never written, so the failure
+  mode would be a stale sibling table, not a clobber.
+- **What would close it:** determine each key's content model and
+  population conditions from `sdn.js`/`web.c` (`dhcpres1_rl` is
+  presumably per-SDN DHCP reservations; `dot1_rl` presumably DNS-over-TLS
+  per-profile config, note its correlation with the `restart_stubby`
+  finding below; `vlan_trunklist` is the VLAN-trunk/port-binding surface
+  this project deliberately excludes), then decide per key whether to
+  round-trip it verbatim like `radius_list` or keep omitting it
+  deliberately. Do NOT add them blind to a whole-table rewrite.
+- **Where:** `src/lib/sdn.ts` (inline note at the payload builders);
+  capture in `docs/LIVE_PROBE_RT-BE92U.md` §9.4.
+
+### SDN rc_service is richer than both our constant and our source note
+- **Status:** Open, new 2026-07-31 from the same capture. Native sent
+  `restart_wireless;restart_sdn 4;restart_stubby;` for a plain SSID edit.
+  This project sends a static `restart_wireless`, and `lib/sdn.ts`'s own
+  header (from sdn.js:9126) predicted only
+  `restart_wireless;restart_sdn {idx};` — the trailing `restart_stubby`
+  (DNS-over-TLS daemon) was unpredicted. The edited profile carries
+  `dot_enable=1` in its `subnet_rl` row, the plausible trigger, but the
+  conditionality was not isolated (only one profile was observed).
+- **Why it's not fixed already:** moot today — `writeExclusion:
+  'wireless'` refuses every SDN write this project can build, so the
+  string never reaches the wire; and hardcoding one profile's observed
+  string without understanding when `restart_stubby` applies would just
+  trade one wrong constant for another.
+- **What would close it:** derive the rc_service assembly from `sdn.js`
+  (is `restart_stubby` appended on `dot_enable`, on `dnspriv_enable`, or
+  unconditionally in this firmware revision?), then make `SDN_RC_SERVICE`
+  a function of the edited profile, as `WriteDef.rcService` already
+  supports elsewhere (D-010's direction resolver).
+- **Where:** `src/lib/sdn.ts` `SDN_RC_SERVICE`; capture in
+  `docs/LIVE_PROBE_RT-BE92U.md` §9.4.
 
 ### gh-pages privacy policy duplicate — manual sync pending
 - **Status:** Open, small, operator-adjacent. `docs/privacy-policy.md`
