@@ -708,7 +708,28 @@ actionable.
 - **Where:** `src/pages/defs/wireless.ts`; original investigation D-021.
 
 ### SDN write payload — three list keys native posts that we omit
-- **Status:** Open, new 2026-07-31 from the §9 native-traffic capture.
+- **Status:** CLOSED 2026-08-01, source-resolved per key (research agent
+  over RAW/merlin + RAW/merlin-rc; full dispositions in lib/sdn.ts's
+  module header). Key facts: `dhcpres{N}_rl`/`dot{N}_rl` are PER-PROFILE
+  side tables keyed by subnet_idx (not whole-table lists), each with
+  exactly one firmware consumer that reaches them only through the
+  profile's own subnet_rl columns (rc/sdn.c:236-302 dnsmasq; 409-467
+  stubby); `vlan_trunklist` is a genuine whole-table
+  (`<MAC>PORT#VID[,VID…]>…`, sdn.js:13384) whose records reference
+  vlan_rl VIDs. Dispositions shipped: vlan_trunklist round-trips
+  VERBATIM on create/edit (native posts it unconditionally,
+  sdn.js:9422-9428; unchanged values are inert via web.c:4817's strcmp
+  guard) and has the deleted profile's VID stripped on delete
+  (removeVidFromTrunklist, mirroring sdn.js:8577-8583 — a recycled VID
+  would otherwise tag a new network onto a physical AiMesh port);
+  dhcpres/dot stay deliberately omitted on create/edit (safer than
+  native's blank-unless-loaded behavior) and are blanked on delete
+  (native: sdn.js:8615-8618, 8591-8596 — the dot orphan is genuinely
+  reachable via subnet_idx recycling + dot_enable inherited from
+  dnspriv_enable). Harness-verified in the write inspector: edit posts
+  `vlan_trunklist`; delete posts `dhcpres{N}_rl=""`+`dot{N}_rl=""` and
+  omits an empty trunklist. All still hard-excluded ('wireless').
+- **Original entry:** new 2026-07-31 from the §9 native-traffic capture.
   Native's single-profile SDN edit posts `vlan_trunklist`,
   `dhcpres1_rl`, and `dot1_rl` alongside the five whole-table lists this
   project already posts (`sdn_rl`, `subnet_rl`, `vlan_rl`, `radius_list`,

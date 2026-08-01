@@ -221,15 +221,42 @@ export async function fetchSdnCore(): Promise<SdnCore> {
 // native serializer (sdn.js:12038-12039, `if(sdn_profile.idx=="0") return;`)
 // and is dropped here too, for byte-parity.
 //
-// LIVE-OBSERVED GAP 2026-07-31 (docs/LIVE_PROBE_RT-BE92U.md §9): native's own
-// single-profile edit posts THREE list keys this module does not —
-// `vlan_trunklist`, `dhcpres1_rl`, `dot1_rl`. All three were empty strings in
-// the observed capture, so whether omitting them matters when they are
-// populated is genuinely unknown (an omitted key is simply never written, so
-// the risk is a stale sibling table rather than a clobber). Recorded as an
-// OPEN_LOOPS follow-up rather than added blind: adding a key to a whole-table
-// rewrite without understanding its content model is exactly the class of
-// change this module's header warns about.
+// THE THREE EXTRA LIST KEYS (live-observed 2026-07-31, source-resolved
+// 2026-08-01 — docs/LIVE_PROBE_RT-BE92U.md §9, OPEN_LOOPS "SDN write payload:
+// three list keys"): native's single-profile edit also posts
+// `vlan_trunklist`, `dhcpres{subnet_idx}_rl`, and `dot{subnet_idx}_rl`.
+// Source research settled each key's disposition here:
+//   - `vlan_trunklist` (global whole-table: `<MAC>PORT#VID[,VID…]>PORT#…`,
+//     one record per AiMesh node — sdn.js:13384, writer
+//     Advanced_VLAN_Switch_Content.asp:1715-1741) is ROUND-TRIPPED VERBATIM
+//     on create/edit, like radius_list. Native posts it on every VLAN-bearing
+//     profile edit — its editor call site (sdn.js:9422-9428) lacks the
+//     `vlan_trunklist_orig != ""` guard its siblings carry, so it posts ""
+//     even on routers with no trunk bindings (exactly what §9.4 captured).
+//     Since this module never changes a VID on edit, the verbatim value is
+//     byte-identical to what native's VID-renumberer (update_vlan_trunklist,
+//     sdn.js:13385-13419) would emit, and an unchanged value is provably
+//     inert in httpd anyway (web.c:4817's strcmp guard skips it). On DELETE
+//     the deleted profile's VID is stripped (see removeVidFromTrunklist) —
+//     native repairs the table the same way (sdn.js:8577-8583), because a
+//     stale trunk entry's VID can be recycled by a later create
+//     (allocateVid) and silently tag the new network onto a physical AiMesh
+//     LAN port.
+//   - `dhcpres{N}_rl` / `dot{N}_rl` (PER-PROFILE side tables keyed by
+//     subnet_idx, NOT whole-table lists: DHCP reservations → dnsmasq,
+//     rc/sdn.c:236-302; DNS-over-TLS upstreams → stubby, rc/sdn.c:409-467)
+//     stay DELIBERATELY OMITTED on create/edit. Omission is self-consistent:
+//     both consumers reach these tables only through the profile's own
+//     subnet_rl columns (dhcp_static/dhcp_unit, dot_enable), which this
+//     module round-trips verbatim — and it is strictly SAFER than native,
+//     whose editor blanks `dhcpres{N}_rl` unless the page state loaded it
+//     (sdn.js:9434-9448) and strips AdGuard rows / zeroes dot_enable on the
+//     AdGuard-off branch (sdn.js:9476-9495). On DELETE both are explicitly
+//     blanked, matching native (sdn.js:8615-8618, 8591-8596): a stale
+//     `dot{N}_rl` is genuinely dangerous because allocateSubnetIdx recycles
+//     indices and a new profile inherits dot_enable from the global
+//     dnspriv_enable — the recycled index would graft the deleted profile's
+//     DoT upstreams onto the new network.
 //
 // radius_list is ALWAYS re-posted VERBATIM, byte-identical to the value this
 // module read, and is NEVER decomposed/rebuilt — this is a deliberate scope
@@ -239,12 +266,16 @@ export async function fetchSdnCore(): Promise<SdnCore> {
 // by any field in sdn_rl itself (radius association lives inside each
 // profile's apg{idx}_security string instead — see securityUsesRadius
 // below). Every create/edit/delete below still posts sdn_rl together with
-// subnet_rl and sdn_access_rl in the same request even when neither changed,
-// per the brief's §3a latent-gap note: web.c's `nvram_modified_sdn` flag
-// (which triggers the live-config sync) is only set by a literal `sdn_rl`/
-// `vlan_rl`/`radius_list` write (web.c:5013-5056) — a request that posted
-// only `subnet_rl` or `sdn_access_rl` deltas would silently fail to
-// propagate, so `sdn_rl` rides along on every write unconditionally.
+// subnet_rl and sdn_access_rl in the same request even when neither changed —
+// native parity (its serializer always emits the full set). NOTE, corrected
+// 2026-08-01: an earlier revision of this comment claimed the sdn_rl
+// ride-along is what sets web.c's `nvram_modified_sdn` sync flag. It is not:
+// web.c:4817 gates EVERY top-level nvram write — including the sdn_rl special
+// case at web.c:5013-5056 — behind `strcmp(nvram_safe_get(name), value)`, so
+// a byte-identical sdn_rl never reaches that code and sets nothing. The flag
+// is in practice set by the `apg{idx}_*` writes (web.c:3858,
+// NVRAM_MODIFIED_SDN_BIT), which every edit does change. The ride-along is
+// harmless (unchanged values are discarded) and kept for payload parity.
 //
 // CAPTIVE PORTAL (cp{idx}_*), VLAN trunk / AiMesh port binding (the
 // restart_net_and_phy escalation), RADIUS/Enterprise security, and
@@ -340,6 +371,74 @@ function serializeVlanRl(vlanRows: string[][]): string {
   return serializeRuleList(sorted, VLAN_RL_SPEC);
 }
 
+// -----------------------------------------------------------------------------
+// vlan_trunklist — AiMesh trunk-port VID bindings.
+// Grammar (sdn.js:13384's own example, writer
+// Advanced_VLAN_Switch_Content.asp:1715-1741):
+//   record  := '<' MAC ( '>' PORT '#' VIDSPEC )+     // one record per node MAC
+//   VIDSPEC := VID (',' VID)*  |  "all"               // "all" = allow all tagging
+// -----------------------------------------------------------------------------
+
+interface TrunkRecord {
+  mac: string;
+  /** [portLabel, vidSpec] pairs, vidSpec still comma-joined. */
+  ports: [string, string][];
+}
+
+function parseTrunklist(raw: string): TrunkRecord[] {
+  return raw
+    .split('<')
+    .filter(Boolean)
+    .map((rec) => {
+      const parts = rec.split('>');
+      const ports: [string, string][] = [];
+      for (const p of parts.slice(1)) {
+        const hash = p.indexOf('#');
+        if (hash > 0) ports.push([p.slice(0, hash), p.slice(hash + 1)]);
+      }
+      return { mac: parts[0] ?? '', ports };
+    });
+}
+
+/**
+ * True when any trunk record binds a port to `vid` — the same membership
+ * question native answers before escalating an SDN apply's base rc_service to
+ * restart_net_and_phy (sdn.js:9113-9120). A "#all" port binds every VID and
+ * therefore counts.
+ */
+export function trunklistBindsVid(raw: string, vid: string): boolean {
+  if (!raw || !vid) return false;
+  return parseTrunklist(raw).some((rec) =>
+    rec.ports.some(([, spec]) => spec === 'all' || spec.split(',').includes(vid)),
+  );
+}
+
+/**
+ * The deleted profile's VID stripped from the trunk table, mirroring native's
+ * delete-path repair (rm_vid_from_vlan_trunklist, sdn.js:13421-13493): a port
+ * loses the VID from its list, a port left with no VIDs is dropped, and a MAC
+ * record left with no ports is dropped (sdn.js:13449). Deliberately SAFER
+ * than native in one respect: native's parser collapses a multi-VID port to
+ * its first VID before rebuilding ("suppose 1st vid … to be the only one vid
+ * binded", sdn.js:331-332), silently discarding secondary VIDs — this
+ * implementation removes only the matching VID and keeps the rest. "#all"
+ * ports are never touched (they name no specific VID).
+ */
+export function removeVidFromTrunklist(raw: string, vid: string): string {
+  if (!raw || !vid) return raw;
+  const out: string[] = [];
+  for (const rec of parseTrunklist(raw)) {
+    const ports = rec.ports
+      .map(([label, spec]): [string, string] => {
+        if (spec === 'all') return [label, spec];
+        return [label, spec.split(',').filter((v) => v !== vid).join(',')];
+      })
+      .filter(([, spec]) => spec !== '');
+    if (ports.length > 0) out.push(`<${rec.mac}${ports.map(([l, s]) => `>${l}#${s}`).join('')}`);
+  }
+  return out.join('');
+}
+
 /**
  * Full-fidelity snapshot of everything a whole-table SDN write needs.
  * ALWAYS fetch a fresh one (fetchSdnWriteSnapshot) immediately before
@@ -356,6 +455,13 @@ export interface SdnWriteSnapshot {
   accessRows: string[][];
   /** radius_list, verbatim — never decomposed, always re-posted unchanged. */
   radiusListRaw: string;
+  /**
+   * vlan_trunklist, verbatim (`<MAC>PORT#VID[,VID…]>PORT#…` per AiMesh node —
+   * sdn.js:13384). Round-tripped unchanged on create/edit (never decomposed);
+   * the deleted profile's VID is stripped from it on delete. See the module
+   * header's "three extra list keys" note.
+   */
+  vlanTrunklistRaw: string;
   lan: {
     ipaddr: string;
     netmask: string;
@@ -391,7 +497,7 @@ export function getSdnMaximum(caps: Capabilities): number {
 }
 
 export async function fetchSdnWriteSnapshot(caps: Capabilities): Promise<SdnWriteSnapshot> {
-  const ascii = await nvramCharToAscii(['sdn_rl', 'subnet_rl', 'vlan_rl', 'radius_list', 'sdn_access_rl']);
+  const ascii = await nvramCharToAscii(['sdn_rl', 'subnet_rl', 'vlan_rl', 'radius_list', 'sdn_access_rl', 'vlan_trunklist']);
   const lan = await nvramCharToAscii([
     'lan_ipaddr', 'lan_netmask', 'dhcp_enable_x', 'dhcp_lease', 'lan_domain',
     'dhcp_dns1_x', 'dhcp_dns2_x', 'dhcp_wins_x', 'dhcp_static_x',
@@ -408,6 +514,7 @@ export async function fetchSdnWriteSnapshot(caps: Capabilities): Promise<SdnWrit
     vlanRows,
     accessRows,
     radiusListRaw: ascii.radius_list ?? '',
+    vlanTrunklistRaw: ascii.vlan_trunklist ?? '',
     lan: {
       ipaddr: lan.lan_ipaddr ?? '',
       netmask: lan.lan_netmask ?? '',
@@ -804,6 +911,12 @@ export function buildCreateGuestProfileWrite(snap: SdnWriteSnapshot, input: Gues
     domain_name: snap.lan.domain,
     dns: `${snap.lan.dns1},${snap.lan.dns2}`,
     wins: snap.lan.wins,
+    // Inherited from the main LAN's dhcp_static_x, faithfully mirroring
+    // native (sdn.js:11439). Latent firmware oddity worth knowing: on a
+    // router with LAN reservations enabled this makes the new row
+    // dhcp_static=1 with dhcp_unit "" (→ dhcp_res_idx 0), so the firmware's
+    // per-SDN dnsmasq generator reads dhcpres0_rl for it (rc/sdn.c:635-637).
+    // Native does exactly the same — reproduced, not fixed.
     dhcp_static: snap.lan.dhcpStatic,
     dhcp_unit: '',
     ipv6_enable: '0',
@@ -833,6 +946,10 @@ export function buildCreateGuestProfileWrite(snap: SdnWriteSnapshot, input: Gues
     subnet_rl: serializeSubnetRl(sdnRows, subnetByIdx),
     vlan_rl: serializeVlanRl(vlanRows),
     radius_list: snap.radiusListRaw,
+    // verbatim round-trip, posted even when empty — native's editor posts it
+    // unconditionally (sdn.js:9422-9428 has no orig-non-empty guard); an
+    // unchanged value is inert in httpd (web.c:4817). See the module header.
+    vlan_trunklist: snap.vlanTrunklistRaw,
     // a new profile gets no inter-network ACL entries by default (native
     // never populates sdn_access_rl in get_new_sdn_profile) — unchanged.
     sdn_access_rl: serializeRuleList(snap.accessRows, SDN_ACCESS_SPEC),
@@ -891,13 +1008,20 @@ export function buildEditGuestProfileWrite(
 
   const fields: Record<string, string> = {
     sdn_rl: serializeSdnRl(sdnRows),
-    // unchanged, but always re-posted alongside sdn_rl — see the module
-    // header's nvram_modified_sdn latent-gap note.
+    // unchanged, but always re-posted alongside sdn_rl for payload parity —
+    // see the module header's corrected ride-along note.
     subnet_rl: serializeSubnetRl(sdnRows, snap.subnetByIdx),
     vlan_rl: serializeVlanRl(snap.vlanRows),
     radius_list: snap.radiusListRaw,
+    // verbatim round-trip, posted even when empty (native parity — see the
+    // create builder's note and the module header). This module never edits
+    // a VID, so the verbatim value is byte-identical to native's output.
+    vlan_trunklist: snap.vlanTrunklistRaw,
     sdn_access_rl: serializeRuleList(snap.accessRows, SDN_ACCESS_SPEC),
     ...buildApgKeyValues(apgIdx, nextFields),
+    // dhcpres{N}_rl / dot{N}_rl are DELIBERATELY not posted on edit — see the
+    // module header's "three extra list keys" note (omission is safer than
+    // native's blank-unless-loaded / AdGuard-stripping behavior).
   };
   assertNoApmKeys(fields);
   return { fields, verify: { ...fields }, rcService: SDN_RC_SERVICE };
@@ -946,6 +1070,25 @@ export function buildDeleteGuestProfileWrite(snap: SdnWriteSnapshot, sdnIdx: str
     [`apg${apgIdx}_enable`]: '0',
     [`apg${apgIdx}_disabled`]: '0',
   };
+  // Trunk-table repair, mirroring native's delete path (sdn.js:8577-8583,
+  // posted only when the table is non-empty, same guard as sdn.js:8577): the
+  // deleted profile's VID is stripped so a later create that recycles the VID
+  // (allocateVid) can't inherit a physical AiMesh port binding.
+  if (snap.vlanTrunklistRaw !== '' && vlanRow) {
+    fields.vlan_trunklist = removeVidFromTrunklist(snap.vlanTrunklistRaw, rowGet(VLAN_RL_SPEC, vlanRow, 'vid'));
+  }
+  // Per-profile side tables, blanked like native (dhcpres: sdn.js:8615-8618;
+  // dot: sdn.js:8591-8596). Native gates the dot blank on dot_enable==1;
+  // blanking unconditionally is a deliberate simplification — an already-empty
+  // value is inert (web.c:4817), and on delete the subnet ceases to exist, so
+  // clearing a populated-but-disabled dot table is strictly cleanup. This
+  // matters because allocateSubnetIdx recycles indices and a new profile
+  // inherits dot_enable from the global dnspriv_enable — a stale dot{N}_rl
+  // would graft the deleted profile's DoT upstreams onto the new network.
+  if (parseInt(subnetIdx, 10) > 0) {
+    fields[`dhcpres${subnetIdx}_rl`] = '';
+    fields[`dot${subnetIdx}_rl`] = '';
+  }
   assertNoApmKeys(fields);
   return { fields, verify: { ...fields }, rcService: SDN_RC_SERVICE };
 }
