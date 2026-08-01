@@ -1173,9 +1173,14 @@ a defect.
 Tracked in full in `GOALS.md`, not duplicated here — both require the
 operator's live router and/or browser, not solo-agent-completable:
 
-- Live-hardware verification of write paths (47 of 49 pages never
-  live-submitted at all; one page — `wpsPage` — is now a partial
-  exception: `wps_enable` live-verified bidirectionally 2026-07-31,
-  `wps_band_x` still untested. See `GOALS.md` and
-  `docs/WRITE_PATH_CHARACTERIZATION.md` §4.).
+- Live-hardware verification of write paths. **Updated 2026-07-31
+  (evening live session):** 46 of 49 pages have never been live-submitted
+  at all. Three exceptions: `tools-tweaks` (original session),
+  `wpsPage` — now FULLY live-verified, both `wps_enable` and
+  `wps_band_x` bidirectionally (D-022/D-029), `confidence.write:
+  'live-verified'` — and `wireguardServerPage`, PARTIAL (2 of 7 writable
+  fields: `wgs_addr`/`wgs_port`, D-030; `writeExclusion: 'vpn'` lifted
+  for that page only). See `GOALS.md` and
+  `docs/WRITE_PATH_CHARACTERIZATION.md` §4 (WPS enable), §6 (WPS band),
+  §7 (WireGuard).
 - Firefox live verification (never run against live hardware at all).
