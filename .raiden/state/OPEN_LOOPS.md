@@ -698,11 +698,13 @@ actionable.
   write path on SDN firmware — writing it would set a value nothing
   broadcasts. Its `writeExclusion: 'wireless'` stays, now backed by
   evidence rather than uncertainty. SSID editing for SDN units belongs on
-  the SDN page, which already targets `apg` correctly. **Residual
-  (small):** decide whether to hide/annotate the field on SDN units
-  rather than render a placeholder as if it were the network name —
-  cosmetic/clarity, not correctness. Full capture:
-  `docs/LIVE_PROBE_RT-BE92U.md` §9; header updated in `wireless.ts` note 5.
+  the SDN page, which already targets `apg` correctly. **Residual CLOSED
+  2026-08-01 (operator chose hide + redirect):** the SSID field is hidden
+  on SDN units (`showIf` on `mtlancfg_support`) and the page's intro
+  banner — whose function form now also receives `caps` — explains that
+  SSIDs live on the Separate Networks & Guest Wi-Fi page there. Classic
+  units keep the field unchanged; both branches harness-verified. Full
+  capture: `docs/LIVE_PROBE_RT-BE92U.md` §9; `wireless.ts` note 5 updated.
 - **Where:** `src/pages/defs/wireless.ts`; original investigation D-021.
 
 ### SDN write payload — three list keys native posts that we omit

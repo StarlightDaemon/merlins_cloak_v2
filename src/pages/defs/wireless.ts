@@ -84,9 +84,11 @@
  *    'wireless'` therefore stays, and is now backed by live evidence
  *    rather than an open question. SSID editing for SDN units belongs on
  *    the SDN page (pages/defs/sdn.tsx + lib/sdn.ts), which already targets
- *    the apg family correctly. A future pass should decide whether to
- *    hide/annotate this field on SDN units rather than render a
- *    placeholder as if it were the network name.
+ *    the apg family correctly. Decided 2026-08-01 (operator choice): the
+ *    field is hidden on SDN units (showIf !mtlancfg_support) and the page
+ *    intro banner redirects to the SDN page there; classic units keep the
+ *    field unchanged. The nvramAscii read stays — it serves classic units,
+ *    and reading the placeholder on SDN units is harmless.
  */
 import type { SettingsPageDef, InstanceSelector } from '../types';
 import { hasFlag } from '../../lib/capabilities';
@@ -142,8 +144,13 @@ export const wirelessGeneralPage: SettingsPageDef = {
   instance: BAND_INSTANCE,
   confidence: { read: 'structural', write: 'unverified-write' },
   writeExclusion: 'wireless',
-  intro:
-    'MLO (Multi-Link Operation) is SDN-managed on this generation (see SDN.asp) and is not modeled here. Wireless mode (nmode_x) has no editable control on this page for this hardware generation — see Professional for its WiFi 7 mode equivalent.',
+  intro: (_instance, caps) => ({
+    text:
+      (hasFlag(caps, 'mtlancfg_support')
+        ? 'On this SDN-managed router, network names (SSIDs) are set per network on the Separate Networks & Guest Wi-Fi page — the internal wl*_ssid value is a derived placeholder nothing broadcasts (live-confirmed), so no SSID field is shown here. '
+        : '') +
+      'MLO (Multi-Link Operation) is SDN-managed on this generation (see SDN.asp) and is not modeled here. Wireless mode (nmode_x) has no editable control on this page for this hardware generation — see Professional for its WiFi 7 mode equivalent.',
+  }),
   read: {
     nvram: [
       'smart_connect_x',
@@ -175,6 +182,10 @@ export const wirelessGeneralPage: SettingsPageDef = {
           control: 'text',
           ascii: true,
           validate: { required: true, maxLength: 32 },
+          // SDN units: wl{p}_ssid is a derived placeholder, not the broadcast
+          // SSID (header note 5) — hidden there; the page intro redirects to
+          // the SDN page instead. Classic units keep the field unchanged.
+          showIf: (_v, caps) => !hasFlag(caps, 'mtlancfg_support'),
         },
         { key: 'wl{p}_closed', label: 'Hide SSID', control: 'radio', options: yesNo },
       ],

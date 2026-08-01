@@ -304,7 +304,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
         {def.merlinOnly ? ' · Merlin' : ''}
       </p>
       {(() => {
-        const raw = typeof def.intro === 'function' ? def.intro(instance) : def.intro;
+        const raw = typeof def.intro === 'function' ? def.intro(instance, caps) : def.intro;
         if (!raw) return null;
         const resolved = typeof raw === 'string' ? { text: raw, tone: 'info' as const } : raw;
         return <Banner tone={resolved.tone ?? 'info'}>{resolved.text}</Banner>;
