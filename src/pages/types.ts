@@ -68,6 +68,14 @@ export interface ListColumn {
   /** Fixed column width in px; unset = flexible. */
   width?: number;
   mono?: boolean;
+  /**
+   * Credential column (account passwords, keys): rendered masked with a
+   * per-cell reveal toggle instead of plain text — an operator-chosen
+   * divergence from the native UI, which shows these in the clear
+   * (OPEN_LOOPS "On-screen credential display", decided 2026-08-01).
+   * Display-only; storage, validation, and write behavior are unchanged.
+   */
+  secret?: boolean;
 }
 
 export interface ListSpec {
@@ -100,6 +108,13 @@ export interface FieldDef {
   ascii?: boolean;
   /** Rule-list table spec; required when control === 'list'. */
   list?: ListSpec;
+  /**
+   * Credential value (private keys, PSKs): 'readonly' controls render it
+   * masked with reveal + copy instead of plain text (see ListColumn.secret
+   * for the decision record). 'password' controls are always masked and
+   * need no marker. Display-only; never affects what is read or written.
+   */
+  secret?: boolean;
 }
 
 export interface SectionDef {

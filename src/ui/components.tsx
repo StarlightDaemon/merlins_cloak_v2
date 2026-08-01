@@ -81,6 +81,82 @@ export function TextInput({
   );
 }
 
+/**
+ * Clipboard write that works on the router's plain-http origin, where
+ * navigator.clipboard (secure-context-only) is unavailable — falls back to
+ * a transient textarea + execCommand('copy').
+ */
+function copyText(text: string): void {
+  if (navigator.clipboard?.writeText) {
+    void navigator.clipboard.writeText(text);
+    return;
+  }
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.opacity = '0';
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand('copy');
+  ta.remove();
+}
+
+/**
+ * Read-only credential display: masked by default (fixed-width dots — the
+ * mask never leaks the value's length) with explicit Reveal and Copy
+ * actions. Copy works while masked, so a key can be moved to a client
+ * config without ever being shown on screen. An operator-chosen divergence
+ * from native, which renders these in the clear (OPEN_LOOPS "On-screen
+ * credential display", decided 2026-08-01).
+ */
+export function SecretValue({ value }: { value: string }) {
+  const [revealed, setRevealed] = useState(false);
+  const [copied, setCopied] = useState(false);
+  if (!value) return <code>—</code>;
+  return (
+    <span className="mc-inlinectl">
+      <code>{revealed ? value : '••••••••••••'}</code>
+      <Button small onClick={() => setRevealed((r) => !r)}>
+        {revealed ? 'Hide' : 'Reveal'}
+      </Button>
+      <Button
+        small
+        title="Copy the value to the clipboard (works without revealing it)"
+        onClick={() => {
+          copyText(value);
+          setCopied(true);
+          window.setTimeout(() => setCopied(false), 1500);
+        }}
+      >
+        {copied ? 'Copied ✓' : 'Copy'}
+      </Button>
+    </span>
+  );
+}
+
+/** Password input with a Show/Hide toggle; masked on every mount. */
+export function RevealableInput({
+  value,
+  onChange,
+  width,
+  invalid,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  width?: number;
+  invalid?: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="mc-inlinectl">
+      <TextInput value={value} onChange={onChange} type={show ? 'text' : 'password'} width={width} invalid={invalid} />
+      <Button small onClick={() => setShow((s) => !s)}>
+        {show ? 'Hide' : 'Show'}
+      </Button>
+    </span>
+  );
+}
+
 export function Select({
   value,
   onChange,

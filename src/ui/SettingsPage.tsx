@@ -29,7 +29,9 @@ import {
   Loading,
   Modal,
   RadioGroup,
+  RevealableInput,
   Row,
+  SecretValue,
   Select,
   TextInput,
   Toggle,
@@ -101,11 +103,11 @@ function FieldControl({
         <textarea className="mc-textarea" value={value} spellCheck={false} onChange={(e) => onChange(e.target.value)} />
       );
     case 'readonly':
-      return <code>{value || '—'}</code>;
+      return field.secret ? <SecretValue value={value} /> : <code>{value || '—'}</code>;
     case 'number':
       return <TextInput value={value} onChange={onChange} width={140} invalid={validateField(field, value, emptyOk) !== null} />;
     case 'password':
-      return <TextInput value={value} onChange={onChange} type="password" width={260} />;
+      return <RevealableInput value={value} onChange={onChange} width={260} />;
     case 'list':
       return field.list ? <ListEditor spec={field.list} value={value} onChange={onChange} /> : null;
     default:
@@ -423,7 +425,7 @@ export function SettingsPage({ def, caps }: { def: SettingsPageDef; caps: Capabi
                       dirty={dirty[f.key] !== undefined}
                     >
                       {clearBtn ? (
-                        <span className="mc-clearable">
+                        <span className="mc-inlinectl">
                           <FieldControl
                             field={f}
                             value={values[f.key] ?? ''}

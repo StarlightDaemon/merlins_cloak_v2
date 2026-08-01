@@ -499,6 +499,7 @@ export const openvpnServerPage: SettingsPageDef = {
               {
                 id: 'password',
                 label: 'Password',
+                secret: true,
                 validate: { required: true, pattern: '^[^<>&]+$', patternHint: 'Must not contain < > &' },
               },
             ],
@@ -702,7 +703,7 @@ export const wireguardServerPage: SettingsPageDef = {
     {
       title: 'Interface',
       fields: [
-        { key: 'wgs{p}_priv', label: 'Private key', control: 'readonly' },
+        { key: 'wgs{p}_priv', label: 'Private key', control: 'readonly', secret: true },
         { key: 'wgs{p}_pub', label: 'Public key', control: 'readonly' },
         { key: 'wgs{p}_addr', label: 'Address', control: 'text', validate: { maxLength: 63, required: true } },
         { key: 'wgs{p}_port', label: 'Listen port', control: 'number', validate: { min: 1, max: 65535, required: true } },
@@ -833,9 +834,9 @@ export const wireguardServerPeersPage: SettingsPageDef = {
       title: 'Keys',
       note: 'Read-only, matching native (see this page\'s intro). Keypair generation is not exposed here.',
       fields: [
-        { key: 'wgs1_c{p}_psk', label: 'Preshared key', control: 'readonly' },
+        { key: 'wgs1_c{p}_psk', label: 'Preshared key', control: 'readonly', secret: true },
         { key: 'wgs1_c{p}_pub', label: 'Public key', control: 'readonly' },
-        { key: 'wgs1_c{p}_priv', label: 'Private key', control: 'readonly' },
+        { key: 'wgs1_c{p}_priv', label: 'Private key', control: 'readonly', secret: true },
       ],
     },
   ],
@@ -965,6 +966,7 @@ export const pptpServerPage: SettingsPageDef = {
               {
                 id: 'password',
                 label: 'Password',
+                secret: true,
                 validate: { required: true, maxLength: 64, pattern: '^[^<>&]+$', patternHint: 'Must not contain < > &' },
               },
             ],

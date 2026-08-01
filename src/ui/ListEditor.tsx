@@ -9,6 +9,43 @@ import { parseRuleList, serializeRuleList } from '../lib/rulelist';
 import type { ListColumn, ListSpec } from '../pages/types';
 import { Button } from './components';
 
+/**
+ * Cell for a `secret` column (account passwords, keys): masked password
+ * input with a per-cell Show/Hide toggle — an operator-chosen divergence
+ * from native, which renders these columns in the clear (see
+ * ListColumn.secret). Validation, storage, and writes are unchanged.
+ */
+function SecretCell({
+  col,
+  value,
+  set,
+  disabled,
+}: {
+  col: ListColumn;
+  value: string;
+  set: (nv: string) => void;
+  disabled?: boolean;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <span className="mc-inlinectl">
+      <input
+        className={`mc-input${validateCell(col, value) ? ' is-invalid' : ''}${col.mono ? ' mc-input--mono' : ''}`}
+        type={show ? 'text' : 'password'}
+        value={value}
+        placeholder={col.placeholder}
+        disabled={disabled}
+        spellCheck={false}
+        autoComplete="off"
+        onChange={(e) => set(e.target.value)}
+      />
+      <Button small onClick={() => setShow((s) => !s)}>
+        {show ? 'Hide' : 'Show'}
+      </Button>
+    </span>
+  );
+}
+
 function validateCell(col: ListColumn, value: string): string | null {
   const v = col.validate;
   if (!v) return null;
@@ -123,6 +160,9 @@ export function ListEditor({
           ))}
         </select>
       );
+    }
+    if (col.secret) {
+      return <SecretCell col={col} value={v} set={set} disabled={disabled} />;
     }
     return (
       <input

@@ -1138,3 +1138,32 @@
   commit, or state doc, the recorder's sessionStorage buffer was cleared
   at session end, and the operator was told in-session that the value had
   been seen (twice this session — see the report's privacy note).
+
+## D-032
+
+- Date: 2026-08-01
+- Status: Closed
+- Decision: On-screen credentials are now masked-with-reveal, an
+  operator-chosen deliberate divergence from native parity (ASUS's own UI
+  renders these in the clear). Asked as a two-option question
+  (native-parity visible vs. masked-with-reveal) per the OPEN_LOOPS entry
+  "On-screen credential display — operator UX decision"; the operator
+  chose masking, made topical by two of their WPA passphrases passing
+  through the prior session's context. Three display treatments shipped:
+  (1) `readonly` fields marked `secret: true` (WG server/peer private
+  keys and PSK — public keys stay visible) render fixed-width dots that
+  never leak value length, with Reveal/Hide and a Copy that works while
+  masked; (2) rule-list columns marked `secret: true` (OpenVPN
+  `vpn_serverx_clientlist` and PPTP `pptpd_clientlist` password columns)
+  render per-cell password inputs with independent Show/Hide; (3) every
+  `control: 'password'` field gains a Show/Hide toggle on its
+  already-masked input. Display-only markers: nothing about reads,
+  validation, writes, or D-027's log/inspector redaction changed.
+- Rationale: this is strictly about what a person standing behind the
+  operator can read off the screen — the values were already redacted
+  from every log surface (D-027). Copy-while-masked keeps the main
+  workflow (moving a key into a client config) shoulder-surf-safe, using
+  an execCommand fallback because the router origin is plain-http where
+  `navigator.clipboard` is unavailable. Divergence-from-native was the
+  operator's call to make, not a unilateral one, which is why the loop
+  sat open until this session.

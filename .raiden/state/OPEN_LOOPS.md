@@ -957,7 +957,16 @@ picking this up should feel free to resequence.
   consumers `usb-accounts.tsx`, `certificates.tsx`, `usb.ts` (DM).
 
 ### On-screen credential display — operator UX decision
-- **Status:** Open, small. Broadened 2026-07-31 from the original
+- **Status:** CLOSED 2026-08-01 (D-032) — operator chose
+  masked-with-reveal over native parity. `secret: true` markers on the WG
+  private-key/PSK readonly fields (public keys stay visible) render dots
+  + Reveal + copy-while-masked (`SecretValue`); `secret: true` on the
+  OpenVPN/PPTP password columns renders per-cell password inputs with
+  independent Show/Hide (`SecretCell`); and every `control: 'password'`
+  field gained a Show/Hide toggle (`RevealableInput`). Display-only —
+  reads, validation, writes, and D-027 redaction unchanged. All three
+  treatments harness-verified.
+- **Original entry:** Open, small. Broadened 2026-07-31 from the original
   WireGuard-only framing after harness verification observed the same
   pattern on a second surface. Two cases, both native-parity, both
   deliberate-not-accidental:
