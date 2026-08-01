@@ -832,10 +832,28 @@ picking this up should feel free to resequence.
   reachability risks are recorded in `opmode.ts`'s header for whoever
   builds the write under supervision. Do not build it unattended.
 
-### SDN captive-portal keys — unclassified write mechanism
-- **Status:** Open, informational. `cp{idx}_*` keys could not be classified
-  against the table-driven write path (possible silent drop); SDN editor
-  excludes them entirely. Recorded in `sdn.ts`/`sdn.tsx` headers.
+### SDN captive-portal keys — RESOLVED FROM SOURCE 2026-07-31
+- **Status: RESOLVED 2026-07-31.** Classified from the vendored firmware
+  source; the classification splits by exact key. `cp{idx}` is a fixed
+  4-slot pool (`cp_type_rl` default `"1>1<2>2<3>3<4>4"`, defaults.c:3451),
+  not a dynamic per-SDN-profile index. `cp{idx}_profile` and
+  `cp{idx}_local_auth_profile` (idx 1–4) are literal `router_defaults`
+  entries (defaults.c:3452-3459) and no `cp`-prefix branch exists in the
+  write-path dispatch chain (web.c:4709-4816 handles only `sshd_`,
+  `diskmon_`, `custom_usericon*`, `wgs_`/`wgsc_`/`wgc_`, `l2gre_`/`l3gre_`,
+  `mtwan_`), so they take the generic no-prefix fallback — `nvram_check`
+  then `nvram_set` (web.c:4902): **validated + written**, same class as
+  `ipsec_profile_2`. `cp{idx}_radius_profile` has no defaults-table entry
+  anywhere (`router_defaults` or `router_state_defaults`), so the
+  table-driven loop (web.c:4316-4320) never sees it: **silently dropped**,
+  same mechanism as `wgs1_*` — despite native's own sdn.js:12388-12419
+  posting it through the identical `httpApi.nvramSet()` path (GPL-vs-binary
+  version skew; not further resolvable from source). SDN profile
+  *creation* is a separate hardcoded-whitelist endpoint
+  (`create_sdn_profile.cgi`, web.c:27349-27386) that hardcodes `cp_idx=0`
+  and never reads `cp{idx}_*`. The editor still excludes all cp keys —
+  supporting the working half is an operator scope decision, not a
+  research gap. Full classification recorded in `sdn.tsx`'s header.
 
 ## Non-security audit pass, new items (2026-07-31)
 

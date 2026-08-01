@@ -37,9 +37,22 @@
  *     avoids. Band selection here always uses the wildcard "sync to all
  *     nodes" dut_list form instead (`<*>{bitwise}>`, sdn.js:11714-11723) —
  *     see lib/sdn.ts's encodeDutListStar for the full citation.
- *   - Captive portal (cp{idx}_*): the brief could not classify how
- *     web.c handles these keys with confidence (§3a) — a possible silent
- *     drop risk, so this build never touches cp_idx or cp{idx}_* at all.
+ *   - Captive portal (cp{idx}_*, idx 1-4 — a fixed 4-slot pool per
+ *     cp_type_rl, not a dynamic per-profile index): classified from source
+ *     2026-07-31, resolving the earlier "could not classify" note.
+ *     cp{idx}_profile / cp{idx}_local_auth_profile are literal
+ *     router_defaults entries (defaults.c:3452-3459) with no cp-prefix
+ *     branch anywhere in the write chain, so they validate+write via the
+ *     generic no-prefix fallback (nvram_check → nvram_set, web.c:4902) —
+ *     same class as ipsec_profile_2. cp{idx}_radius_profile has NO
+ *     defaults-table entry anywhere and is silently dropped by the same
+ *     table-driven mechanism that drops wgs1_* (web.c:4316-4320), even
+ *     though native's own sdn.js:12388-12419 posts it too (GPL-vs-binary
+ *     version skew, not further resolvable from source). Profile
+ *     *creation* (create_sdn_profile.cgi, web.c:27349-27386) reads a
+ *     hardcoded field whitelist and hardcodes cp_idx=0 — cp keys can't
+ *     reach it at all. This build still never touches cp_idx or
+ *     cp{idx}_*: supporting the working half is an operator decision.
  *   - radius_list / RADIUS-Enterprise security editing: always round-tripped
  *     byte-verbatim; a profile with a matching radius_list row refuses
  *     passphrase edits outright (securityUsesRadius in lib/sdn.ts).
