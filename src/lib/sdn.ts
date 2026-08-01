@@ -48,10 +48,23 @@ export interface SdnRecord {
   apgIdx: string;
 }
 
+/**
+ * Firmware type-token display labels. LEGACY deliberately reads plain
+ * "Guest": the firmware assigns sdn_name="LEGACY" to ANY wizard-created
+ * profile synced to all AiMesh nodes, discarding the creating wizard's type
+ * (Guest/IoT/Kids/VPN/… — sdn.js:3630, `sdn_name = (dut_list_star) ?
+ * "LEGACY" : wizard_type`), so the token carries no purpose information and
+ * a purpose-sounding label ("Legacy guest") misdescribes it. Live-confirmed
+ * on the RT-BE92U 2026-07-31: an app-created IoT-purpose network stored as
+ * LEGACY (wildcard dut_list), while a node-bound profile kept its "VPN"
+ * type. The SSID is the only purpose record for star-synced profiles; no
+ * apg{idx}_* field preserves the wizard type (apg{idx}_iot_max_cmpt was
+ * empty on the live IoT-purpose record).
+ */
 export const SDN_TYPE_LABEL: Record<string, string> = {
   MAINFH: 'Main network',
   MAINBH: 'AiMesh backhaul',
-  LEGACY: 'Legacy guest',
+  LEGACY: 'Guest',
 };
 
 /** Parse the sdn_rl nvram_char_to_ascii value into one record per '<'-delimited row. */

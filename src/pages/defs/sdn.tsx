@@ -391,13 +391,31 @@ function SdnPage(props: PageProps) {
     (n) => n.name !== 'MAINFH' && n.idx !== '0' && n.name !== 'MAINBH',
   );
 
+  // SSID-first naming, matching native's own list (Get_Component_Profile_Item
+  // shows apg_rl.ssid as the profile name, type as an icon): for star-synced
+  // profiles the firmware stores type "LEGACY" regardless of creating wizard
+  // (sdn.js:3630), so the SSID is the only purpose record — see
+  // SDN_TYPE_LABEL's comment in lib/sdn.ts. The firmware type token stays
+  // visible as a caption under the SSID, with the LEGACY collapse explained
+  // in the cell tooltip.
+  const typeCaption = (n: SdnNetwork): string => {
+    if (n.idx === '0') return 'Pre-seeded template row';
+    if (n.name === 'LEGACY') return 'Guest profile · firmware type LEGACY';
+    return `${SDN_TYPE_LABEL[n.name] ?? `${n.name} profile`}`;
+  };
+  const typeTooltip = (n: SdnNetwork): string | undefined =>
+    n.name === 'LEGACY'
+      ? 'Internally typed "LEGACY": the firmware assigns this type to any wizard-created profile ' +
+        'synced to all AiMesh nodes, discarding the creating wizard’s type (Guest/IoT/Kids/VPN/…). ' +
+        'The SSID is the only record of what the network is for.'
+      : undefined;
+
   const renderTable = (rows: SdnNetwork[], withActions: boolean) => (
     <table className="mc-table">
       <thead>
         <tr>
           <th>#</th>
-          <th>Name</th>
-          <th>SSID</th>
+          <th>Network</th>
           <th>State</th>
           <th>Subnet</th>
           <th>DHCP pool</th>
@@ -409,8 +427,10 @@ function SdnPage(props: PageProps) {
         {rows.map((n) => (
           <tr key={n.idx}>
             <td>{n.idx}</td>
-            <td>{SDN_TYPE_LABEL[n.name] ?? n.name}</td>
-            <td>{n.ssid || '—'}</td>
+            <td title={typeTooltip(n)}>
+              <div>{n.ssid || (SDN_TYPE_LABEL[n.name] ?? n.name)}</div>
+              <div className="hint">{typeCaption(n)}</div>
+            </td>
             <td>{n.enabled ? <Badge tone="ok">enabled</Badge> : <Badge>disabled</Badge>}</td>
             <td className="num">{n.subnet || '—'}</td>
             <td className="num">{n.dhcp || '—'}</td>

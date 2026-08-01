@@ -144,7 +144,9 @@ export const FIXTURE_NVRAM: Record<string, string> = {
   // row visibly shows the guest SSID as "Main".
   // Five networks modeled, all FICTIONAL:
   //   idx1 MAINFH  (Main, all 3 bands)   -> apm1 "MerlinNet-Demo" (wildcard dut_list, live-observed shape)
-  //   idx2 Guest   (2.4+5 GHz)           -> apg1 "MerlinNet-Guest"
+  //   idx2 LEGACY  (2.4+5 GHz)           -> apg1 "MerlinNet-Guest"
+  //     — star-synced guest profile: firmware stores type LEGACY for any
+  //     all-nodes profile (sdn.js:3630); exercises the LEGACY caption/tooltip
   //   idx3 IoT     (2.4 GHz only)        -> apg2 "MerlinNet-IoT"
   //   idx4 MAINBH  (AiMesh backhaul, all 3 bands) -> apm2 "MerlinNet-Demo-BH"
   //     — enabled and carries a normal apg_idx/SSID/dut_list on purpose, so
@@ -161,7 +163,7 @@ export const FIXTURE_NVRAM: Record<string, string> = {
   sdn_rl:
     '<0>DEFAULT>1>0>0>0>>>>>>>>>>' +
     '<1>MAINFH>1>1>1>1>>>>>>>>>>' +
-    '<2>Guest>1>2>2>1>>>>>>>>>>' +
+    '<2>LEGACY>1>2>2>1>>>>>>>>>>' +
     '<3>IoT>1>3>3>2>>>>>>>>>>' +
     '<4>MAINBH>1>1>1>2>>>>>>>>>>' +
     '<5>Kids>0>5>5>3>>>>>>>>>>',
@@ -175,7 +177,10 @@ export const FIXTURE_NVRAM: Record<string, string> = {
   apm2_ssid: 'MerlinNet-Demo-BH',
   apm2_dut_list: '<02:1A:2B:00:20:01>19>', // 19 = 1 (2.4G) | 2 (5G) | 16 (6G)
   apg1_ssid: 'MerlinNet-Guest',
-  apg1_dut_list: '<02:1A:2B:00:20:01>3>', // 3 = 1 (2.4G) | 2 (5G)
+  // wildcard "sync to all nodes" form — the firmware types such profiles
+  // LEGACY regardless of creating wizard (sdn.js:3630); exercises the
+  // SDN page's LEGACY caption/tooltip path (live-observed shape)
+  apg1_dut_list: '<*>3>', // 3 = 1 (2.4G) | 2 (5G)
   apg1_enable: '1',
   apg2_ssid: 'MerlinNet-IoT',
   apg2_dut_list: '<02:1A:2B:00:20:01>1>', // 1 = 2.4G only
