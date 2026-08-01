@@ -25,6 +25,9 @@ npm-debug.log*
 *.sln
 *.sw?
 
+# Local Claude Code / agent tooling — never shipped, never committed
+.claude/
+
 # RAIDEN — public-instance audit exclusions
 audit-reports/
 .raiden/state/AUDIT_LOG.md
