@@ -1,8 +1,9 @@
 # Current State
 
 **Branch:** main
-**Push status:** local `main` is AHEAD of `origin/main` — the 2026-07-29
-research/docs commits and the whole 2026-07-31 1.0-readiness pass are
+**Push status:** local `main` is AHEAD of `origin/main` by 19 commits —
+the 2026-07-29 research/docs commits, the whole 2026-07-31 1.0-readiness
+pass + live-write session, and the 2026-08-01 Tier 1/Tier 2 session are
 local-only, held for operator review; pushing is an operator-authorized
 step. (`origin/main` was last synced at `2d29065`, 2026-07-28.)
 
@@ -24,7 +25,60 @@ Full detail: [README.md](../../README.md), [STATUS.md](../../STATUS.md),
 
 ---
 
-## This Session (2026-07-31, latest) — operator-present live write session
+## This Session (2026-08-01, latest) — Tier 1 UI + Tier 2 SDN research session
+
+Ran the open-loop continuation handoff. First act: operator re-armed the
+read-only interlock (verified by the header badge) — it stays ON. No live
+writes this session; every router interaction was read-only. Nine
+commits, all local, **nothing pushed** (now 19 unpushed on `main`).
+
+Tier 1 (operator chose "Tier 1 in order"; all four decisions answered in
+chat, all recommendations accepted):
+- **Router Status label-left/value-right rows** (`9bcaf8e`) + operator-
+  approved generalization to the Extension identity card and all four
+  Sysinfo cards, retiring the `mc-kv` grid entirely (`3a9feae`). Per-row
+  flex-wrap honors the atomic-token overflow criterion at every width
+  (harness-verified to 300px with a live-shaped 3-address DNS list).
+- **`wl{p}_ssid` hidden on SDN units + capability-aware intro banners**
+  (`a19a677`) — D-031 residual; intro function form now receives caps.
+- **Clear-to-empty affordance** (`a0dbc07`) — closes the revert-to-empty
+  gap from D-030: explicit Clear marks empty as intended (validation-
+  exempt, posted as explicit empty, verified as ""); pristine-unset
+  required fields no longer block unrelated edits; backspace-to-empty
+  still errors. Dry-run confirmed `wgs_addr=` in the payload.
+- **Credential masking, D-032** (`4831c92`) — masked-with-reveal chosen
+  over native parity: WG private keys/PSKs render as fixed dots with
+  Reveal + copy-while-masked (public keys stay visible); OpenVPN/PPTP
+  password list columns get per-cell Show/Hide; password controls get a
+  Show toggle. Display-only; D-027 redaction untouched.
+
+Tier 2 (two parallel read-only research agents over RAW/merlin +
+RAW/merlin-rc, then a three-lens adversarial verification pass; D-033):
+- **Three SDN list keys** (`1a5a043`): vlan_trunklist round-trips
+  verbatim on create/edit; dhcpres{N}_rl/dot{N}_rl (per-profile side
+  tables keyed by subnet_idx) stay omitted on edit, blanked on delete.
+- **rc_service computed from the profile** (`bfa8a1b`): the
+  restart_stubby trigger is `support_adguard_dns && subnet_idx>0` — NOT
+  dot_enable as §9.4 hypothesized; gate reads native's own
+  get_ui_support() hook. Derived rule reproduces the live capture
+  byte-for-byte.
+- **Adversarial-pass fixes** (`043ff06`): delete now REFUSES native's
+  delete-side restart_net_and_phy escalation states (any non-empty
+  vlan_trunklist, port-bound dut_list) instead of pairing a repaired
+  table with an un-escalated rc string; create rc is the bare base; edit
+  qos rule gained its bw_limit half (+ qos_enable/qos_type keys); the
+  invented delete-stubby subnet term dropped; sw-mode gate corrected
+  (WISP keeps sw_mode 1; mlo_rp is the real exclusion); Gaming deletes
+  refuse. All SDN writes remain hard-excluded ('wireless').
+
+Open ends: LIVE_PROBE §9.4's `dot_enable=1` note contradicts source
+analysis — needs one read-only fetch of subnet_rl field 19 + dot1_rl,
+blocked at session end on the operator's router login (Chrome restart
+logged them out; claude-in-chrome reconnected but the httpd session is
+gone). Tier 3 candidates (restart_wgs-on-running-interface, further
+wireless lifts) untouched — need the operator live.
+
+## Prior Session (2026-07-31) — operator-present live write session
 
 Ran `.raiden/local/prompts/live-write-verification-handoff.md` to
 completion: **all three ranked candidates closed**, plus six UI/UX fixes
