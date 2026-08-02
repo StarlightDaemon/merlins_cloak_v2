@@ -806,13 +806,17 @@ actionable.
   `docs/LIVE_PROBE_RT-BE92U.md` §9.4.
 
 ### gh-pages privacy policy duplicate — manual sync pending
-- **Status:** Open, small, operator-adjacent. `docs/privacy-policy.md`
-  on `main` was updated 2026-07-31 (third stored value: the popup master
-  switch's `enabled` flag, `a553f5f`); the manually-maintained duplicate
-  `privacy-policy.html` on the `gh-pages` branch has NOT been synced.
-  Per D-018, avoid concurrent-session branch operations — sync it in a
-  dedicated step (checkout `gh-pages`, mirror the stored-data list,
-  push is operator-authorized).
+- **Status:** SYNCED LOCALLY 2026-08-01, push pending (operator step).
+  Operator separately authorized gh-pages work in-session (the handoff
+  hard boundary); the sync was done in an isolated `git worktree` so
+  `main`'s working tree never left `main` (D-018 hygiene). Local
+  `gh-pages` commit `be34b27` mirrors `docs/privacy-policy.md@a553f5f`'s
+  three-stored-values list ("Two settings" → "Three settings", the
+  `enabled` flag item, and the storage-permission count). **Two operator
+  items remain:** (1) push `gh-pages` (1 ahead of origin) to publish;
+  (2) a policy call flagged in the commit: the source .md kept
+  "Effective: 2026-07-28" when the third value was added — decide
+  whether that date should bump (if so, edit BOTH files together).
 
 ### `wps_band_x` — untested field on an otherwise live-verified page
 - **Status: CLOSED 2026-07-31** (operator-present live session, D-029).
