@@ -71,11 +71,12 @@ RAW/merlin-rc, then a three-lens adversarial verification pass; D-033):
   (WISP keeps sw_mode 1; mlo_rp is the real exclusion); Gaming deletes
   refuse. All SDN writes remain hard-excluded ('wireless').
 
-Open ends: LIVE_PROBE §9.4's `dot_enable=1` note contradicts source
-analysis — needs one read-only fetch of subnet_rl field 19 + dot1_rl,
-blocked at session end on the operator's router login (Chrome restart
-logged them out; claude-in-chrome reconnected but the httpd session is
-gone). Tier 3 candidates (restart_wgs-on-running-interface, further
+Open ends: none from this session's scope. The LIVE_PROBE §9.4
+`dot_enable=1` discrepancy was resolved once the operator logged back
+in: a read-only fetch decoded subnet_rl field 19 (`dot_enable`) as 0 and
+field 20 (`dot_tls`) as 1 — the doc had misread the adjacent field; §9.4
+carries the dated correction and both SDN loops are closed with no
+residuals. Tier 3 candidates (restart_wgs-on-running-interface, further
 wireless lifts) untouched — need the operator live.
 
 ## Prior Session (2026-07-31) — operator-present live write session

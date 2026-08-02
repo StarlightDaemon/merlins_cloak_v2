@@ -379,6 +379,23 @@ network-centric model.
   source; this profile's `subnet_rl` row carries DoT enabled
   (`dot_enable=1`), which is the plausible trigger, but that conditionality
   was not isolated by this session. **New finding.**
+  **CORRECTED 2026-08-01 (source research D-033 + follow-up live read):**
+  both halves of that hypothesis were wrong. (1) The trigger is
+  `support_adguard_dns && subnet_idx > 0` (sdn.js:246, 9466, 9496) — the
+  edit path drops the AdGuard-toggle term all eight wizard copies carry,
+  so every edit of a subnet-owning profile emits `restart_stubby` on an
+  adguard-capable router-mode unit; `dot_enable` plays no part. (2) The
+  "`dot_enable=1`" observation itself was a misread: a forced-fresh
+  decode of `subnet_rl` for `subnet_idx` 1 against the field spec reads
+  field 19 (`dot_enable`) = **0** and field 20 (`dot_tls`) = **1** — the
+  adjacent `dot_tls` value was attributed to `dot_enable`. That also
+  removes the apparent contradiction with the captured empty `dot1_rl`
+  (`dot_enable=1` + empty `dot1_rl` would have made native's own
+  AdGuard-off branch zero the posted flag, sdn.js:9476-9495; with the
+  flag genuinely 0, the captured payload is self-consistent and native
+  zeroed nothing). Full raw read: `dot1_rl=""`, `dnspriv_enable=0`,
+  `subnet_rl` row `<1>br55>192.168.52.1>…>0>1>` (fields 19-20 at the
+  tail).
 
 ### 9.5 Verification and cleanup
 

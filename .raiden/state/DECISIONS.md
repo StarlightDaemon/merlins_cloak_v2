@@ -1240,3 +1240,11 @@
   predicate (over-refusal, not over-write), and the sdn_mwl consolidation
   and quick-toggle-vs-editor-dialog fidelity gaps are disclosed in the
   module header.
+- Residual resolved (2026-08-01, operator logged back in): the follow-up
+  read-only fetch decoded `subnet_rl` for subnet_idx 1 as field 19
+  (`dot_enable`) = 0 and field 20 (`dot_tls`) = 1, with `dot1_rl` empty
+  and `dnspriv_enable` 0 — §9.4's "dot_enable=1" was a misread of the
+  adjacent `dot_tls` field, the captured payload was self-consistent,
+  and native zeroed nothing. LIVE_PROBE §9.4 carries the dated
+  correction. Nothing about the shipped rc logic changes (the trigger
+  was never dot_enable).

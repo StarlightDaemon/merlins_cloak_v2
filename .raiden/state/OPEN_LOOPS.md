@@ -778,11 +778,12 @@ actionable.
   closed-source web_hook code). Derived rule reproduces the §9.4
   capture byte-for-byte; harness payloads verified
   (`restart_wireless;restart_sdn 2;restart_stubby;` edit,
-  `start_sdn_del;restart_wireless;restart_stubby;` delete). Residual,
-  minor: the doc's §9.4 `dot_enable=1` claim contradicts the captured
-  empty `dot1_rl` per source (sdn.js:9476-9495 would have zeroed the
-  posted flag); needs one live read of subnet_rl field 19 — recorded in
-  D-033, blocked only on the Chrome session being reconnected.
+  `start_sdn_del;restart_wireless;restart_stubby;` delete). Residual
+  RESOLVED 2026-08-01 by a follow-up read-only fetch: subnet_rl field 19
+  (`dot_enable`) reads 0 and field 20 (`dot_tls`) reads 1 — §9.4's
+  "dot_enable=1" was a misread of the adjacent field; the captured
+  payload was self-consistent and native zeroed nothing. LIVE_PROBE §9.4
+  carries the dated correction. Loop fully closed, no residuals.
 - **Original entry:** new 2026-07-31 from the same capture. Native sent
   `restart_wireless;restart_sdn 4;restart_stubby;` for a plain SSID edit.
   This project sends a static `restart_wireless`, and `lib/sdn.ts`'s own
