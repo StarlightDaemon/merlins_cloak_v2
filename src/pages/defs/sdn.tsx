@@ -352,7 +352,12 @@ function SdnPage(props: PageProps) {
       setDeleteOutcome(null);
       try {
         const snap = await fetchSdnWriteSnapshot(caps);
-        const payload = buildDeleteGuestProfileWrite(snap, n.idx);
+        const summary = getGuestProfileSummary(snap, n.idx);
+        if (!summary) throw new Error('This profile no longer exists on the router (removed since this page loaded)');
+        // The profile's own apg dut_list feeds the delete-side
+        // restart_net_and_phy escalation refusal (sdn.js:8539-8551).
+        const currentApg = await fetchGuestProfileApgFields(summary.apgIdx);
+        const payload = buildDeleteGuestProfileWrite(snap, n.idx, currentApg);
         const result = await guardedWrite(
           {
             endpoint: 'applyapp',

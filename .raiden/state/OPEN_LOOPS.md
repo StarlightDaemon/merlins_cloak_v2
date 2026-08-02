@@ -716,12 +716,15 @@ actionable.
   profile's own subnet_rl columns (rc/sdn.c:236-302 dnsmasq; 409-467
   stubby); `vlan_trunklist` is a genuine whole-table
   (`<MAC>PORT#VID[,VID…]>…`, sdn.js:13384) whose records reference
-  vlan_rl VIDs. Dispositions shipped: vlan_trunklist round-trips
-  VERBATIM on create/edit (native posts it unconditionally,
-  sdn.js:9422-9428; unchanged values are inert via web.c:4817's strcmp
-  guard) and has the deleted profile's VID stripped on delete
-  (removeVidFromTrunklist, mirroring sdn.js:8577-8583 — a recycled VID
-  would otherwise tag a new network onto a physical AiMesh port);
+  vlan_rl VIDs. Dispositions shipped (as corrected by the same-day
+  adversarial pass — see D-033's addendum): vlan_trunklist round-trips
+  VERBATIM on create/edit (native's editor posts it on every
+  VLAN-bearing edit, sdn.js:9422-9428; unchanged values are inert via
+  web.c:4817's strcmp guard), and a NON-EMPTY trunk table now REFUSES
+  delete of any VLAN-bearing profile — native's delete escalates its
+  whole rc base to restart_net_and_phy in that state (sdn.js:8553-8563)
+  and it is that bounce which re-programs physical port tagging, so
+  repairing the table without it would be worse than refusing;
   dhcpres/dot stay deliberately omitted on create/edit (safer than
   native's blank-unless-loaded behavior) and are blanked on delete
   (native: sdn.js:8615-8618, 8591-8596 — the dot orphan is genuinely
@@ -762,11 +765,18 @@ actionable.
   restart_stubby bounces every OTHER network's stubby, each self-gated
   on its own dot_enable at rc/sdn.c:340). `SDN_RC_SERVICE` replaced by
   computed sdnCreate/Edit/DeleteRcService functions; the
-  restart_net_and_phy escalation case (port binding / trunk-bound VID,
-  9100-9123) now REFUSES in buildEditGuestProfileWrite. The
-  adguard_dns gate reads native's own get_ui_support() hook (the flag
-  is ui_support-only, set by closed-source web_hook code). Derived rule
-  reproduces the §9.4 capture byte-for-byte; harness payloads verified
+  restart_net_and_phy escalation now REFUSES on BOTH the edit path
+  (port binding / trunk-bound VID, 9100-9123) and — added by the
+  same-day adversarial pass, D-033 addendum — the delete path
+  (8539-8563, which fires on mere trunklist non-emptiness). Same pass
+  corrected the create string to the bare base (wizards have no nvram
+  qos fallback), added the edit qos rule's bw_limit half (+
+  qos_enable/qos_type keys), dropped the invented delete-stubby
+  subnet_idx term, and fixed the sw-mode gate (WISP keeps sw_mode 1;
+  the real exclusion is mlo_rp). The adguard_dns gate reads native's
+  own get_ui_support() hook (the flag is ui_support-only, set by
+  closed-source web_hook code). Derived rule reproduces the §9.4
+  capture byte-for-byte; harness payloads verified
   (`restart_wireless;restart_sdn 2;restart_stubby;` edit,
   `start_sdn_del;restart_wireless;restart_stubby;` delete). Residual,
   minor: the doc's §9.4 `dot_enable=1` claim contradicts the captured

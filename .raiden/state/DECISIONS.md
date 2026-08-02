@@ -1203,10 +1203,40 @@
 - Rationale: D-031 required these be fixed "with the conditionality
   understood rather than hardcoding one profile's string" — that bar is
   now met with citations at every decision point, and the deliberate
-  divergences from native (dhcpres/dot omission on edit, trunklist
-  multi-VID-preserving strip, refusal instead of escalation) are strictly
-  conservative and recorded in lib/sdn.ts. Residual: one live read of
-  subnet_rl field 19 (+ dot1_rl) would settle whether §9.4's
-  "dot_enable=1" note was misattributed or native's own edit silently
-  zeroed the profile's DoT flag; blocked only on the live Chrome session,
-  harmless either way to the shipped logic.
+  divergences from native (dhcpres/dot omission on edit, refusal instead
+  of escalation) are strictly conservative and recorded in lib/sdn.ts.
+  Residual: one live read of subnet_rl field 19 (+ dot1_rl) would settle
+  whether §9.4's "dot_enable=1" note was misattributed or native's own
+  edit silently zeroed the profile's DoT flag; blocked only on the live
+  Chrome session, harmless either way to the shipped logic.
+- Addendum (2026-08-01, same session): a three-lens adversarial
+  verification pass over the two commits (each verifier re-deriving the
+  citations from the vendored source) CONFIRMED the core derivation —
+  edit base/idx, the stubby edit-vs-wizard asymmetry at exactly the cited
+  lines, append order, delete shape, the subnet_idx keying of the
+  blanking keys, verify-record semantics, and the trunklist grammar — and
+  surfaced defects that were then fixed in a follow-up commit:
+  (1) MUST-FIX: native's DELETE path has its own restart_net_and_phy
+  escalation (sdn.js:8539-8563), firing on ANY non-empty vlan_trunklist
+  (no per-VID match) or a port-bound dut_list — the shipped delete
+  stripped the VID but paired it with the un-escalated rc string, the
+  exact mis-pairing the edit path was built to refuse. Fixed by refusing
+  delete in that state (same posture as edit); the now-unreachable
+  removeVidFromTrunklist strip was removed. (2) The create string's qos
+  segment was invented — wizards gate qos solely on their bw toggle, so
+  create is now the bare base. (3) The edit qos rule gained its missing
+  bw_limit half: a round-tripped bw_limit starting "<1>" now adds the qos
+  segment plus qos_enable=1/qos_type=2, matching native's toggle-prefill
+  behavior. (4) The delete stubby's invented subnet_idx>0 term was
+  dropped (native's delete has no subnet condition). (5) The "WISP
+  narrowing" claim was wrong in the pessimistic direction — WISP keeps
+  sw_mode==1 (shared.h __wisp_mode) so the gate already matched native;
+  the real sw_mode-1 exclusion is the MLO repeater (mlo_rp=1 → ui mode
+  "rp"), now excluded explicitly, and the appGet-failure fallback now
+  uses hasFlag truthiness. Also added: Gaming-profile deletes refuse
+  (native does game_vts_rulelist cleanup this build does not model,
+  sdn.js:8597-8613), trunklistBindsVid's docstring now states it is
+  deliberately BROADER than native's first-VID-only/'#all'-excluded
+  predicate (over-refusal, not over-write), and the sdn_mwl consolidation
+  and quick-toggle-vs-editor-dialog fidelity gaps are disclosed in the
+  module header.
