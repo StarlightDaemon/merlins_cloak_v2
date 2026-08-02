@@ -4,7 +4,7 @@ title: Merlin's Cloak v2 — Privacy Policy
 
 # Privacy Policy — Merlin's Cloak v2
 
-**Effective:** 2026-07-28
+**Effective:** 2026-08-01
 
 Merlin's Cloak v2 is a browser extension that replaces the web interface of
 an Asuswrt-Merlin router with a client-side re-theme. This policy describes,
