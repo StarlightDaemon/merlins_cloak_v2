@@ -806,17 +806,18 @@ actionable.
   `docs/LIVE_PROBE_RT-BE92U.md` §9.4.
 
 ### gh-pages privacy policy duplicate — manual sync pending
-- **Status:** SYNCED LOCALLY 2026-08-01, push pending (operator step).
-  Operator separately authorized gh-pages work in-session (the handoff
-  hard boundary); the sync was done in an isolated `git worktree` so
-  `main`'s working tree never left `main` (D-018 hygiene). Local
-  `gh-pages` commit `be34b27` mirrors `docs/privacy-policy.md@a553f5f`'s
-  three-stored-values list ("Two settings" → "Three settings", the
-  `enabled` flag item, and the storage-permission count). **Two operator
-  items remain:** (1) push `gh-pages` (1 ahead of origin) to publish;
-  (2) a policy call flagged in the commit: the source .md kept
-  "Effective: 2026-07-28" when the third value was added — decide
-  whether that date should bump (if so, edit BOTH files together).
+- **Status:** SYNCED LOCALLY 2026-08-01, push pending (operator step;
+  the only remaining item). Operator separately authorized gh-pages
+  work in-session (the handoff hard boundary); both edits were done in
+  an isolated `git worktree` so `main`'s working tree never left `main`
+  (D-018 hygiene). Local `gh-pages` commits: `be34b27` mirrors
+  `docs/privacy-policy.md@a553f5f`'s three-stored-values list ("Two
+  settings" → "Three settings", the `enabled` flag item, storage-
+  permission count); `8f3d099` bumps `Effective:` to 2026-08-01,
+  operator-decided, paired with the same bump on `main`
+  (`docs/privacy-policy.md@15f8407`). `gh-pages` is now 2 commits ahead
+  of `origin/gh-pages`; `main` is 22 ahead of `origin/main`. Nothing
+  else pending on this loop — push both branches whenever ready.
 
 ### `wps_band_x` — untested field on an otherwise live-verified page
 - **Status: CLOSED 2026-07-31** (operator-present live session, D-029).
