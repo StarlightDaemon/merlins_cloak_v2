@@ -55,12 +55,14 @@ This file is a manually maintained copy. Source of truth is docs/privacy-policy.
 
                     <h2>What the extension stores</h2>
 
-                    <p>Two settings, in the browser's local extension storage (<code>chrome.storage</code>),
+                    <p>Three settings, in the browser's local extension storage (<code>chrome.storage</code>),
                     and nothing else:</p>
 
                     <ul>
-                        <li>the router address you've configured, and</li>
-                        <li>whether read-only mode is on (it defaults to on).</li>
+                        <li>the router address you've configured,</li>
+                        <li>whether read-only mode is on (it defaults to on), and</li>
+                        <li>whether the extension is enabled (it defaults to on; turning it off
+                        restores the router's native web UI).</li>
                     </ul>
 
                     <p>Nothing else persists. There is no history, no cache of values you've
@@ -85,7 +87,7 @@ This file is a manually maintained copy. Source of truth is docs/privacy-policy.
                     <h2>Permissions, and why each one exists</h2>
 
                     <ul>
-                        <li><strong><code>storage</code></strong> — holds the two settings listed above.</li>
+                        <li><strong><code>storage</code></strong> — holds the three settings listed above.</li>
                         <li><strong><code>scripting</code></strong> — used only against the router origin you've configured,
                         for two purposes: registering the extension's interface on a custom
                         (non-default) router address after you've explicitly granted it, and
