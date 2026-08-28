@@ -1346,3 +1346,28 @@
   ever bumped past the range that pulls a patched `nanoid` natively, this
   override becomes redundant and can be dropped, but leaving it in place
   until then is harmless (exact-pin, no semver drift risk).
+
+## D-036
+
+- Date: 2026-08-27
+- Status: Closed
+- Decision: The `writ_integrity` doctor check was found failing on all
+  six managed files earlier this session. Root cause: `core.autocrlf=true`
+  with no `.gitattributes` on this Windows checkout was silently
+  converting LF blobs to CRLF on disk, while git's own diff engine, being
+  autocrlf-aware, saw the tree as clean — a false positive from doctor,
+  not real drift. Fixed with a `.gitattributes` (`* text=auto eol=lf`
+  plus an explicit `*.png binary` rule for the repo's tracked PNGs) and
+  `core.autocrlf=false` set locally for this repo. Independently verified
+  before this entry: renormalizing the working tree under the new rules
+  introduced zero real content changes across the full tree (confirmed
+  via `cmp` and `git diff` against `HEAD` on every file the renormalization
+  flagged as modified); all six writ files matched `baseline.json` exactly
+  with no baseline regeneration needed; doctor subsequently reported fully
+  clean. This also closes the `.gitattributes` gap flagged a month earlier
+  in `.audits/merlins_cloak_v2_AUDIT_2026-07-25.md` line 118.
+- Rationale: the file was verified and ready at the time but held pending
+  the broader review that has now substantially happened; this entry
+  formalizes and commits it.
+- Consequence: none — normalization was a no-op on content, only fixed
+  how the working tree is checked out going forward.
