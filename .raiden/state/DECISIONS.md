@@ -1308,3 +1308,41 @@
   teardown, and `modprobe -r wireguard` is gated by `is_wg_enabled()`, so
   the live client's module is never unloaded), but they are worth knowing
   before choosing a port.
+
+## D-035
+
+- Date: 2026-08-27
+- Status: Closed
+- Decision: A routine `npm audit --json` re-run found one new High
+  finding — `nanoid` <3.3.18 (GHSA-2v37-7h3g-55p8, custom generators can
+  loop indefinitely when size is zero) — pulled in transitively via
+  `@wxt-dev/module-react@1.2.2` → `vite@8.2.0` → `postcss@8.5.25` →
+  `nanoid@3.3.16`. This is dev-tooling-only (the same `"prod": 5` /
+  dev-heavy split D-013 and D-019 already relied on for their own
+  severity framing); nothing vulnerable ships in the built extension
+  artifact. Fixed by adding `"nanoid": "3.3.18"` to `package.json`'s
+  `overrides` block — the same exact-pin mechanism already used for
+  `shell-quote`, `adm-zip`, `esbuild`, `uuid`, and `tmp` — rather than
+  bumping `vite`/`postcss`, since `nanoid` sits several levels down an
+  already-deep transitive chain and pinning it directly stays on the
+  same 3.3.x line `postcss` expects (its own `^3.x` constraint), instead
+  of forcing a wider upgrade surface through packages this project
+  doesn't touch directly. `npm install` re-resolved cleanly; `npm audit
+  --json` now reports 0 findings across all severities; `tsc --noEmit`
+  and `eslint src --ext .ts,.tsx` both remain clean.
+- Rationale: `nanoid` is not a new dependency-pinning mechanism, it is
+  the existing overrides pattern applied to a new package — consistent
+  with the precedent those five prior entries set. **This supersedes the
+  "0 vulnerabilities" claims recorded in D-013 and D-019** (and the
+  matching mentions in `STATUS.md`) for anyone reading those entries
+  going forward: both were accurate statements of `npm audit`'s output
+  at the time they were written, but transitive drift in `vite`/`postcss`
+  since D-019's close (2026-07-31) reintroduced a High finding through a
+  package neither entry's fix touched. Neither D-013 nor D-019 is edited
+  or retracted — they remain correct as historical records of what was
+  true when each was closed; this entry is the current state going
+  forward.
+- Consequence: none beyond the override itself. If `vite`/`postcss` are
+  ever bumped past the range that pulls a patched `nanoid` natively, this
+  override becomes redundant and can be dropped, but leaving it in place
+  until then is harmless (exact-pin, no semver drift risk).
