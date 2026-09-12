@@ -1248,3 +1248,126 @@
   and native zeroed nothing. LIVE_PROBE §9.4 carries the dated
   correction. Nothing about the shipped rc logic changes (the trigger
   was never dot_enable).
+
+## D-034
+
+- Date: 2026-08-27
+- Status: Closed (source-level resolution; live confirmation now optional)
+- Decision: An Opus-tier read-only analysis session went to the `rc/` source
+  D-028 vendored and resolved the last open half of the D-008 CRITICAL
+  finding — whether `restart_wgs` applies the redirected values to an
+  already-running WireGuard interface. It cannot fail to. `restart_wgs` with
+  no unit argument, which is exactly what this project's Apply sends
+  (`vpn-server.ts:715`, `rcService: 'restart_wgs;restart_dnsmasq'`),
+  dispatches at `rc/services.c:22019` to `stop_wgsall()` then
+  `start_wgsall()`. `stop_wgsall` stops any unit whose interface *exists*
+  (`_wg_if_exist`, not the nvram enable flag), and `stop_wgs` ends in
+  `_wg_tunnel_delete()` — `ip link del dev wgs1`, `rc/wireguard.c:73`.
+  `start_wgsall` then re-reads `wgs{n}_enable` and calls `start_wgs()`
+  (`rc/wireguard.c:1508`), which regenerates `server1.conf` from scratch
+  (`ListenPort` from `nvram_pf_get_int(prefix, "port")`,
+  `rc/wireguard.c:1164`), creates a fresh interface and applies `wgs1_addr`
+  via `ip address add` (`rc/wireguard.c:61`), runs `wg setconf`, and
+  rewrites the netfilter rules from the port read at that moment
+  (`rc/wireguard.c:578`). There is no in-place mutation path for any of the
+  seven server fields: every nvram read that feeds the running interface
+  happens after the teardown. Stale values cannot survive because nothing
+  survives the teardown. `start_wgs` was diffed between `RAW/merlin-rc` and
+  `RAW/merlin-3004-rc` and is identical through the relevant paths (one
+  SDN-related signature difference only), so the finding does not depend on
+  which tree the deployed build derives from.
+- Rationale: OPEN_LOOPS' framing of this item as "cannot be resolved from
+  source" was accurate when written (D-015, 2026-07-29) — only the
+  `httpd`/`www` trees were vendored then — and was left stale by D-028's
+  acquisition of `rc/` two days later; nothing re-read the entry against the
+  newly available source. The residual is therefore no longer an unknown
+  firmware behavior but the same deployed-binary-matches-vendored-source
+  assumption D-030 already tested affirmatively for this exact feature's
+  httpd half. Live confirmation is downgraded from required to optional and
+  the OPEN_LOOPS entry re-framed in place; the item is not closed outright.
+- Risk context, recorded for the previously offered "brief zero-peer enable"
+  test in case a live confirmation is ever still wanted: (1) enabling
+  generates a **permanent** keypair — `_wg_server_gen_keys`
+  (`rc/wireguard.c:1010`) writes `wgs1_priv`/`wgs1_pub` to nvram and
+  `stop_wgs` never clears them, so the private key outlives the test and
+  propagates into router config backups; clearing both back to empty (the
+  path D-030 live-proved at web.c:4750) is a mandatory closing step, not an
+  afterthought. (2) The firewall opening is dual-stack, not IPv4-only as
+  previously assumed: `_wg_server_nf_add` writes both `iptables` and
+  `ip6tables` `WGSI` ACCEPTs with no `-i` restriction
+  (`rc/wireguard.c:583-584`), and `WGSI` is hooked unconditionally from
+  `INPUT` in both families (`rc/firewall.c:5233`), so the IPv6 listener sits
+  on a globally routable, un-NATted address. (3) The Apply's rcService
+  bounces LAN DNS, additionally stops and restarts Samba if
+  `wgs1_lanaccess` is set (`_wg_server_update_service`,
+  `rc/wireguard.c:1435`), and on this platform class writes Broadcom
+  flow-accelerator skip entries for the listen port
+  (`_wg_server_config_sysdeps`, `rc/wireguard.c:439`) — so a port colliding
+  with the operator's live `wgc1` client briefly costs that tunnel hardware
+  acceleration. All three recover cleanly (`_wg_check_same_port` guards the
+  teardown, and `modprobe -r wireguard` is gated by `is_wg_enabled()`, so
+  the live client's module is never unloaded), but they are worth knowing
+  before choosing a port.
+
+## D-035
+
+- Date: 2026-08-27
+- Status: Closed
+- Decision: A routine `npm audit --json` re-run found one new High
+  finding — `nanoid` <3.3.18 (GHSA-2v37-7h3g-55p8, custom generators can
+  loop indefinitely when size is zero) — pulled in transitively via
+  `@wxt-dev/module-react@1.2.2` → `vite@8.2.0` → `postcss@8.5.25` →
+  `nanoid@3.3.16`. This is dev-tooling-only (the same `"prod": 5` /
+  dev-heavy split D-013 and D-019 already relied on for their own
+  severity framing); nothing vulnerable ships in the built extension
+  artifact. Fixed by adding `"nanoid": "3.3.18"` to `package.json`'s
+  `overrides` block — the same exact-pin mechanism already used for
+  `shell-quote`, `adm-zip`, `esbuild`, `uuid`, and `tmp` — rather than
+  bumping `vite`/`postcss`, since `nanoid` sits several levels down an
+  already-deep transitive chain and pinning it directly stays on the
+  same 3.3.x line `postcss` expects (its own `^3.x` constraint), instead
+  of forcing a wider upgrade surface through packages this project
+  doesn't touch directly. `npm install` re-resolved cleanly; `npm audit
+  --json` now reports 0 findings across all severities; `tsc --noEmit`
+  and `eslint src --ext .ts,.tsx` both remain clean.
+- Rationale: `nanoid` is not a new dependency-pinning mechanism, it is
+  the existing overrides pattern applied to a new package — consistent
+  with the precedent those five prior entries set. **This supersedes the
+  "0 vulnerabilities" claims recorded in D-013 and D-019** (and the
+  matching mentions in `STATUS.md`) for anyone reading those entries
+  going forward: both were accurate statements of `npm audit`'s output
+  at the time they were written, but transitive drift in `vite`/`postcss`
+  since D-019's close (2026-07-31) reintroduced a High finding through a
+  package neither entry's fix touched. Neither D-013 nor D-019 is edited
+  or retracted — they remain correct as historical records of what was
+  true when each was closed; this entry is the current state going
+  forward.
+- Consequence: none beyond the override itself. If `vite`/`postcss` are
+  ever bumped past the range that pulls a patched `nanoid` natively, this
+  override becomes redundant and can be dropped, but leaving it in place
+  until then is harmless (exact-pin, no semver drift risk).
+
+## D-036
+
+- Date: 2026-08-27
+- Status: Closed
+- Decision: The `writ_integrity` doctor check was found failing on all
+  six managed files earlier this session. Root cause: `core.autocrlf=true`
+  with no `.gitattributes` on this Windows checkout was silently
+  converting LF blobs to CRLF on disk, while git's own diff engine, being
+  autocrlf-aware, saw the tree as clean — a false positive from doctor,
+  not real drift. Fixed with a `.gitattributes` (`* text=auto eol=lf`
+  plus an explicit `*.png binary` rule for the repo's tracked PNGs) and
+  `core.autocrlf=false` set locally for this repo. Independently verified
+  before this entry: renormalizing the working tree under the new rules
+  introduced zero real content changes across the full tree (confirmed
+  via `cmp` and `git diff` against `HEAD` on every file the renormalization
+  flagged as modified); all six writ files matched `baseline.json` exactly
+  with no baseline regeneration needed; doctor subsequently reported fully
+  clean. This also closes the `.gitattributes` gap flagged a month earlier
+  in `.audits/merlins_cloak_v2_AUDIT_2026-07-25.md` line 118.
+- Rationale: the file was verified and ready at the time but held pending
+  the broader review that has now substantially happened; this entry
+  formalizes and commits it.
+- Consequence: none — normalization was a no-op on content, only fixed
+  how the working tree is checked out going forward.

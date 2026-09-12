@@ -146,10 +146,25 @@ class; the mapping is not portable to the reversed-order SKUs above.
 (RT-BE92U placement is inferred by elimination — no literal `#ifdef
 RTBE92U` default block exists; everything else is confirmed from source.)
 
-### WireGuard server (`wgs1_*`) direct-prefixed writes
-- **Status:** Confirmed open, **CRITICAL** severity (raised from high — see
-  "Follow-up resolved" below; this status line previously lagged that
-  escalation and is corrected here for consistency).
+### WireGuard server (`wgs1_*`) direct-prefixed writes — SOURCE-RESOLVED 2026-08-27
+- **Status: SOURCE-RESOLVED 2026-08-27 (`DECISIONS.md` D-034).** The last
+  open half of this item — whether `restart_wgs` applies the redirected
+  values to an *already-running* interface — is answered from the `rc/`
+  source D-028 vendored, not from live testing: `restart_wgs` with no unit
+  argument is `stop_wgsall` + `start_wgsall`, which `ip link del`s the
+  interface and rebuilds it from a fresh nvram read, so there is no
+  in-place mutation path for any of the seven server fields and stale
+  values cannot survive. **Live confirmation is now optional, not
+  required** — the residual is only the
+  deployed-binary-matches-vendored-source assumption D-030 already tested
+  affirmatively for this feature's httpd half. Detail, citations, and the
+  risk notes for a live confirmation if one is ever still wanted are in
+  D-034; see also the dated update at the end of this entry. The
+  "cannot be resolved from source" framing in the D-015 update below was
+  correct when written and is superseded, not deleted.
+- **Status (pre-D-034):** Confirmed open, **CRITICAL** severity (raised from
+  high — see "Follow-up resolved" below; this status line previously lagged
+  that escalation and is corrected here for consistency).
 - **Finding:** No `validate_instance` branch exists in the firmware httpd
   source for `wgs1` prefixed keys (web.c:3729–4276; zero `wgs` or
   `wireguard` references anywhere in that function). The only WireGuard
@@ -237,6 +252,33 @@ RTBE92U` default block exists; everything else is confirmed from source.)
   follow-up for a future supervised session, along with the page's other
   5 never-submitted fields. Full record:
   `docs/WRITE_PATH_CHARACTERIZATION.md` §7.
+
+- **Update 2026-08-27 (D-034): the second live question is RESOLVED FROM
+  SOURCE, not live.** A read-only analysis session re-read this entry
+  against the `rc/` tree D-028 acquired — which had never been checked
+  against this item, since D-015's "cannot be resolved from source" framing
+  predates that acquisition by two days. `restart_wgs` (no unit, exactly
+  what `vpn-server.ts:715` sends) dispatches at `rc/services.c:22019` to
+  `stop_wgsall()` then `start_wgsall()`. `stop_wgsall` stops any unit whose
+  interface *exists* (`_wg_if_exist`, not the enable flag) and `stop_wgs`
+  ends in `ip link del dev wgs1` (`rc/wireguard.c:73`); `start_wgs`
+  (`rc/wireguard.c:1508`) then regenerates `server1.conf` from scratch
+  (`ListenPort` at `rc/wireguard.c:1164`), re-applies `wgs1_addr` via
+  `ip address add` (`rc/wireguard.c:61`), and rewrites the netfilter rules
+  from the port read at that moment (`rc/wireguard.c:578`). Every nvram
+  read that feeds the running interface happens *after* the teardown, so
+  the stale-value failure mode this item was holding open does not exist.
+  `start_wgs` is identical between `RAW/merlin-rc` and `RAW/merlin-3004-rc`
+  through the relevant paths, so the finding does not depend on which tree
+  the deployed build derives from. The previously offered brief-enable test
+  is therefore optional; D-034 records three things worth knowing before
+  running it anyway (permanent `wgs1_priv`/`wgs1_pub` generated on enable
+  and never cleared on disable, so clearing them is a mandatory closing
+  step; a dual-stack rather than IPv4-only firewall opening, the IPv6 half
+  un-NATted; and a Samba bounce on `wgs1_lanaccess` plus flow-accelerator
+  churn if the chosen port collides with the operator's live `wgc1`
+  client). The page's other 5 never-submitted fields remain a separate,
+  unaffected live-coverage gap.
 
 ### `ipsec_profile_2` regeneration
 - **Status: code fix SHIPPED 2026-07-31** (`d8ca9ff`) — `ipsec.ts` now
@@ -1264,6 +1306,47 @@ a defect.
   same-tick events.
 - **Where:** `src/ui/ListEditor.tsx:52-70` (`rows`, `commit`, `setCell`,
   `commitDraft`).
+
+## rc-source analysis pass, new items (2026-08-27)
+
+A read-only analysis session (no code touched, no router contact) re-read
+the WireGuard server loop above against the `rc/` source D-028 vendored and
+resolved it from source — see `DECISIONS.md` D-034. That pass surfaced one
+new item, filed separately below rather than merged into the server entry
+because it concerns a different page and a different rc action.
+
+### WireGuard peers — native's in-place `wg set` path
+- **Status:** Open, informational, low urgency. No live test planned or
+  requested; logged so it is not lost.
+- **Finding:** the server page's seven fields are structurally immune to any
+  "did the running interface pick this up" concern, because `restart_wgs`
+  tears the interface down and rebuilds it from nvram (D-034). The *peer*
+  path is the opposite shape. Native's own peer action, `restart_wgsc`,
+  dispatches (`rc/services.c:22030`) to `update_wgs_client()` →
+  `_wg_server_set_peer()` (`rc/wireguard.c:1210`), which mutates the
+  **running** interface in place — `wg set <ifname> peer <pub> allowed-ips
+  <aips>` (plus `preshared-key` when `wgs{n}_psk` is set), and `wg set
+  <ifname> peer <pub> remove` on disable. No teardown, no conf
+  regeneration, no re-read of anything else. If a genuine
+  "does this apply to a running interface" live-testing question exists
+  anywhere in this project's WireGuard feature, this is where it lives —
+  not on the server page, where it is answered by construction.
+- **Not currently reachable, and why the item is still worth keeping:**
+  `wireguardServerPeersPage` sends `restart_wgs;restart_dnsmasq`
+  (`vpn-server.ts:848`) — the full-bounce path, not `restart_wgsc` — as
+  `docs/RC_SOURCE_FINDINGS.md` already notes ("correct but bounces the
+  whole interface"), so today the peers page inherits the server page's
+  guarantee, and the page additionally still carries `writeExclusion:
+  'vpn'`, so no write can reach it at all. The item becomes live if a
+  future pass switches the peers page to the narrower native action for the
+  obvious reason — editing one peer without dropping every connected peer —
+  since that switch moves the page onto the in-place path this entry
+  describes.
+- **Where:** `src/pages/defs/vpn-server.ts` (`wireguardServerPeersPage`
+  write spec, ~line 848); `RAW/merlin-rc/release/src/router/rc/wireguard.c`
+  ~1210-1231 (`_wg_server_set_peer`, `_wg_server_route_update`) and ~1913
+  (`update_wgs_client`); `RAW/merlin-rc/release/src/router/rc/services.c`
+  ~22030.
 
 ## Cross-reference: pre-existing, operator-gated loops
 

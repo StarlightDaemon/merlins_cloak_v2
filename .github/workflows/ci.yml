@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - name: Type check
+        run: npm run compile
+      - name: Lint
+        run: npm run lint
+      - name: Build (chrome-mv3)
+        run: npm run build
+      - name: Build (firefox-mv3)
+        run: npm run build:firefox
+      - name: Audit (high+)
+        run: npm audit --audit-level=high

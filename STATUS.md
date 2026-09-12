@@ -13,8 +13,10 @@ dedicated harness-verification agent; the orchestrator reviewed every brief,
 made the scoping calls (D-026), integrated the page registry itself, and
 re-verified the merged tree. Verification at the final commit:
 `npx tsc --noEmit` clean, `npm run lint` clean, `npm audit` 0
-vulnerabilities, Chrome MV3 + Firefox MV3 builds both pass and are current
-in `.output/`. All commits local, nothing pushed.
+vulnerabilities (as of that commit; transitive `nanoid` drift later
+reopened this — see `.raiden/state/DECISIONS.md` D-035), Chrome MV3 +
+Firefox MV3 builds both pass and are current in `.output/`. All commits
+local, nothing pushed.
 
 - **Shipped in full (read + structurally-excluded write, harness-verified):**
   QOSUserPrio (`0ad7090`), Notification Center incl. guarded mark-read
@@ -64,8 +66,10 @@ in `.output/`. All commits local, nothing pushed.
 Every solo-completable 1.0 item closed; what remains is operator-gated
 live verification only. All commits local, unpushed. Verification state
 at the final commit: `npx tsc --noEmit` clean, `npx eslint .` clean,
-`npm audit` **0 vulnerabilities**, Chrome MV3 and Firefox MV3 builds both
-pass and are current in `.output/`.
+`npm audit` **0 vulnerabilities** (as of that commit; transitive `nanoid`
+drift later reopened this — see `.raiden/state/DECISIONS.md` D-035),
+Chrome MV3 and Firefox MV3 builds both pass and are current in
+`.output/`.
 
 - **Dependencies:** eslint 9→10, wxt 0.20→0.21, typescript-eslint 8.65;
   `eslint-plugin-react` removed entirely — it contributed zero active
@@ -161,8 +165,9 @@ by the operator for this test.
 
 Two further operator-driven items in the same interactive stretch, both
 now fully verified and committed. Final state: `tsc` clean, lint clean,
-`npm audit` 0 vulnerabilities, both Chrome MV3 and Firefox MV3 builds
-current in `.output/`.
+`npm audit` 0 vulnerabilities (as of that commit; transitive `nanoid`
+drift later reopened this — see `.raiden/state/DECISIONS.md` D-035),
+both Chrome MV3 and Firefox MV3 builds current in `.output/`.
 
 - **WPS band picker fixed** (`aaf6d3d`, D-023). Operator asked why WPS
   doesn't show a toggle per band. Checked `Advanced_WWPS_Content.asp`
@@ -385,26 +390,52 @@ accurate, if slightly redundant.
 
 ## Known open items / deferred (deliberate)
 
-1. **Live verification pass (both browsers)** — blocked on operator loading
-   the unpacked builds (.output/chrome-mv3, .output/firefox-mv3).
-2. Wireless band-token question: Advanced_Wireless_Content.asp's own JS posts
-   band-role-token field names (2g1_*) via httpApi.nvramSet; our defs post
-   canonical wl{N}_* keys, which validate_instance accepts. Confirm live
-   before any wireless write is ever cleared.
-3. wgs1_* (WireGuard server) direct-prefixed writes: no dedicated
-   validate_instance branch was found; leap-of-faith flagged in
-   vpn-server.ts.
-4. ipsec_profile_2 regeneration is not reproduced (native regenerates it on
-   every save); enabling IPSec via this UI won't refresh it.
-5. rcService cannot branch enable→restart vs disable→stop (vpn servers,
-   ipsec); static restart chosen; harmless for nvram, service state may need
-   a follow-up toggle.
-6. SDN profile creation/editing; per-user Samba/FTP permissions;
-   OpenVPN username/password client list (vpn_serverx_clientlist);
-   WireGuard server peers; certificate/key BLOBs; Operation Mode switching;
-   Time Machine; Download Master; AiMesh node management; notification
-   center; Advanced_QOSUserPrio (per-priority % allocation).
-7. Dashboard WAN card shows wan0 only (no dual-WAN aggregation).
+This list predates the 2026-07-31 sessions narrated above; most of its
+original entries were resolved or shipped in those sessions and are
+updated in place below (not deleted) so this section stops contradicting
+the rest of the file.
+
+1. **Live verification pass (both browsers)** — partially done: extension
+   mount, identity detection, and the popup restyle are live-confirmed on
+   Chrome by the operator (D-020). Full write-path live verification and
+   any Firefox live verification remain open, blocked on the operator
+   loading the unpacked builds (.output/chrome-mv3, .output/firefox-mv3).
+2. **RESOLVED FROM SOURCE, closed, no risk** (`.raiden/state/OPEN_LOOPS.md`
+   "Wireless band-token field naming"): the firmware normalizes
+   band-role-token keys (`2g1_*`) server-side via `wl_nband_to_wlx()`
+   before `validate_instance` ever sees them; this project posts the
+   canonical `wl{N}_*` form, which is exactly the post-normalization
+   shape the write path validates. No live confirmation needed to clear
+   this item.
+3. **Shipped and fixed:** wgs1_* (WireGuard server) writes now post the
+   unindexed `wgs_enable`/`wgs_unit` redirect form `validate_apply`
+   actually recognizes (`ae842e5`, D-015), confirmed correct at the
+   source/control-flow level. D-034 (2026-08-27) additionally resolved
+   the one remaining live-only question — whether `restart_wgs` applies
+   the redirected values to an already-running interface — from the
+   `rc/` source: it does, unconditionally, via a full teardown/rebuild.
+   Live confirmation is now optional, not required
+   (`.raiden/state/OPEN_LOOPS.md`).
+4. **Shipped and fixed:** ipsec_profile_2 is regenerated in lockstep with
+   profile_1 (`d8ca9ff`), template byte-verified against both web.c
+   skeletons.
+5. **Shipped and fixed:** OpenVPN/PPTP/IPSec rc actions now branch by
+   enable/disable direction as native does (`1b92640`), mooting the
+   rc stop-vs-restart question for this codebase.
+6. Genuinely still deferred: per-user Samba/FTP permission editing (the
+   share-permission subsystem remains out of scope — only a read-only
+   accounts/permissions viewer shipped, `97f1d5f`); Operation Mode's
+   mode→key write matrix (read-only mode derivation shipped, `697367d`;
+   the full write path is deliberately deferred to a future supervised
+   session, see D-026); Download Master's write path (by design — gated
+   by a closed-source dedicated CGI, `7551915`). Every other item
+   previously listed here — SDN profile create/edit/delete, OpenVPN
+   username/password client list, WireGuard server peers, certificate/key
+   material, Time Machine, AiMesh node management, notification center,
+   Advanced_QOSUserPrio — shipped in the 2026-07-31 deferred-features
+   pass; see that session's entry above.
+7. **Shipped:** dual-WAN Dashboard aggregation (`c125776`), read-only by
+   design.
 
 ## Safety invariants honored
 
